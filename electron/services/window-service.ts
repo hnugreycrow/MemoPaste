@@ -40,6 +40,7 @@ export class WindowService {
 
   /**
    * 智能自适应窗口尺寸计算
+   * 以设计稿为基准；小屏按工作区比例缩小，大屏用绝对上限避免过大。
    */
   private calculateSmartWindowSize(): {
     width: number;
@@ -55,47 +56,27 @@ export class WindowService {
       y: screenY,
     } = primaryDisplay.workArea;
 
-    // 基础配置
-    const baseConfig = {
-      minWidth: 800,
-      minHeight: 600,
-      maxWidthRatio: 0.9,
-      maxHeightRatio: 0.9,
-      preferredRatio: 0.7, // 首选占屏比例
-    };
+    const minWidth = 800;
+    const minHeight = 600;
+    const baseWidth = 1100;
+    const baseHeight = 760;
+    // 大屏硬顶，避免随分辨率线性放大
+    const absoluteMaxWidth = 1280;
+    const absoluteMaxHeight = 900;
+    const screenRatioCap = 0.9;
 
-    // 计算最大允许尺寸
-    const maxWidth = Math.floor(screenWidth * baseConfig.maxWidthRatio);
-    const maxHeight = Math.floor(screenHeight * baseConfig.maxHeightRatio);
-
-    // 计算理想尺寸
-    let idealWidth = Math.floor(screenWidth * baseConfig.preferredRatio);
-    let idealHeight = Math.floor(screenHeight * baseConfig.preferredRatio);
-
-    // 应用宽高比约束（保持应用的自然宽高比）
-    const naturalAspectRatio = 1000 / 700; // 基于设计稿的宽高比
-    const currentAspectRatio = idealWidth / idealHeight;
-
-    if (currentAspectRatio > naturalAspectRatio) {
-      // 太宽了，调整高度
-      idealHeight = Math.floor(idealWidth / naturalAspectRatio);
-    } else {
-      // 太高了，调整宽度
-      idealWidth = Math.floor(idealHeight * naturalAspectRatio);
-    }
-
-    // 应用边界约束
-    const finalWidth = Math.max(
-      baseConfig.minWidth,
-      Math.min(idealWidth, maxWidth),
+    const maxWidth = Math.min(
+      Math.floor(screenWidth * screenRatioCap),
+      absoluteMaxWidth,
+    );
+    const maxHeight = Math.min(
+      Math.floor(screenHeight * screenRatioCap),
+      absoluteMaxHeight,
     );
 
-    const finalHeight = Math.max(
-      baseConfig.minHeight,
-      Math.min(idealHeight, maxHeight),
-    );
+    const finalWidth = Math.max(minWidth, Math.min(baseWidth, maxWidth));
+    const finalHeight = Math.max(minHeight, Math.min(baseHeight, maxHeight));
 
-    // 计算居中位置
     const x = Math.floor(screenX + (screenWidth - finalWidth) / 2);
     const y = Math.floor(screenY + (screenHeight - finalHeight) / 2);
 
