@@ -1,15 +1,31 @@
 <script setup lang="ts">
-import { onMounted } from "vue";
+import { onMounted, ref } from "vue";
 import { themeService } from "./utils/theme";
 import UpdateDialog from "./components/UpdateDialog.vue";
 import router from "./router";
 
-// 在 App.vue 的 onMounted 钩子中添加
-onMounted(async () => {
-  // 初始化主题
-  themeService.initTheme();
+const windowRole = ref<"main" | "panel">("main");
 
-  // 主动检查版本
+onMounted(async () => {
+  // 同一套渲染代码跑在主窗口与面板窗口，需先分辨角色
+  try {
+    const role = await window.ipcRenderer.invoke("window-get-role");
+    windowRole.value = role === "panel" ? "panel" : "main";
+  } catch {
+    windowRole.value = "main";
+  }
+
+  // 面板窗口背景需透明，才能露出圆角/亚克力
+  if (windowRole.value === "panel") {
+    document.documentElement.classList.add("is-panel");
+    document.body.classList.add("is-panel");
+  }
+
+  await themeService.initTheme();
+
+  // 版本更新日志仅在主窗口提示
+  if (windowRole.value !== "main") return;
+
   const currentVersion = await window.ipcRenderer.invoke("app-get-version");
   const savedVersion = await window.config.get("version");
 
@@ -22,7 +38,7 @@ onMounted(async () => {
 
 <template>
   <RouterView></RouterView>
-  <UpdateDialog />
+  <UpdateDialog v-if="windowRole === 'main'" />
 </template>
 
 <style>
@@ -39,6 +55,13 @@ body,
   background: var(--bg-primary);
   color: var(--text-primary);
   transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+html.is-panel,
+html.is-panel body,
+html.is-panel #app {
+  /* 透明底：配合面板窗口的 acrylic / CSS 毛玻璃 */
+  background: transparent;
 }
 
 * {
@@ -83,7 +106,7 @@ body,
   --el-button-hover-bg-color: var(
     --accent-primary-hover,
     var(--bg-active)
-  ); /* 使用主题变量 */
+  );
   --el-button-hover-border-color: var(--accent-primary-hover, var(--bg-active));
   --el-button-hover-text-color: var(--text-inverse);
 }
@@ -97,7 +120,6 @@ body,
   color: var(--text-primary);
 }
 
-/* 下拉菜单项 */
 .el-dropdown-menu__item {
   --el-dropdown-menuItem-hover-fill: var(--bg-hover)
 }

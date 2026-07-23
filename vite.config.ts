@@ -19,6 +19,14 @@ export default defineConfig({
       main: {
         // Shortcut of `build.lib.entry`.
         entry: "electron/main.ts",
+        vite: {
+          build: {
+            rollupOptions: {
+              // koffi 含原生二进制，勿打包进 bundle
+              external: ["koffi"],
+            },
+          },
+        },
       },
       preload: {
         // Shortcut of `build.rollupOptions.input`.

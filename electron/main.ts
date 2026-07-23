@@ -11,6 +11,7 @@ import {
   ShortcutService,
   ConfigService,
   UpdateService,
+  setAppIsQuitting,
 } from "./services";
 
 // 防止多开：单实例锁
@@ -140,8 +141,9 @@ function initializeServices() {
     VITE_DEV_SERVER_URL,
   );
   
-  // 创建主窗口
+  // 创建主窗口与不抢焦点的快捷面板（面板默认隐藏）
   const mainWindow = windowService.createWindow();
+  windowService.createPanelWindow();
   
   // 创建托盘服务
   trayService = new TrayService(
@@ -151,7 +153,7 @@ function initializeServices() {
   trayService.createTray();
   
   // 创建剪贴板服务
-  clipboardService = new ClipboardService(mainWindow);
+  clipboardService = new ClipboardService(mainWindow, windowService);
   
   // 创建快捷键服务
   shortcutService = new ShortcutService(windowService, configService);
@@ -232,5 +234,6 @@ app.whenReady().then(() => {
 
 // 应用退出前清理资源
 app.on("will-quit", () => {
+  setAppIsQuitting(true);
   disposeServices();
 });

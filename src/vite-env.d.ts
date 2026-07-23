@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import type { WindowControls, ClipboardAPI, ConfigAPI, UpdateControls } from "./utils/type";
+import type { WindowControls, ClipboardAPI, ConfigAPI, UpdateControls, PanelControls } from "./utils/type";
 
 declare global {
   interface Window {
@@ -9,6 +9,7 @@ declare global {
     clipboard: ClipboardAPI;
     config: ConfigAPI;
     updater: UpdateControls;
+    panel: PanelControls;
   }
 }
 

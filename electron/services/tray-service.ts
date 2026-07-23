@@ -50,16 +50,22 @@ export class TrayService {
   private updateContextMenu(): void {
     if (!this.tray) return;
 
-    // 创建托盘菜单
+    // 托盘菜单：快捷面板与主窗口分离入口
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: '显示',
+        label: '打开快捷面板',
+        click: () => {
+          this.windowService.showPanel();
+        },
+      },
+      {
+        label: '显示主窗口',
         click: () => {
           this.windowService.showWindow();
         },
       },
       {
-        label: '隐藏',
+        label: '隐藏主窗口',
         click: () => {
           this.windowService.hideWindow();
         },

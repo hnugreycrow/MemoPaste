@@ -1,7 +1,16 @@
-import { createMemoryHistory, createRouter } from "vue-router";
+import { createWebHashHistory, createRouter } from "vue-router";
 import Layout from "@/layout/index.vue";
 
 const routes = [
+  // 快捷面板独立路由（无 Layout），由面板窗口加载 #/panel
+  {
+    path: "/panel",
+    name: "Panel",
+    component: () => import("@/views/panel/index.vue"),
+    meta: {
+      title: "快捷面板",
+    },
+  },
   {
     path: "/",
     component: Layout,
@@ -39,8 +48,9 @@ const routes = [
   },
 ];
 
+// hash 模式便于 Electron 多窗口通过 URL hash 区分页面
 const router = createRouter({
-  history: createMemoryHistory(),
+  history: createWebHashHistory(),
   routes,
 });
 

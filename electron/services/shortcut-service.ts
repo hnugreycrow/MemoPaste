@@ -94,22 +94,8 @@ export class ShortcutService {
       }
 
       const shortcutRegistered = globalShortcut.register(shortcut, () => {
-        const window = this.windowService.getWindow();
-        if (window) {
-          if (!window.isFocused() || !window.isVisible()) {
-            this.windowService.showWindow();
-          } else {
-            const minimizeToTray = this.configService.get<boolean>("minimizeToTray");
-            if (minimizeToTray) {
-              this.windowService.hideWindow();
-            } else {
-              this.windowService.minimizeWindow();
-            }
-          }
-        } else {
-          // 如果窗口不存在，创建新窗口（这种情况应该很少发生）
-          console.warn("窗口不存在，无法响应快捷键");
-        }
+        // 全局快捷键切换不抢焦点的快捷面板（而非主窗口）
+        this.windowService.togglePanel();
       });
 
       if (!shortcutRegistered) {

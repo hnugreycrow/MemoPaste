@@ -11,6 +11,8 @@ import {
   getFavoriteClipboardItems,
   getClipboardCounts,
 } from "../database/clipboard";
+import { simulatePaste } from "../utils/simulate-paste";
+import type { WindowService } from "./window-service";
 
 // 在ES模块中模拟CommonJS的require功能
 const require = createRequire(import.meta.url);
@@ -22,133 +24,143 @@ const clipboardEvent = require("clipboard-event");
  * - 读写剪贴板内容
  * - 监听剪贴板变化
  * - 管理剪贴板历史记录
+ * - 快捷面板选中后自动粘贴
  */
 export class ClipboardService {
   private mainWindow: BrowserWindow | null = null;
+  private windowService: WindowService | null = null;
   private lastClipboardContent: string = "";
   private isWatching: boolean = false;
   private debounceTimer: NodeJS.Timeout | null = null;
-  private readonly DEBOUNCE_DELAY = 100; // 100ms防抖延迟
+  private readonly DEBOUNCE_DELAY = 100;
+  /** 自动粘贴进行中：忽略剪贴板监听，避免把自身写入再记一条 */
+  private isAutoPasting = false;
 
-  /**
-   * 构造函数
-   * @param mainWindow 主窗口实例，用于向渲染进程发送消息
-   */
-  constructor(mainWindow: BrowserWindow) {
+  constructor(mainWindow: BrowserWindow, windowService?: WindowService) {
     this.mainWindow = mainWindow;
+    this.windowService = windowService ?? null;
     this.lastClipboardContent = clipboard.readText();
     this.registerIpcHandlers();
   }
 
-  /**
-   * 注册所有IPC处理程序
-   */
   private registerIpcHandlers(): void {
-    // 读取剪贴板内容
     ipcMain.handle("clipboard-read", () => {
       return clipboard.readText();
     });
 
-    // 写入剪贴板内容
     ipcMain.handle("clipboard-write", (_, text) => {
       clipboard.writeText(text);
-      // 更新最后记录的剪贴板内容，防止应用自身写入触发重复记录
+      // 同步 lastContent，防止应用自身写入再次触发「新记录」
       this.lastClipboardContent = text;
       return true;
     });
 
-    // 开始监听剪贴板变化
+    /**
+     * 快捷面板选中项：写入剪贴板 → 隐藏面板 → 模拟 Ctrl+V
+     * 依赖面板不抢焦点，原输入框仍可接收按键
+     */
+    ipcMain.handle("clipboard-paste-and-hide", async (_, text: string) => {
+      if (this.isAutoPasting) return false;
+      this.isAutoPasting = true;
+      try {
+        clipboard.writeText(text);
+        this.lastClipboardContent = text;
+        this.windowService?.hidePanel();
+        try {
+          await simulatePaste();
+        } catch (error) {
+          // 内容已在剪贴板；按键失败时用户仍可手动粘贴
+          console.error("自动粘贴按键失败:", error);
+        }
+        return true;
+      } catch (error) {
+        console.error("写入剪贴板失败:", error);
+        return false;
+      } finally {
+        this.isAutoPasting = false;
+      }
+    });
+
     ipcMain.handle("clipboard-watch-start", () => {
       return this.startWatching();
     });
 
-    // 停止监听剪贴板变化
     ipcMain.handle("clipboard-watch-stop", () => {
       return this.stopWatching();
     });
 
-    // 保存剪贴板历史（添加单个项目）
     ipcMain.handle("clipboard-save-item", (_, item) => {
       return saveClipboardItem(item);
     });
 
-    // 删除剪贴板历史项目
     ipcMain.handle("clipboard-delete-item", (_, id) => {
       return deleteClipboardItem(id);
     });
 
-    // 批量删除剪贴板历史项目
     ipcMain.handle("clipboard-delete-batch", (_, ids) => {
       return deleteBatchClipboardItems(ids);
     });
 
-    // 清空剪贴板历史
     ipcMain.handle("clipboard-clear-all", () => {
       return clearClipboardHistory();
     });
 
-    // 清空剪贴板历史但保留收藏
     ipcMain.handle("clipboard-clear-except-favorites", () => {
       return clearClipboardExceptFavorites();
     });
 
-    // 获取剪贴板历史（支持分页、按类型筛选、关键词搜索）
-    ipcMain.handle("clipboard-get-history", (_, page = 1, pageSize = 50, type = "all", keyword = "") => {
-      return getClipboardHistory(page, pageSize, type, keyword);
-    });
+    ipcMain.handle(
+      "clipboard-get-history",
+      (_, page = 1, pageSize = 50, type = "all", keyword = "") => {
+        return getClipboardHistory(page, pageSize, type, keyword);
+      },
+    );
 
-    // 设置剪贴板项目的收藏状态
     ipcMain.handle("clipboard-set-favorite", (_, id, isFavorite) => {
       return setFavoriteStatus(id, isFavorite);
     });
 
-    // 获取收藏的剪贴板项目
     ipcMain.handle("clipboard-get-favorites", () => {
       return getFavoriteClipboardItems();
     });
 
-    // 按类型统计剪贴板项目数量
     ipcMain.handle("clipboard-get-counts", () => {
       return getClipboardCounts();
     });
   }
 
-  /**
-   * 开始监听剪贴板变化
-   * @returns 是否成功开始监听
-   */
   public startWatching(): boolean {
     if (this.isWatching) {
-      return true; // 已经在监听中
+      return true;
     }
 
     try {
-      // 使用clipboard-event库监听剪贴板变化
       clipboardEvent.startListening();
 
-      // 监听剪贴板变化事件
       clipboardEvent.on("change", () => {
-        // 清除之前的防抖定时器
         if (this.debounceTimer) {
           clearTimeout(this.debounceTimer);
         }
-        
-        // 设置新的防抖定时器
+
         this.debounceTimer = setTimeout(() => {
+          // 自动粘贴过程中忽略，避免抖动
+          if (this.isAutoPasting) return;
+
           const currentContent = clipboard.readText();
-          console.log('Available formats:', clipboard.availableFormats());
-          
-          // 如果内容变化了，通知渲染进程
+          console.log("Available formats:", clipboard.availableFormats());
+
           if (
             currentContent !== this.lastClipboardContent &&
             currentContent.trim() !== ""
           ) {
             this.lastClipboardContent = currentContent;
-            console.log('Clipboard content changed, notifying renderer');
-            this.mainWindow?.webContents.send(
-              "clipboard-changed",
-              currentContent
-            );
+            console.log("Clipboard content changed, notifying renderer");
+            // 主窗口负责入库，面板窗口仅刷新列表
+            for (const win of BrowserWindow.getAllWindows()) {
+              if (!win.isDestroyed()) {
+                win.webContents.send("clipboard-changed", currentContent);
+              }
+            }
           }
         }, this.DEBOUNCE_DELAY);
       });
@@ -161,17 +173,12 @@ export class ClipboardService {
     }
   }
 
-  /**
-   * 停止监听剪贴板变化
-   * @returns 是否成功停止监听
-   */
   public stopWatching(): boolean {
     if (!this.isWatching) {
-      return true; // 已经停止监听
+      return true;
     }
 
     try {
-      // 停止监听剪贴板变化
       clipboardEvent.stopListening();
       this.isWatching = false;
       return true;
@@ -181,17 +188,13 @@ export class ClipboardService {
     }
   }
 
-  /**
-   * 清理资源
-   * 在应用退出前调用，确保释放所有资源
-   */
   public dispose(): void {
     this.stopWatching();
-    // 清理防抖定时器
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
       this.debounceTimer = null;
     }
     this.mainWindow = null;
+    this.windowService = null;
   }
 }

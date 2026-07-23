@@ -56,6 +56,8 @@ export interface ClipboardAPI {
   clearAll: () => Promise<boolean>;
   clearExceptFavorites: () => Promise<number>;
   getHistory: (page: number, pageSize: number, type: string, keyword?: string) => Promise<ClipboardHistoryResult>;
+  /** 写入剪贴板、隐藏面板并模拟粘贴到原窗口 */
+  pasteAndHide: (text: string) => Promise<boolean>;
   // 收藏
   setFavorite: (id: number, isFavorite: boolean) => Promise<boolean>;
   getFavorites: () => Promise<ClipboardItem[]>;
@@ -68,6 +70,16 @@ export interface ConfigAPI {
   get: <T>(key: string) => Promise<T>;
   set: <T>(key: string, value: T) => Promise<boolean>;
   getAll: () => Promise<any>;
+}
+
+/** 渲染进程暴露的快捷面板 API */
+export interface PanelControls {
+  /** 隐藏快捷面板 */
+  hide: () => void;
+  /** 关闭面板并打开主窗口 */
+  openMain: () => void;
+  /** 监听面板显示事件，返回取消监听函数 */
+  onShown: (callback: () => void) => () => void;
 }
 
 /** 渲染进程暴露的自动更新 API */
