@@ -171,20 +171,13 @@ export const useClipboardStore = defineStore('clipboard', {
     // 清空非收藏记录（保留收藏）
     async clearExceptFavorites() {
       try {
+        await this.refreshCounts();
         const favCount = this.typeCounts.favorite;
-        if (favCount > 0) {
-          await ElMessageBox.confirm(
-            `确定要清空非收藏记录吗？已收藏的 ${favCount} 条记录将被保留。`,
-            '清空非收藏记录',
-            { confirmButtonText: '确认清空', cancelButtonText: '取消', type: 'warning' }
-          );
-        } else {
-          await ElMessageBox.confirm(
-            '确定要清空所有记录吗？（当前无收藏记录）',
-            '清空记录',
-            { confirmButtonText: '确认', cancelButtonText: '取消', type: 'warning' }
-          );
-        }
+        await ElMessageBox.confirm(
+          `确定要清空非收藏记录吗？已收藏的 ${favCount} 条记录将被保留。`,
+          '清空非收藏记录',
+          { confirmButtonText: '确认清空', cancelButtonText: '取消', type: 'warning' }
+        );
 
         const deletedCount = await window.clipboard.clearExceptFavorites();
         if (deletedCount >= 0) {

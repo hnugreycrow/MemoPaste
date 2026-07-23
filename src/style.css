@@ -75,3 +75,11 @@ h1 {
     background-color: #f9f9f9;
   }
 }
+
+.nav-item,
+.filter-item {
+  &:focus,
+  &:focus-visible {
+    outline: none;
+  }
+}
