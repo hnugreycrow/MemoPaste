@@ -1,18 +1,10 @@
 import { BrowserWindow, ipcMain, screen, app, globalShortcut } from "electron";
 import path from "node:path";
-import os from "node:os";
 import { ConfigService } from "./config-service";
+import { applyNoActivateStyle } from "../utils/win32-window";
 
 const PANEL_WIDTH = 360;
 const PANEL_HEIGHT = 480;
-
-/** Windows 11（build >= 22000）才稳定支持 Electron backgroundMaterial */
-function supportsWin11Material(): boolean {
-  if (process.platform !== "win32") return false;
-  const parts = os.release().split(".");
-  const build = Number(parts[2] || 0);
-  return build >= 22000;
-}
 
 /**
  * 窗口管理服务
@@ -193,26 +185,14 @@ export class WindowService {
   /**
    * 创建快捷面板（Win+V 风格）
    * focusable: false + 后续 showInactive：不抢原输入框焦点，便于直接粘贴
+   * 始终 transparent：用 CSS 圆角铺满窗口，避免亚克力矩形露边
    */
   public createPanelWindow(): BrowserWindow {
-    const useAcrylic = supportsWin11Material();
-
     this.panelWin = new BrowserWindow({
       width: PANEL_WIDTH,
       height: PANEL_HEIGHT,
       frame: false,
       focusable: false,
-      // Win11 用系统亚克力；其他系统用透明窗 + CSS 毛玻璃
-      ...(useAcrylic
-        ? {
-            transparent: false,
-            backgroundMaterial: "acrylic" as const,
-            backgroundColor: "#00000000",
-          }
-        : {
-            transparent: true,
-            backgroundColor: "#00000000",
-          }),
       resizable: false,
       maximizable: false,
       minimizable: false,
@@ -220,14 +200,10 @@ export class WindowService {
       skipTaskbar: true,
       alwaysOnTop: true,
       show: false,
-      hasShadow: true,
       icon: path.join(this.publicPath, "electron.svg"),
       webPreferences: {
         preload: this.preloadPath,
-        additionalArguments: [
-          "--window-role=panel",
-          useAcrylic ? "--panel-material=acrylic" : "--panel-material=css",
-        ],
+        additionalArguments: ["--window-role=panel"],
       },
     });
 
@@ -238,6 +214,13 @@ export class WindowService {
       if (!appIsQuitting) {
         event.preventDefault();
         this.hidePanel();
+      }
+    });
+
+    // 额外加固：即使被点击也不激活，保持原窗口前台与光标闪烁
+    this.panelWin.once("ready-to-show", () => {
+      if (this.panelWin && !this.panelWin.isDestroyed()) {
+        applyNoActivateStyle(this.panelWin);
       }
     });
 
@@ -286,6 +269,12 @@ export class WindowService {
       "data:text/html;charset=utf-8," + encodeURIComponent(html),
     );
 
+    this.shieldWin.once("ready-to-show", () => {
+      if (this.shieldWin && !this.shieldWin.isDestroyed()) {
+        applyNoActivateStyle(this.shieldWin);
+      }
+    });
+
     this.shieldWin.on("closed", () => {
       this.shieldWin = null;
     });
@@ -318,6 +307,7 @@ export class WindowService {
       height: maxY - minY,
     });
     this.shieldWin.setAlwaysOnTop(true, "floating");
+    applyNoActivateStyle(this.shieldWin);
     this.shieldWin.showInactive();
   }
 
@@ -389,6 +379,15 @@ export class WindowService {
       this.hidePanel();
       this.showAndFocus();
     });
+
+    // 主窗口改主题后广播到其他窗口（如快捷面板）
+    ipcMain.on("theme-changed", (event, theme: string) => {
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed() && win.webContents.id !== event.sender.id) {
+          win.webContents.send("theme-changed", theme);
+        }
+      }
+    });
   }
 
   public showAndFocus(): void {
@@ -442,7 +441,7 @@ export class WindowService {
   }
 
   /**
-   * 显示快捷面板：先遮罩再面板，均 showInactive，不抢输入焦点
+   * 显示快捷面板：先遮罩再面板，均 showInactive，不抢原输入框焦点
    */
   public showPanel(): void {
     if (!this.panelWin || this.panelWin.isDestroyed()) return;
@@ -451,6 +450,7 @@ export class WindowService {
     this.showShield();
     // pop-up-menu 高于遮罩的 floating，保证面板可点
     this.panelWin.setAlwaysOnTop(true, "pop-up-menu");
+    applyNoActivateStyle(this.panelWin);
     this.panelWin.showInactive();
     this.registerPanelEscape();
     this.panelWin.webContents.send("panel-shown");

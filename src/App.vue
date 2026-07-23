@@ -60,7 +60,10 @@ body,
 html.is-panel,
 html.is-panel body,
 html.is-panel #app {
-  /* 透明底：配合面板窗口的 acrylic / CSS 毛玻璃 */
+  /* 透明底：配合面板窗口圆角，避免露出矩形窗体底色 */
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
   background: transparent;
 }
 

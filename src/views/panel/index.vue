@@ -9,6 +9,7 @@ import { storeToRefs } from "pinia";
 import { useClipboardStore } from "@/stores/clipboardStore";
 import type { ClipboardItem } from "@/utils/type";
 import { truncateText, formatRelativeTime } from "@/utils/utils";
+import { themeService } from "@/utils/theme";
 
 defineOptions({
   name: "Panel",
@@ -135,13 +136,14 @@ const onScroll = () => {
 };
 
 onMounted(async () => {
-  await themeReady();
+  await themeService.initTheme();
   await refreshList();
 
   window.addEventListener("keydown", onKeyDown);
 
-  // 每次唤起面板时刷新，保证看到最新记录
+  // 每次唤起面板时刷新列表，并重新拉取主题（防止漏同步）
   removeShownListener = window.panel.onShown(() => {
+    themeService.initTheme();
     refreshList();
   });
 
@@ -160,11 +162,6 @@ onUnmounted(() => {
   removeClipboardListener?.();
   if (refreshTimer) clearTimeout(refreshTimer);
 });
-
-async function themeReady() {
-  const { themeService } = await import("@/utils/theme");
-  await themeService.initTheme();
-}
 </script>
 
 <template>
@@ -256,18 +253,16 @@ async function themeReady() {
 
 <style lang="scss" scoped>
 .panel-shell {
+  width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
   border-radius: 16px;
   overflow: hidden;
-  /* 半透明底：Win11 亚克力会透出；非 Win11 配合 backdrop-filter */
-  background: color-mix(in srgb, var(--bg-secondary) 72%, transparent);
+  /* 半透明底 + 毛玻璃；不在 CSS 里做外阴影，避免圆角外出现灰块 */
+  background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
   border: 1px solid color-mix(in srgb, var(--border-light) 80%, transparent);
-  box-shadow:
-    0 16px 48px rgba(0, 0, 0, 0.32),
-    0 2px 8px rgba(0, 0, 0, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(28px) saturate(1.35);
   -webkit-backdrop-filter: blur(28px) saturate(1.35);
   -webkit-app-region: no-drag;
@@ -420,24 +415,29 @@ async function themeReady() {
   text-align: left;
   padding: 10px 12px 12px;
   border-radius: 12px;
-  border: 1.5px solid transparent;
+  border: 1px solid transparent;
   background: color-mix(in srgb, var(--bg-tertiary) 88%, transparent);
   color: var(--text-primary);
   cursor: pointer;
   transition:
     border-color 0.15s ease,
-    background-color 0.15s ease,
-    box-shadow 0.15s ease;
+    background-color 0.15s ease;
 
   &:hover,
   &.focused {
-    border-color: var(--text-primary);
-    background: color-mix(in srgb, var(--bg-tertiary) 96%, transparent);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    /* 淡强调色描边，避免黑/白粗框 */
+    border-color: color-mix(in srgb, var(--accent-primary) 55%, transparent);
+    background: color-mix(in srgb, var(--accent-primary) 8%, var(--bg-tertiary));
   }
 
   &.favorite {
     background: var(--favorite-bg);
+
+    &:hover,
+    &.focused {
+      border-color: color-mix(in srgb, var(--accent-quaternary) 50%, transparent);
+      background: color-mix(in srgb, var(--accent-quaternary) 10%, var(--favorite-bg));
+    }
   }
 }
 

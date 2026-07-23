@@ -6,8 +6,25 @@ export type ThemeType = 'light' | 'dark';
 // 创建一个响应式的主题状态
 const currentTheme = ref<ThemeType>('dark');
 
+let themeListenerBound = false;
+
+/** 监听其他窗口发来的主题变更（主窗口 ↔ 面板） */
+function bindThemeSyncListener(): void {
+  if (themeListenerBound) return;
+  themeListenerBound = true;
+
+  window.ipcRenderer.on('theme-changed', (_event, theme: ThemeType) => {
+    if (theme !== 'light' && theme !== 'dark') return;
+    if (theme === currentTheme.value) return;
+    currentTheme.value = theme;
+    applyTheme(theme);
+  });
+}
+
 // 获取存储的主题设置
 const initTheme = async (): Promise<void> => {
+  bindThemeSyncListener();
+
   try {
     // 使用通用配置方法获取主题
     const savedTheme = await window.config.get<ThemeType>('theme');
@@ -34,6 +51,8 @@ const setTheme = (theme: ThemeType): void => {
     console.error('保存主题设置失败:', error);
   });
   applyTheme(theme);
+  // 通知其他 BrowserWindow 同步主题
+  window.ipcRenderer.send('theme-changed', theme);
 };
 
 // 应用主题到DOM
@@ -50,4 +69,4 @@ export const themeService = {
   currentTheme,
   initTheme,
   setTheme
-};;
+};
