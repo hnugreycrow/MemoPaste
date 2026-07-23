@@ -1,7 +1,6 @@
 import { BrowserWindow, ipcMain, screen, app, globalShortcut } from "electron";
 import path from "node:path";
 import { ConfigService } from "./config-service";
-import { applyNoActivateStyle } from "../utils/win32-window";
 
 const PANEL_WIDTH = 360;
 const PANEL_HEIGHT = 480;
@@ -185,7 +184,6 @@ export class WindowService {
   /**
    * 创建快捷面板（Win+V 风格）
    * focusable: false + 后续 showInactive：不抢原输入框焦点，便于直接粘贴
-   * 始终 transparent：用 CSS 圆角铺满窗口，避免亚克力矩形露边
    */
   public createPanelWindow(): BrowserWindow {
     this.panelWin = new BrowserWindow({
@@ -214,13 +212,6 @@ export class WindowService {
       if (!appIsQuitting) {
         event.preventDefault();
         this.hidePanel();
-      }
-    });
-
-    // 额外加固：即使被点击也不激活，保持原窗口前台与光标闪烁
-    this.panelWin.once("ready-to-show", () => {
-      if (this.panelWin && !this.panelWin.isDestroyed()) {
-        applyNoActivateStyle(this.panelWin);
       }
     });
 
@@ -269,12 +260,6 @@ export class WindowService {
       "data:text/html;charset=utf-8," + encodeURIComponent(html),
     );
 
-    this.shieldWin.once("ready-to-show", () => {
-      if (this.shieldWin && !this.shieldWin.isDestroyed()) {
-        applyNoActivateStyle(this.shieldWin);
-      }
-    });
-
     this.shieldWin.on("closed", () => {
       this.shieldWin = null;
     });
@@ -307,7 +292,6 @@ export class WindowService {
       height: maxY - minY,
     });
     this.shieldWin.setAlwaysOnTop(true, "floating");
-    applyNoActivateStyle(this.shieldWin);
     this.shieldWin.showInactive();
   }
 
@@ -450,7 +434,6 @@ export class WindowService {
     this.showShield();
     // pop-up-menu 高于遮罩的 floating，保证面板可点
     this.panelWin.setAlwaysOnTop(true, "pop-up-menu");
-    applyNoActivateStyle(this.panelWin);
     this.panelWin.showInactive();
     this.registerPanelEscape();
     this.panelWin.webContents.send("panel-shown");
