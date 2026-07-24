@@ -1,64 +1,50 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import About from './about/index.vue';
-import router from '@/router';
-import { useRoute } from 'vue-router';
+import { computed } from "vue";
+import router from "@/router";
+import { useRoute } from "vue-router";
 
 const route = useRoute();
-const aboutRef = ref();
 
 // 根据当前路由路径计算当前激活的模块
 const activeModule = computed(() => {
   const path = route.path;
-  if (path.includes('/settings')) {
-    return 'settings';
-  } else if (path.includes('/clipboard')) {
-    return 'clipboard';
+  if (path.includes("/settings")) {
+    return "settings";
+  } else if (path.includes("/clipboard")) {
+    return "clipboard";
   }
-  return '';
+  return "";
 });
 
 const switchModule = (module: string) => {
-  if (module === 'settings') {
-    router.push('/settings');
-  } else if (module === 'clipboard') {
-    router.push('/clipboard');
+  if (module === "settings") {
+    router.push("/settings");
+  } else if (module === "clipboard") {
+    router.push("/clipboard");
   }
 };
-
-const openAbout = () => {
-  aboutRef.value.openAboutDialog();
-}
 </script>
 
 <template>
   <div class="nav-sidebar">
-    <button 
-      class="nav-item" 
-      :class="{ active: activeModule === 'clipboard' }" 
-      title="剪切板历史" 
+    <button
+      class="nav-item"
+      :class="{ active: activeModule === 'clipboard' }"
+      title="剪切板历史"
       @click="switchModule('clipboard')"
     >
       <i-ep-document-copy />
     </button>
     <div class="nav-divider"></div>
-    <button 
-      class="nav-item" 
-      :class="{ active: activeModule === 'settings' }" 
-      title="设置" 
+    <button
+      class="nav-item"
+      :class="{ active: activeModule === 'settings' }"
+      title="设置"
       @click="switchModule('settings')"
     >
       <i-ep-setting />
     </button>
-    <button 
-      class="nav-item" 
-      title="关于" 
-      @click="openAbout"
-    >
-      <i-ep-info-filled />
-    </button>
   </div>
-  <about ref="aboutRef"></about>
 </template>
 
 <style lang="scss" scoped>
@@ -108,7 +94,7 @@ const openAbout = () => {
 }
 
 .nav-item.active::before {
-  content: '';
+  content: "";
   position: absolute;
   left: -8px;
   top: 50%;

@@ -168,6 +168,13 @@ const viewChangelog = () => {
   router.push("/changelog");
 };
 
+const openGithub = () => {
+  window.ipcRenderer.invoke(
+    "open-external-url",
+    "https://github.com/hnugreycrow/Eideticlip",
+  );
+};
+
 onUnmounted(() => {
   if (removeListener) {
     removeListener();
@@ -322,6 +329,21 @@ onUnmounted(() => {
         </div>
 
         <div class="settings-group">
+          <div class="about-intro">
+            <img
+              class="about-logo"
+              src="/electron.svg"
+              alt="Eideticlip"
+            />
+            <div class="about-intro-text">
+              <div class="about-name">Eideticlip</div>
+              <p class="about-desc">
+                剪贴板管理工具，帮助您管理和组织剪贴板内容。基于 Electron +
+                Vue + Vite 构建。
+              </p>
+            </div>
+          </div>
+
           <div class="setting-row">
             <div class="setting-meta">
               <span class="setting-label">当前版本</span>
@@ -343,6 +365,17 @@ onUnmounted(() => {
             </div>
             <el-button class="action-btn" @click="viewChangelog">
               查看日志
+            </el-button>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-meta">
+              <span class="setting-label">项目主页</span>
+              <span class="setting-desc">GitHub 仓库与源码</span>
+            </div>
+            <el-button class="action-btn" @click="openGithub">
+              <el-icon class="btn-icon"><i-ep-Link /></el-icon>
+              打开
             </el-button>
           </div>
         </div>
@@ -418,6 +451,41 @@ onUnmounted(() => {
   border-radius: 12px;
   background: var(--setting-card-bg);
   overflow: hidden;
+}
+
+.about-intro {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.about-logo {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  object-fit: contain;
+  background: var(--bg-tertiary);
+}
+
+.about-intro-text {
+  min-width: 0;
+}
+
+.about-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.about-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-tertiary);
 }
 
 .setting-row {
@@ -678,6 +746,10 @@ onUnmounted(() => {
 
 .action-btn {
   flex-shrink: 0;
+}
+
+.btn-icon {
+  margin-right: 4px;
 }
 
 @media (max-width: 720px) {
