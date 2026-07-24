@@ -32,20 +32,20 @@
   --el-mask-color-extra-light: rgba(0, 0, 0, 0.3);
 
   /* 自定义语义化背景变量（层级由高到低） */
-  --bg-primary:   #111111;  /* 页面底色 */
-  --bg-secondary: #151515;  /* 侧边栏、导航 */
+  --bg-primary:   #171717;  /* 页面底色 */
+  --bg-secondary: #1a1a1a;  /* 侧边栏、导航 */
   --bg-tertiary:  #1f1f1f;  /* 代码块、输入框 */
   --bg-hover:     #232323;
   --bg-active:    #282828;
 
   --list-bg: #191919;
   --detail-bg: #171717;
-  --setting-card-bg: #191919;
+  --setting-card-bg: #1d1d1d;
 
   /* 文本颜色（按重要程度） */
   --text-primary:   rgba(255, 255, 255, 0.92);  /* 统一用 alpha，0.92 略微柔化纯白刺眼感 */
-  --text-secondary: rgba(255, 255, 255, 0.62);  /* 改成同源 alpha，约等于 #a3a3a3，但能跟着背景色调微调 */
-  --text-tertiary:  rgba(255, 255, 255, 0.42);  /* 约等于 #6e6e6e，提示文字，弱化但仍可读 */
+  --text-secondary: rgba(255, 255, 255, 0.72);  /* 改成同源 alpha，约等于 #a3a3a3，但能跟着背景色调微调 */
+  --text-tertiary:  rgba(255, 255, 255, 0.62);  /* 约等于 #6e6e6e，提示文字，弱化但仍可读 */
   --text-inverse:   #ffffff;
 
   /* 边框颜色 */

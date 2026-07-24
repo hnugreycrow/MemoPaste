@@ -9,7 +9,6 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     ElButton: typeof import('element-plus/es')['ElButton']
-    ElCard: typeof import('element-plus/es')['ElCard']
     ElDialog: typeof import('element-plus/es')['ElDialog']
     ElDropdown: typeof import('element-plus/es')['ElDropdown']
     ElDropdownItem: typeof import('element-plus/es')['ElDropdownItem']
@@ -20,11 +19,7 @@ declare module 'vue' {
     ElInput: typeof import('element-plus/es')['ElInput']
     ElMain: typeof import('element-plus/es')['ElMain']
     ElProgress: typeof import('element-plus/es')['ElProgress']
-    ElSkeleton: typeof import('element-plus/es')['ElSkeleton']
     ElSwitch: typeof import('element-plus/es')['ElSwitch']
-    ElTag: typeof import('element-plus/es')['ElTag']
-    ElTimeline: typeof import('element-plus/es')['ElTimeline']
-    ElTimelineItem: typeof import('element-plus/es')['ElTimelineItem']
     ElTooltip: typeof import('element-plus/es')['ElTooltip']
     HelloWorld: typeof import('./src/components/HelloWorld.vue')['default']
     IEpClose: typeof import('~icons/ep/close')['default']
@@ -42,7 +37,6 @@ declare module 'vue' {
     IEpMonitor: typeof import('~icons/ep/monitor')['default']
     IEpMoon: typeof import('~icons/ep/moon')['default']
     IEpMoreFilled: typeof import('~icons/ep/more-filled')['default']
-    IEpMouse: typeof import('~icons/ep/mouse')['default']
     IEpNotebook: typeof import('~icons/ep/notebook')['default']
     IEpPicture: typeof import('~icons/ep/picture')['default']
     IEpSearch: typeof import('~icons/ep/search')['default']

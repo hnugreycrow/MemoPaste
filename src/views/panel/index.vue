@@ -2,7 +2,7 @@
 /**
  * 快捷面板（不抢焦点浮层）
  * - 点击条目：写入剪贴板并模拟粘贴到当前输入焦点
- * - 键盘导航在 focusable:false 下基本不可用，以鼠标为主；Esc 由主进程全局快捷键处理
+ * - 面板不抢焦点；Esc 由主进程全局快捷键关闭
  */
 import { ref, onMounted, onUnmounted, computed, nextTick } from "vue";
 import { storeToRefs } from "pinia";
@@ -92,40 +92,6 @@ const clearHistory = async () => {
   await refreshList();
 };
 
-const onKeyDown = (e: KeyboardEvent) => {
-  if (e.key === "Escape") {
-    e.preventDefault();
-    hidePanel();
-    return;
-  }
-
-  if (!hasItems.value) return;
-
-  if (e.key === "ArrowDown") {
-    e.preventDefault();
-    focusedIndex.value = Math.min(
-      focusedIndex.value + 1,
-      clipboardData.value.length - 1,
-    );
-    scrollFocusedIntoView();
-  } else if (e.key === "ArrowUp") {
-    e.preventDefault();
-    focusedIndex.value = Math.max(focusedIndex.value - 1, 0);
-    scrollFocusedIntoView();
-  } else if (e.key === "Enter") {
-    e.preventDefault();
-    const item = clipboardData.value[focusedIndex.value];
-    if (item) pasteItem(item);
-  }
-};
-
-const scrollFocusedIntoView = () => {
-  const el = listRef.value?.querySelector<HTMLElement>(
-    `[data-index="${focusedIndex.value}"]`,
-  );
-  el?.scrollIntoView({ block: "nearest" });
-};
-
 const onScroll = () => {
   const el = listRef.value;
   if (!el || isLoadingMore.value) return;
@@ -139,8 +105,6 @@ const onScroll = () => {
 onMounted(async () => {
   await themeService.initTheme();
   await refreshList();
-
-  window.addEventListener("keydown", onKeyDown);
 
   removeShownListener = window.panel.onShown(() => {
     themeService.initTheme();
@@ -156,7 +120,6 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  window.removeEventListener("keydown", onKeyDown);
   removeShownListener?.();
   removeClipboardListener?.();
   if (refreshTimer) clearTimeout(refreshTimer);
@@ -308,8 +271,8 @@ onUnmounted(() => {
   flex-direction: column;
   border-radius: 16px;
   overflow: hidden;
-  background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
-  border: 1px solid color-mix(in srgb, var(--border-light) 80%, transparent);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(28px) saturate(1.35);
   -webkit-backdrop-filter: blur(28px) saturate(1.35);
@@ -503,8 +466,8 @@ onUnmounted(() => {
   text-align: left;
   padding: 10px 12px 12px;
   border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--border-light) 70%, transparent);
-  background: color-mix(in srgb, var(--bg-tertiary) 88%, transparent);
+  border: 1px solid var(--border-light);
+  background: var(--bg-tertiary);
   color: var(--text-primary);
   cursor: pointer;
   transition:
