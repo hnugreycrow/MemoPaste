@@ -30,7 +30,7 @@ const switchModule = (module: string) => {
     <button
       class="nav-item"
       :class="{ active: activeModule === 'clipboard' }"
-      title="剪切板历史"
+      title="剪贴板历史"
       @click="switchModule('clipboard')"
     >
       <i-ep-document-copy />
