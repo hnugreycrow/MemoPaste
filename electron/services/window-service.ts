@@ -8,14 +8,11 @@ const PANEL_HEIGHT = 480;
 /**
  * 窗口管理服务
  * - 主窗口：完整管理界面
- * - 快捷面板：不抢焦点的浮层，用于快速粘贴
- * - 点击遮罩：面板不抢焦点时无法靠 blur 关闭，用全屏透明层承接外侧点击
+ * - 快捷面板：不抢焦点的浮层，用于快速粘贴；Esc / 全局快捷键关闭
  */
 export class WindowService {
   private win: BrowserWindow | null = null;
   private panelWin: BrowserWindow | null = null;
-  /** 全屏点击遮罩：点面板外区域关闭 */
-  private shieldWin: BrowserWindow | null = null;
   private readonly preloadPath: string;
   private readonly publicPath: string;
   private readonly rendererPath: string;
@@ -166,10 +163,6 @@ export class WindowService {
       if (!appIsQuitting) {
         appIsQuitting = true;
         this.unregisterPanelEscape();
-        if (this.shieldWin && !this.shieldWin.isDestroyed()) {
-          this.shieldWin.destroy();
-        }
-        this.shieldWin = null;
         if (this.panelWin && !this.panelWin.isDestroyed()) {
           this.panelWin.destroy();
         }
@@ -215,90 +208,7 @@ export class WindowService {
       }
     });
 
-    this.createShieldWindow();
-
     return this.panelWin;
-  }
-
-  /**
-   * 全屏透明遮罩：承接面板外点击以关闭。
-   * 面板不抢焦点时没有可靠的 blur，因此需要这层点击捕获。
-   */
-  private createShieldWindow(): void {
-    if (this.shieldWin && !this.shieldWin.isDestroyed()) return;
-
-    this.shieldWin = new BrowserWindow({
-      show: false,
-      frame: false,
-      transparent: true,
-      backgroundColor: "#00000000",
-      focusable: false,
-      skipTaskbar: true,
-      resizable: false,
-      maximizable: false,
-      minimizable: false,
-      fullscreenable: false,
-      hasShadow: false,
-      webPreferences: {
-        preload: this.preloadPath,
-      },
-    });
-
-    // 极简页面：点击即经 preload 的 window.panel.hide 关闭面板
-    const html = `<!doctype html>
-<html>
-<body style="margin:0;width:100vw;height:100vh;background:transparent;-webkit-user-select:none;"></body>
-<script>
-  document.body.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    window.panel && window.panel.hide();
-  });
-</script>
-</html>`;
-
-    this.shieldWin.loadURL(
-      "data:text/html;charset=utf-8," + encodeURIComponent(html),
-    );
-
-    this.shieldWin.on("closed", () => {
-      this.shieldWin = null;
-    });
-  }
-
-  /** 铺满所有显示器并显示遮罩（层级低于面板） */
-  private showShield(): void {
-    if (!this.shieldWin || this.shieldWin.isDestroyed()) {
-      this.createShieldWindow();
-    }
-    if (!this.shieldWin) return;
-
-    const displays = screen.getAllDisplays();
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    for (const d of displays) {
-      const { x, y, width, height } = d.bounds;
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x + width);
-      maxY = Math.max(maxY, y + height);
-    }
-
-    this.shieldWin.setBounds({
-      x: minX,
-      y: minY,
-      width: maxX - minX,
-      height: maxY - minY,
-    });
-    this.shieldWin.setAlwaysOnTop(true, "floating");
-    this.shieldWin.showInactive();
-  }
-
-  private hideShield(): void {
-    if (this.shieldWin && !this.shieldWin.isDestroyed() && this.shieldWin.isVisible()) {
-      this.shieldWin.hide();
-    }
   }
 
   /** 面板打开时注册 Esc 关闭（面板自身收不到键盘焦点） */
@@ -425,14 +335,12 @@ export class WindowService {
   }
 
   /**
-   * 显示快捷面板：先遮罩再面板，均 showInactive，不抢原输入框焦点
+   * 显示快捷面板：showInactive 不抢原输入框焦点；Esc / 全局快捷键关闭
    */
   public showPanel(): void {
     if (!this.panelWin || this.panelWin.isDestroyed()) return;
 
     this.positionPanelNearCursor();
-    this.showShield();
-    // pop-up-menu 高于遮罩的 floating，保证面板可点
     this.panelWin.setAlwaysOnTop(true, "pop-up-menu");
     this.panelWin.showInactive();
     this.registerPanelEscape();
@@ -445,7 +353,6 @@ export class WindowService {
       this.blurHideTimer = null;
     }
     this.unregisterPanelEscape();
-    this.hideShield();
     if (this.panelWin && !this.panelWin.isDestroyed() && this.panelWin.isVisible()) {
       this.panelWin.hide();
     }
@@ -472,10 +379,6 @@ export class WindowService {
       this.blurHideTimer = null;
     }
     this.unregisterPanelEscape();
-    if (this.shieldWin && !this.shieldWin.isDestroyed()) {
-      this.shieldWin.destroy();
-    }
-    this.shieldWin = null;
     if (this.panelWin && !this.panelWin.isDestroyed()) {
       this.panelWin.removeAllListeners("close");
       this.panelWin.destroy();
@@ -485,7 +388,7 @@ export class WindowService {
   }
 }
 
-/** 应用退出中：允许面板/遮罩真正 destroy，而不只是 hide */
+/** 应用退出中：允许面板真正 destroy，而不只是 hide */
 let appIsQuitting = false;
 
 export function setAppIsQuitting(value: boolean): void {

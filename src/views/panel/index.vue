@@ -246,7 +246,7 @@ onUnmounted(() => {
     </div>
 
     <footer class="panel-footer">
-      <span>点击粘贴 · Esc / 点外侧关闭</span>
+      <span>点击粘贴 · Esc / 快捷键关闭</span>
     </footer>
   </div>
 </template>
