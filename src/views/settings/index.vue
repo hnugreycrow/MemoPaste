@@ -346,10 +346,12 @@ onUnmounted(() => {
 
         <div class="settings-group">
           <div class="about-intro">
-            <img
+            <el-image
               class="about-logo"
-              src="/electron.svg"
+              src="/icon.png"
               alt="MemoPaste"
+              :preview-src-list="['/icon.png']"
+              fit="cover"
             />
             <div class="about-intro-text">
               <div class="about-name">MemoPaste</div>
@@ -482,7 +484,6 @@ onUnmounted(() => {
   height: 48px;
   flex-shrink: 0;
   border-radius: 10px;
-  object-fit: contain;
   background: var(--bg-tertiary);
 }
 

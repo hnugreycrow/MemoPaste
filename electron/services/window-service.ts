@@ -55,8 +55,8 @@ export class WindowService {
 
     const minWidth = 800;
     const minHeight = 600;
-    const baseWidth = 1100;
-    const baseHeight = 760;
+    const baseWidth = 1000;
+    const baseHeight = 700;
     const absoluteMaxWidth = 1280;
     const absoluteMaxHeight = 900;
     const screenRatioCap = 0.9;
@@ -134,7 +134,7 @@ export class WindowService {
       minWidth: 800,
       minHeight: 600,
       frame: false,
-      icon: path.join(this.publicPath, "electron.svg"),
+      icon: path.join(this.publicPath, "icon.png"),
       show: false,
       webPreferences: {
         preload: this.preloadPath,
@@ -191,7 +191,7 @@ export class WindowService {
       skipTaskbar: true,
       alwaysOnTop: true,
       show: false,
-      icon: path.join(this.publicPath, "electron.svg"),
+      icon: path.join(this.publicPath, "icon.png"),
       webPreferences: {
         preload: this.preloadPath,
         additionalArguments: ["--window-role=panel"],

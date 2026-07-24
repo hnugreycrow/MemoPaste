@@ -94,7 +94,7 @@ const remindLater = () => {
           <h2 class="main-title">v{{ updateInfo?.version || "–" }} 已发布</h2>
         </div>
         <div class="app-icon">
-          <img src="/electron.svg" alt="App icon" />
+          <img src="/icon.png" alt="App icon" />
         </div>
       </div>
 
@@ -239,9 +239,11 @@ const remindLater = () => {
   flex-shrink: 0;
 
   img {
-    width: 26px;
-    height: 26px;
-    object-fit: contain;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    object-fit: cover;
+    image-rendering: pixelated;
   }
 }
 

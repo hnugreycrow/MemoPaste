@@ -62,7 +62,7 @@ onUnmounted(() => {
 <template>
   <div class="titlebar">
     <div class="titlebar-left">
-      <img src="/electron.svg" class="app-logo"></img>
+      <img src="/icon.png" class="app-logo" alt="MemoPaste" />
       <el-text class="app-title">MemoPaste</el-text>
     </div>
     <div class="titlebar-controls">
@@ -204,10 +204,11 @@ onUnmounted(() => {
 
 // 应用图标样式
 .app-logo {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
   object-fit: cover;
+  image-rendering: pixelated;
 }
 
 // 应用标题样式
