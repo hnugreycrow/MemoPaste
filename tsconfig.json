@@ -22,8 +22,9 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
+      "@shared/*": ["./shared/*"]
     },
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "electron", "auto-imports.d.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "electron", "shared/**/*.ts", "auto-imports.d.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

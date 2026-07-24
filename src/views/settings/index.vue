@@ -3,7 +3,12 @@ import { ref, onMounted, onUnmounted, computed } from "vue";
 import { themeService } from "../../utils/theme";
 import type { ThemeType } from "../../utils/theme";
 import { useRouter } from "vue-router";
-import { checkShortcut } from "@/utils/validate";
+import {
+  validateShortcut,
+  normalizeShortcut,
+  formatShortcutForDisplay,
+  normalKeyFromCode,
+} from "@shared/shortcut";
 
 defineOptions({
   name: "settings",
@@ -33,13 +38,7 @@ const displayKeyParts = computed(() => {
       : ""
     : shortcut.value;
 
-  if (!raw) return [];
-
-  return raw.split("+").map((key) => {
-    if (key === "CommandOrControl") return "Ctrl";
-    if (key === "Command") return "⌘";
-    return key;
-  });
+  return formatShortcutForDisplay(raw);
 });
 
 const startRecording = () => {
@@ -67,41 +66,56 @@ const onKeyDown = (e: KeyboardEvent) => {
   if (e.shiftKey) {
     tempKeys.value.push("Shift");
   }
-  if (e.metaKey && !e.ctrlKey) tempKeys.value.push("Command");
-  if (!["Control", "Alt", "Shift", "Meta"].includes(e.key)) {
-    tempKeys.value.push(e.key.toUpperCase());
+  // Win / Cmd（非 Ctrl）→ Super，与共享校验一致
+  if (e.metaKey && !e.ctrlKey) {
+    tempKeys.value.push("Super");
+  }
+
+  const normalKey = normalKeyFromCode(e.code);
+  if (normalKey) {
+    tempKeys.value.push(normalKey);
   }
 };
 
-const onKeyUp = (_e: KeyboardEvent) => {
+const onKeyUp = async (_e: KeyboardEvent) => {
   if (!isRecording.value || tempKeys.value.length === 0) return;
 
-  const newShortcut = tempKeys.value.join("+");
-  const checkResult = checkShortcut(newShortcut);
+  const recorded = tempKeys.value.join("+");
+  const checkResult = validateShortcut(recorded);
 
-  if (checkResult.success) {
-    if (newShortcut !== shortcut.value) {
-      const oldShortcutValue = shortcut.value;
-
-      window.ipcRenderer.once("shortcut-update-result", (_event, result) => {
-        shortcutInput.value?.blur();
-        if (!result.success) {
-          shortcut.value = result.shortcut || shortcut.value;
-          ElMessage.error(`快捷键设置失败: ${result.error}`);
-        } else {
-          ElMessage.success("快捷键设置成功");
-        }
-      });
-
-      window.ipcRenderer.send("update-shortcut", {
-        oldShortcut: oldShortcutValue,
-        newShortcut,
-      });
-
-      shortcut.value = newShortcut;
-    }
-  } else {
+  if (!checkResult.success) {
     ElMessage.error(checkResult.error);
+    isRecording.value = false;
+    shortcutInput.value?.blur();
+    return;
+  }
+
+  const newShortcut = checkResult.shortcut;
+  if (newShortcut === normalizeShortcut(shortcut.value)) {
+    isRecording.value = false;
+    shortcutInput.value?.blur();
+    return;
+  }
+
+  const previous = shortcut.value;
+  shortcut.value = newShortcut;
+
+  try {
+    const result = await window.ipcRenderer.invoke(
+      "shortcut-update",
+      newShortcut,
+    );
+    shortcutInput.value?.blur();
+    if (!result?.success) {
+      shortcut.value = result?.shortcut || previous;
+      ElMessage.error(`快捷键设置失败: ${result?.error ?? "未知错误"}`);
+    } else {
+      shortcut.value = result.shortcut;
+      ElMessage.success("快捷键设置成功");
+    }
+  } catch (error) {
+    shortcut.value = previous;
+    ElMessage.error(`快捷键设置失败: ${error}`);
   }
 
   isRecording.value = false;
@@ -121,12 +135,14 @@ onMounted(async () => {
     console.error("获取应用版本失败:", error);
   }
 
-  window.ipcRenderer.once("shortcut-current", (_event, currentShortcut) => {
+  try {
+    const currentShortcut = await window.ipcRenderer.invoke("shortcut-get");
     if (currentShortcut) {
       shortcut.value = currentShortcut;
     }
-  });
-  window.ipcRenderer.send("get-current-shortcut");
+  } catch (error) {
+    console.error("获取快捷键失败:", error);
+  }
 });
 
 const handleMinimizeToTrayChange = (value: boolean) => {

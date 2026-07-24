@@ -20,6 +20,11 @@ export default defineConfig({
         // Shortcut of `build.lib.entry`.
         entry: "electron/main.ts",
         vite: {
+          resolve: {
+            alias: {
+              "@shared": resolve(__dirname, "./shared"),
+            },
+          },
           build: {
             rollupOptions: {
               // koffi 含原生二进制，勿打包进 bundle
@@ -75,6 +80,7 @@ export default defineConfig({
     alias: {
       //配置@别名
       "@": resolve(__dirname, "./src"),
+      "@shared": resolve(__dirname, "./shared"),
     },
   },
 });
