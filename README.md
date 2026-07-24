@@ -1,4 +1,4 @@
-# Eideticlip
+# MemoPaste
 
 一款基于 Electron + Vue 3 的剪贴板管理工具，自动记录复制内容，方便随时检索与复用。
 
@@ -25,7 +25,7 @@
 
 ### 直接下载
 
-前往 [Releases](https://github.com/hnugreycrow/Eideticlip/releases) 下载安装包。
+前往 [Releases](https://github.com/hnugreycrow/MemoPaste/releases) 下载安装包。
 
 ### 源码运行
 

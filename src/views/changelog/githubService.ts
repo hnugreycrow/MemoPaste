@@ -1,7 +1,7 @@
 import { Octokit } from 'octokit';
 
 const REPO_OWNER = 'hnugreycrow';
-const REPO_NAME = 'Eideticlip';
+const REPO_NAME = 'MemoPaste';
 const octokit = new Octokit({ auth: '' });
 
 export interface ChangelogItem {

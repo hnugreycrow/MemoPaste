@@ -31,7 +31,7 @@ export class TrayService {
     // 创建托盘图标
     const icon = nativeImage.createFromPath(this.iconPath);
     this.tray = new Tray(icon);
-    this.tray.setToolTip(`Eideticlip v${app.getVersion()}`);
+    this.tray.setToolTip(`MemoPaste v${app.getVersion()}`);
 
     // 设置托盘菜单
     this.updateContextMenu();

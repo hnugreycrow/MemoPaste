@@ -43,7 +43,7 @@ Function CreateShortcutPage
   ${NSD_Check} $ShortcutCheckboxHwnd
 
   ; 次级说明
-  ${NSD_CreateLabel} 12u 66u 90% 20u "在桌面上生成 Eideticlip 快捷方式，方便快速启动应用程序。"
+  ${NSD_CreateLabel} 12u 66u 90% 20u "在桌面上生成 MemoPaste 快捷方式，方便快速启动应用程序。"
   Pop $0
   SetCtlColors $0 0x777777 transparent
 

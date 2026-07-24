@@ -3,7 +3,7 @@
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
   "appId": "com.electron.app",
   "asar": true,
-  "productName": "eideticlip",
+  "productName": "MemoPaste",
   "directories": {
     "output": "release/${version}"
   },
@@ -15,7 +15,7 @@
     {
       "provider": "github",
       "owner": "hnugreycrow",
-      "repo": "Eideticlip"
+      "repo": "MemoPaste"
     }
   ],
   "mac": {

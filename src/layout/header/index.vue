@@ -63,7 +63,7 @@ onUnmounted(() => {
   <div class="titlebar">
     <div class="titlebar-left">
       <img src="/electron.svg" class="app-logo"></img>
-      <el-text class="app-title">Eideticlip</el-text>
+      <el-text class="app-title">MemoPaste</el-text>
     </div>
     <div class="titlebar-controls">
       <!-- 主题切换按钮 -->

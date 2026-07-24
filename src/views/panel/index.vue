@@ -168,7 +168,7 @@ onUnmounted(() => {
   <div class="panel-shell">
     <header class="panel-header">
       <div class="header-left">
-        <span class="panel-title">Eideticlip</span>
+        <span class="panel-title">MemoPaste</span>
       </div>
       <div class="header-actions">
         <button

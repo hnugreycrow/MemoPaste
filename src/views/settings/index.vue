@@ -187,7 +187,7 @@ const viewChangelog = () => {
 const openGithub = () => {
   window.ipcRenderer.invoke(
     "open-external-url",
-    "https://github.com/hnugreycrow/Eideticlip",
+    "https://github.com/hnugreycrow/MemoPaste",
   );
 };
 
@@ -349,10 +349,10 @@ onUnmounted(() => {
             <img
               class="about-logo"
               src="/electron.svg"
-              alt="Eideticlip"
+              alt="MemoPaste"
             />
             <div class="about-intro-text">
-              <div class="about-name">Eideticlip</div>
+              <div class="about-name">MemoPaste</div>
               <p class="about-desc">
                 剪贴板管理工具，帮助您管理和组织剪贴板内容。基于 Electron +
                 Vue + Vite 构建。
@@ -363,7 +363,7 @@ onUnmounted(() => {
           <div class="setting-row">
             <div class="setting-meta">
               <span class="setting-label">当前版本</span>
-              <span class="setting-desc">Eideticlip v{{ appVersion }}</span>
+              <span class="setting-desc">MemoPaste v{{ appVersion }}</span>
             </div>
             <el-button
               :loading="isLoading"
