@@ -19,14 +19,6 @@ const clipboardStore = useClipboardStore();
 const { clipboardData, isLoadingMore, activeFilter, totalItems } =
   storeToRefs(clipboardStore);
 
-const filters = [
-  { key: "all", label: "全部" },
-  { key: "text", label: "文本" },
-  { key: "url", label: "链接" },
-  { key: "code", label: "代码" },
-  { key: "favorite", label: "收藏" },
-] as const;
-
 const typeLabel: Record<string, string> = {
   text: "文本",
   url: "链接",
@@ -91,7 +83,6 @@ const clearHistory = async () => {
 };
 
 const onKeyDown = (e: KeyboardEvent) => {
-  // 面板通常无键盘焦点；保留逻辑以备日后改为可聚焦
   if (e.key === "Escape") {
     e.preventDefault();
     hidePanel();
@@ -141,13 +132,11 @@ onMounted(async () => {
 
   window.addEventListener("keydown", onKeyDown);
 
-  // 每次唤起面板时刷新列表，并重新拉取主题（防止漏同步）
   removeShownListener = window.panel.onShown(() => {
     themeService.initTheme();
     refreshList();
   });
 
-  // 仅刷新列表，不入库（入库由主窗口 Layout 的剪贴板监听负责）
   removeClipboardListener = window.clipboard.onChanged(() => {
     if (refreshTimer) clearTimeout(refreshTimer);
     refreshTimer = setTimeout(() => {
@@ -168,6 +157,7 @@ onUnmounted(() => {
   <div class="panel-shell">
     <header class="panel-header">
       <div class="header-left">
+        <img src="/icon.png" class="panel-logo" alt="" draggable="false" />
         <span class="panel-title">MemoPaste</span>
       </div>
       <div class="header-actions">
@@ -177,7 +167,7 @@ onUnmounted(() => {
           title="打开主窗口"
           @click="openMain"
         >
-          <el-icon><i-ep-Setting /></el-icon>
+          <el-icon><i-ep-Monitor /></el-icon>
         </button>
         <button type="button" class="icon-btn" title="关闭" @click="hidePanel">
           <el-icon><i-ep-Close /></el-icon>
@@ -187,20 +177,59 @@ onUnmounted(() => {
 
     <nav class="filter-tabs" aria-label="筛选">
       <button
-        v-for="filter in filters"
-        :key="filter.key"
         type="button"
         class="filter-tab"
-        :class="{ active: activeFilter === filter.key }"
-        @click="setFilter(filter.key)"
+        :class="{ active: activeFilter === 'all' }"
+        @click="setFilter('all')"
       >
-        {{ filter.label }}
+        <el-icon class="tab-icon"><i-ep-Menu /></el-icon>
+        <span>全部</span>
+      </button>
+      <button
+        type="button"
+        class="filter-tab"
+        :class="{ active: activeFilter === 'text' }"
+        @click="setFilter('text')"
+      >
+        <el-icon class="tab-icon"><i-ep-Document /></el-icon>
+        <span>文本</span>
+      </button>
+      <button
+        type="button"
+        class="filter-tab"
+        :class="{ active: activeFilter === 'url' }"
+        @click="setFilter('url')"
+      >
+        <el-icon class="tab-icon"><i-ep-Link /></el-icon>
+        <span>链接</span>
+      </button>
+      <button
+        type="button"
+        class="filter-tab"
+        :class="{ active: activeFilter === 'code' }"
+        @click="setFilter('code')"
+      >
+        <el-icon class="tab-icon"><i-ep-Cpu /></el-icon>
+        <span>代码</span>
+      </button>
+      <button
+        type="button"
+        class="filter-tab"
+        :class="{ active: activeFilter === 'favorite' }"
+        @click="setFilter('favorite')"
+      >
+        <el-icon class="tab-icon"><i-ep-Star /></el-icon>
+        <span>收藏</span>
       </button>
     </nav>
 
     <div class="panel-toolbar">
-      <span class="toolbar-title">剪贴板</span>
+      <span class="toolbar-title">
+        <el-icon class="toolbar-icon"><i-ep-DocumentCopy /></el-icon>
+        剪贴板
+      </span>
       <button type="button" class="text-btn" @click="clearHistory">
+        <el-icon class="text-btn-icon"><i-ep-Delete /></el-icon>
         全部清除
       </button>
     </div>
@@ -209,6 +238,7 @@ onUnmounted(() => {
       <div v-if="!hasItems" class="empty">
         <el-icon class="empty-icon"><i-ep-DocumentCopy /></el-icon>
         <p>暂无记录</p>
+        <span class="empty-hint">复制内容后会出现在这里</span>
       </div>
 
       <div
@@ -224,6 +254,13 @@ onUnmounted(() => {
       >
         <div class="card-top">
           <span class="type-badge" :class="`type-${item.type}`">
+            <el-icon class="type-icon">
+              <i-ep-Document v-if="item.type === 'text'" />
+              <i-ep-Link v-else-if="item.type === 'url'" />
+              <i-ep-Cpu v-else-if="item.type === 'code'" />
+              <i-ep-Picture v-else-if="item.type === 'image'" />
+              <i-ep-Document v-else />
+            </el-icon>
             {{ typeLabel[item.type] ?? "文本" }}
           </span>
           <span class="card-time">{{ formatRelativeTime(item.timestamp) }}</span>
@@ -246,7 +283,9 @@ onUnmounted(() => {
     </div>
 
     <footer class="panel-footer">
-      <span>点击粘贴 · Esc / 快捷键关闭</span>
+      <span class="footer-hint">点击粘贴</span>
+      <span class="footer-sep">·</span>
+      <span class="footer-hint">Esc / 快捷键关闭</span>
     </footer>
   </div>
 </template>
@@ -259,7 +298,6 @@ onUnmounted(() => {
   flex-direction: column;
   border-radius: 16px;
   overflow: hidden;
-  /* 半透明底 + 毛玻璃；不在 CSS 里做外阴影，避免圆角外出现灰块 */
   background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
   border: 1px solid color-mix(in srgb, var(--border-light) 80%, transparent);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
@@ -272,8 +310,25 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px 8px;
+  padding: 12px 14px 10px;
   -webkit-app-region: drag;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.panel-logo {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  object-fit: cover;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
 }
 
 .panel-title {
@@ -312,8 +367,8 @@ onUnmounted(() => {
 
 .filter-tabs {
   display: flex;
-  gap: 2px;
-  padding: 0 10px 8px;
+  gap: 4px;
+  padding: 0 10px 10px;
   overflow-x: auto;
   scrollbar-width: none;
 
@@ -324,62 +379,80 @@ onUnmounted(() => {
 
 .filter-tab {
   flex-shrink: 0;
-  padding: 6px 10px;
-  border: none;
-  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
   background: transparent;
   color: var(--text-tertiary);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  position: relative;
-  transition: color 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 
   &:hover {
     color: var(--text-secondary);
+    background: var(--bg-hover);
   }
 
   &.active {
     color: var(--accent-primary);
-
-    &::after {
-      content: "";
-      position: absolute;
-      left: 10px;
-      right: 10px;
-      bottom: 0;
-      height: 2px;
-      border-radius: 2px;
-      background: var(--accent-primary);
-    }
+    background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
+    border-color: color-mix(in srgb, var(--accent-primary) 28%, transparent);
   }
+}
+
+.tab-icon {
+  font-size: 13px;
 }
 
 .panel-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 14px 8px;
+  padding: 0 14px 10px;
 }
 
 .toolbar-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
 }
 
+.toolbar-icon {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
 .text-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   border: none;
   background: transparent;
   color: var(--accent-primary);
   font-size: 12px;
   cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
 
   &:hover {
     background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
   }
+}
+
+.text-btn-icon {
+  font-size: 13px;
 }
 
 .panel-list {
@@ -397,15 +470,21 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   color: var(--text-tertiary);
   font-size: 13px;
   padding: 32px 0;
 }
 
 .empty-icon {
-  font-size: 28px;
-  opacity: 0.7;
+  font-size: 32px;
+  opacity: 0.55;
+  margin-bottom: 4px;
+}
+
+.empty-hint {
+  font-size: 12px;
+  opacity: 0.8;
 }
 
 .clip-card {
@@ -415,17 +494,17 @@ onUnmounted(() => {
   text-align: left;
   padding: 10px 12px 12px;
   border-radius: 12px;
-  border: 1px solid transparent;
+  border: 1px solid color-mix(in srgb, var(--border-light) 70%, transparent);
   background: color-mix(in srgb, var(--bg-tertiary) 88%, transparent);
   color: var(--text-primary);
   cursor: pointer;
   transition:
     border-color 0.15s ease,
-    background-color 0.15s ease;
+    background-color 0.15s ease,
+    transform 0.15s ease;
 
   &:hover,
   &.focused {
-    /* 淡强调色描边，避免黑/白粗框 */
     border-color: color-mix(in srgb, var(--accent-primary) 55%, transparent);
     background: color-mix(in srgb, var(--accent-primary) 8%, var(--bg-tertiary));
   }
@@ -436,7 +515,11 @@ onUnmounted(() => {
     &:hover,
     &.focused {
       border-color: color-mix(in srgb, var(--accent-quaternary) 50%, transparent);
-      background: color-mix(in srgb, var(--accent-quaternary) 10%, var(--favorite-bg));
+      background: color-mix(
+        in srgb,
+        var(--accent-quaternary) 10%,
+        var(--favorite-bg)
+      );
     }
   }
 }
@@ -450,29 +533,41 @@ onUnmounted(() => {
 }
 
 .type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font-size: 10px;
   font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 2px 7px 2px 5px;
+  border-radius: 5px;
   color: var(--text-secondary);
 
   &.type-text {
     background: var(--type-text-bg);
+    color: var(--accent-primary);
   }
   &.type-url {
     background: var(--type-url-bg);
+    color: var(--accent-secondary);
   }
   &.type-code {
     background: var(--type-code-bg);
+    color: var(--accent-tertiary);
   }
   &.type-image {
     background: var(--type-image-bg);
+    color: var(--accent-danger);
   }
+}
+
+.type-icon {
+  font-size: 11px;
 }
 
 .card-time {
   font-size: 11px;
   color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
 }
 
 .card-body {
@@ -496,10 +591,10 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border: none;
-  border-radius: 6px;
+  border-radius: 7px;
   background: transparent;
   color: var(--text-tertiary);
   cursor: pointer;
@@ -518,10 +613,23 @@ onUnmounted(() => {
 }
 
 .panel-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 8px 14px 12px;
   font-size: 11px;
   color: var(--text-tertiary);
   border-top: 1px solid color-mix(in srgb, var(--border-light) 70%, transparent);
   background: color-mix(in srgb, var(--bg-primary) 35%, transparent);
+}
+
+.footer-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.footer-sep {
+  opacity: 0.6;
 }
 </style>

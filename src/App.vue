@@ -57,6 +57,11 @@ body,
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+#app {
+  display: flex;
+  flex-direction: column;
+}
+
 html.is-panel,
 html.is-panel body,
 html.is-panel #app {

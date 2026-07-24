@@ -76,8 +76,7 @@ h1 {
   }
 }
 
-.nav-item,
-.filter-item {
+button {
   &:focus,
   &:focus-visible {
     outline: none;

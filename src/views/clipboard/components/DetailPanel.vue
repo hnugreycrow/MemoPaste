@@ -1,14 +1,13 @@
 <template>
   <div class="detail-panel">
     <div class="detail-header">
-      <div class="detail-title">{{ item ? "详情" : "" }}</div>
+      <div v-if="item" class="detail-header-meta">
+        <span class="type-chip" :class="`type-${item.type}`">{{ typeLabel }}</span>
+        <span class="detail-time">{{ formattedTime }}</span>
+      </div>
+      <div v-else class="detail-header-meta" />
       <div class="detail-header-actions">
         <template v-if="item">
-          <el-tooltip content="放大查看" placement="bottom">
-            <el-button class="header-action-btn" text @click="openZoomView">
-              <i-ep-Full-Screen />
-            </el-button>
-          </el-tooltip>
           <el-tooltip
             :content="item.is_favorite ? '取消收藏' : '收藏'"
             placement="bottom"
@@ -22,6 +21,11 @@
               <i-ep-Star />
             </el-button>
           </el-tooltip>
+          <el-tooltip content="放大查看" placement="bottom">
+            <el-button class="header-action-btn" text @click="openZoomView">
+              <i-ep-Full-Screen />
+            </el-button>
+          </el-tooltip>
           <el-tooltip content="删除" placement="bottom">
             <el-button class="header-action-btn" text @click="deleteItem(item)">
               <i-ep-Delete />
@@ -31,59 +35,54 @@
       </div>
     </div>
 
-    <div v-if="item" class="detail-content">
-      <div class="detail-text">
-        <el-tooltip content="复制内容" placement="left">
-          <el-button class="copy-overlay-btn" @click="copyItem(item)">
-            <i-ep-Document-Copy />
-          </el-button>
-        </el-tooltip>
-        <div class="detail-text-body">
-          <HighlightedText :content="displayContent" :type="props.item?.type" />
-          <div class="expend-button">
-            <el-button
-              v-if="item.content.length > MAX_CONTENT_LENGTH"
-              link
-              type="primary"
-              @click="showAllContent = !showAllContent"
-            >
-              {{ showAllContent ? "收起" : "展开" }}
+    <template v-if="item">
+      <div class="detail-content">
+        <div class="detail-text">
+          <el-tooltip content="复制内容" placement="left">
+            <el-button class="copy-overlay-btn" @click="copyItem(item)">
+              <i-ep-Document-Copy />
             </el-button>
+          </el-tooltip>
+          <div class="detail-text-body">
+            <HighlightedText
+              :content="displayContent"
+              :type="props.item?.type"
+            />
+            <div
+              v-if="item.content.length > MAX_CONTENT_LENGTH"
+              class="expand-button"
+            >
+              <el-button
+                link
+                type="primary"
+                @click="showAllContent = !showAllContent"
+              >
+                {{ showAllContent ? "收起" : "展开" }}
+              </el-button>
+            </div>
           </div>
+        </div>
+
+        <div class="detail-meta-strip">
+          <span>大小 {{ item.size }}</span>
+          <span class="meta-sep">·</span>
+          <span>字符 {{ charCount }}</span>
+          <span class="meta-sep">·</span>
+          <span>ID {{ item.id }}</span>
         </div>
       </div>
 
-      <div class="detail-meta">
-        <div class="detail-meta-item">
-          <span class="meta-label">类型</span>
-          <div class="detail-type">
-            <span class="detail-type-label" :class="`type-${item.type}`">{{ typeLabel }}</span>
-          </div>
-        </div>
-        <div class="detail-meta-item">
-          <span class="meta-label">创建时间</span>
-          <span class="meta-value">{{ formattedTime }}</span>
-        </div>
-        <div class="detail-meta-item">
-          <span class="meta-label">大小</span>
-          <span class="meta-value">{{ item.size }}</span>
-        </div>
-        <div class="detail-meta-item">
-          <span class="meta-label">ID</span>
-          <span class="meta-value">{{ item.id }}</span>
-        </div>
-        <div
-          v-if="item.is_favorite"
-          class="detail-meta-item detail-meta-item--full"
-        >
-          <span class="meta-label">收藏</span>
-          <span class="meta-value meta-value-favorite">
-            <i-ep-Star />
-            已收藏
-          </span>
-        </div>
+      <div class="detail-actions">
+        <el-button type="primary" class="action-copy" @click="copyItem(item)">
+          <i-ep-Document-Copy class="btn-icon" />
+          <span>复制内容</span>
+        </el-button>
+        <el-button class="action-delete" @click="deleteItem(item)">
+          <i-ep-Delete class="btn-icon" />
+          <span>删除</span>
+        </el-button>
       </div>
-    </div>
+    </template>
 
     <div v-else class="detail-empty">
       <i-ep-Document-Copy class="empty-icon" />
@@ -91,7 +90,6 @@
       <div class="empty-desc">选择一个剪贴板项目查看详情</div>
     </div>
 
-    <!-- 放大查看对话框 -->
     <el-dialog
       v-model="zoomVisible"
       title="详情内容"
@@ -113,9 +111,7 @@
           </div>
           <div class="zoom-meta-item">
             <span class="zoom-meta-label">字符数</span>
-            <span class="zoom-meta-value">{{
-              item?.content?.length || 0
-            }}</span>
+            <span class="zoom-meta-value">{{ charCount }}</span>
           </div>
         </div>
         <div class="zoom-text">
@@ -159,7 +155,6 @@ const emit = defineEmits<{
 
 const showAllContent = defineModel<boolean>("showAllContent");
 
-// 优化：使用计算属性缓存格式化结果，避免重复计算
 const formattedTime = computed(() => {
   return props.item ? formatTime(props.item.timestamp) : "";
 });
@@ -168,12 +163,12 @@ const typeLabel = computed(() => {
   return props.item ? getTypeLabel(props.item.type) : "";
 });
 
-// 优化：截断长文本内容，避免渲染大量文本导致的性能问题
+const charCount = computed(() => props.item?.content?.length || 0);
+
 const MAX_CONTENT_LENGTH = 3000;
 const displayContent = computed(() => {
   if (!props.item?.content) return "";
   const content = props.item.content;
-  // 如果内容过长且未选择显示全部，则截断内容
   if (!showAllContent.value && content.length > MAX_CONTENT_LENGTH) {
     return content.slice(0, MAX_CONTENT_LENGTH) + "...";
   }
@@ -192,7 +187,6 @@ const toggleFavorite = (item: Item) => {
   emit("favorite", item);
 };
 
-// 放大查看
 const zoomVisible = ref(false);
 const openZoomView = () => {
   zoomVisible.value = true;
@@ -216,23 +210,63 @@ const closeZoomView = () => {
 }
 
 .detail-header {
-  height: 60px;
+  height: 52px;
+  flex-shrink: 0;
   padding: 0 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border-light);
 }
 
-.detail-title {
-  font-size: 16px;
-  margin: 0;
-  color: var(--text-secondary);
+.detail-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.type-chip {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.02em;
+
+  &.type-text {
+    background: var(--type-text-bg);
+    color: var(--accent-primary);
+  }
+  &.type-url {
+    background: var(--type-url-bg);
+    color: var(--accent-secondary);
+  }
+  &.type-code {
+    background: var(--type-code-bg);
+    color: var(--accent-tertiary);
+  }
+  &.type-image {
+    background: var(--type-image-bg);
+    color: var(--accent-danger);
+  }
+}
+
+.detail-time {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .detail-header-actions {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .header-action-btn {
@@ -254,46 +288,23 @@ const closeZoomView = () => {
 
 .detail-content {
   flex: 1;
-  padding: 10px 16px;
-  overflow-y: auto;
+  min-height: 0;
+  padding: 12px 16px 8px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-}
-
-.detail-type {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.detail-type-label.type-text {
-  color: var(--accent-primary);
-}
-
-.detail-type-label.type-url {
-  color: var(--accent-secondary);
-}
-
-.detail-type-label.type-code {
-  color: var(--accent-tertiary);
-}
-
-.detail-type-label.type-image {
-  color: var(--accent-danger);
-}
-
-.detail-type-label {
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--text-primary);
+  gap: 10px;
+  overflow: hidden;
 }
 
 .detail-text {
   position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   background: var(--bg-tertiary);
-  border-radius: 8px;
-  padding: 16px;
+  border-radius: 10px;
+  padding: 12px 14px;
   font-size: 14px;
   line-height: 1.6;
   word-break: break-all;
@@ -303,8 +314,9 @@ const closeZoomView = () => {
 }
 
 .detail-text-body {
-  padding-top: 15px;
-  max-height: 40vh;
+  flex: 1;
+  min-height: 0;
+  padding-top: 28px;
   overflow: auto;
 }
 
@@ -317,56 +329,46 @@ const closeZoomView = () => {
   height: 32px;
   min-height: 32px;
   padding: 0;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.18s ease;
-}
-
-.detail-text:hover .copy-overlay-btn {
   opacity: 1;
   pointer-events: auto;
 }
 
-.detail-meta {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.detail-meta-item {
+.detail-meta-strip {
+  flex-shrink: 0;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  min-width: 0;
-}
-
-.detail-meta-item--full {
-  grid-column: 1 / -1;
-}
-
-.meta-label {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  padding: 2px 2px 4px;
   font-size: 12px;
   color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
 }
 
-.meta-value {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary);
-  word-break: break-all;
+.meta-sep {
+  opacity: 0.7;
 }
 
-.meta-value-favorite {
-  color: var(--accent-quaternary);
-  display: inline-flex;
+.detail-actions {
+  flex-shrink: 0;
+  display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 10px;
+  padding: 12px 16px 14px;
+  border-top: 1px solid var(--border-light);
+  background: var(--detail-bg);
+}
+
+.action-copy {
+  flex: 1;
+}
+
+.action-delete {
+  flex-shrink: 0;
+}
+
+.btn-icon {
+  margin-right: 6px;
 }
 
 .detail-empty {
@@ -397,14 +399,13 @@ const closeZoomView = () => {
   color: var(--text-tertiary);
 }
 
-.expend-button {
+.expand-button {
   display: flex;
   justify-content: center;
   align-items: center;
   margin-top: 10px;
 }
 
-/* 放大查看对话框样式 */
 :deep(.zoom-dialog .el-dialog__body) {
   padding: 0;
   max-height: 70vh;

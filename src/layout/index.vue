@@ -69,6 +69,7 @@ const stopClipboardWatcher = () => {
 
 onMounted(() => {
   startClipboardWatcher();
+  clipboardStore.refreshCounts();
 });
 
 onUnmounted(() => {
@@ -78,21 +79,19 @@ onUnmounted(() => {
 
 <template>
   <div class="common-layout">
-    <el-container>
-      <el-header :height="'var(--header-height)'">
-        <Header></Header>
+    <Sidebar />
+    <div class="right-stack">
+      <el-header :height="'var(--header-height)'" class="right-header">
+        <Header />
       </el-header>
-      <el-container class="main-container">
-        <Sidebar />
-        <el-main>
-          <router-view v-slot="{ Component, route }">
-            <keep-alive :include="cacheRoutes">
-              <component :is="Component" :key="route.path" />
-            </keep-alive>
-          </router-view>
-        </el-main>
-      </el-container>
-    </el-container>
+      <el-main class="right-main">
+        <router-view v-slot="{ Component, route }">
+          <keep-alive :include="cacheRoutes">
+            <component :is="Component" :key="route.path" />
+          </keep-alive>
+        </router-view>
+      </el-main>
+    </div>
   </div>
 </template>
 
@@ -100,32 +99,44 @@ onUnmounted(() => {
 .common-layout {
   display: flex;
   flex: 1;
+  width: 100%;
+  height: 100%;
   margin: 0 auto;
   background: var(--bg-primary);
   overflow: hidden;
 }
 
-.el-header,
-.el-main {
-  padding: 0;
-  width: 100%;
+.right-stack {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
-.el-header {
+.right-header {
+  padding: 0;
+  flex-shrink: 0;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-light);
   z-index: 10;
 }
 
-.el-main {
-  display: flex;
-  background: transparent;
-}
-
-.main-container {
-  height: calc(100% - var(--header-height));
-  overflow: hidden;
+.right-main {
   display: flex;
   flex: 1;
+  min-height: 0;
+  padding: 0;
+  width: 100%;
+  background: transparent;
+  overflow: hidden;
+
+  :deep(> *) {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+  }
 }
 </style>

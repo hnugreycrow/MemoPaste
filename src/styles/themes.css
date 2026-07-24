@@ -1,9 +1,9 @@
 :root {
   /* ===== 全局通用变量（所有主题共享） ===== */
   /* 布局尺寸 */
-  --nav-width: 60px;
+  --nav-width: 220px;
   --header-height: 40px;
-  --list-max-width: 560px;
+  --list-max-width: 640px;
 }
 
 :root.dark {

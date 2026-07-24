@@ -183,7 +183,7 @@ onActivated(() => {
             <el-input
               v-model="searchQuery"
               class="search-input"
-              placeholder="搜索剪切板内容..."
+              placeholder="搜索剪贴板内容..."
               clearable
             />
           </div>
@@ -309,7 +309,7 @@ onActivated(() => {
 
 /* 搜索区域 */
 .search-container {
-  padding: 12px 12px 8px;
+  padding: 14px 14px 10px;
   background: var(--list-bg);
   display: flex;
   align-items: center;
@@ -352,11 +352,12 @@ onActivated(() => {
 .content-container {
   display: flex;
   flex-direction: column;
-  flex: 0 1 42%;
-  min-width: 300px;
-  max-width: var(--list-max-width, 560px);
+  flex: 0 1 44%;
+  min-width: 320px;
+  max-width: var(--list-max-width, 640px);
   overflow: hidden;
   height: 100%;
+  border-right: 1px solid var(--border-light);
 }
 
 /* 内容列表 */
