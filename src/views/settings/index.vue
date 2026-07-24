@@ -480,8 +480,8 @@ onUnmounted(() => {
 }
 
 .about-logo {
-  width: 48px;
-  height: 48px;
+  width: 60px;
+  height: 60px;
   flex-shrink: 0;
   border-radius: 10px;
   background: var(--bg-tertiary);

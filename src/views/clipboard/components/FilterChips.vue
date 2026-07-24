@@ -16,7 +16,6 @@ const filters: FilterOption[] = [
   { key: "text", label: "文本" },
   { key: "url", label: "链接" },
   { key: "code", label: "代码" },
-  { key: "favorite", label: "收藏" },
 ];
 
 const itemsWithCount = computed(() =>

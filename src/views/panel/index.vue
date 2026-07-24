@@ -322,17 +322,16 @@ onUnmounted(() => {
 }
 
 .panel-logo {
-  width: 20px;
-  height: 20px;
-  border-radius: 5px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   object-fit: cover;
-  image-rendering: pixelated;
   flex-shrink: 0;
   -webkit-app-region: no-drag;
 }
 
 .panel-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: 0.02em;

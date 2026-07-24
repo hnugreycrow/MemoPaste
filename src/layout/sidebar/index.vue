@@ -156,9 +156,9 @@ const toggleTheme = () => {
 }
 
 .brand-logo {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
+  width: 50px;
+  height: 50px;
+  border-radius: 10px;
   object-fit: cover;
   flex-shrink: 0;
 }
@@ -168,7 +168,7 @@ const toggleTheme = () => {
 }
 
 .brand-name {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.2;
@@ -176,7 +176,7 @@ const toggleTheme = () => {
 
 .brand-tagline {
   margin-top: 2px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-tertiary);
   letter-spacing: 0.02em;
 }
@@ -252,10 +252,7 @@ const toggleTheme = () => {
   width: 168px;
   max-width: 100%;
   height: auto;
-  max-height: 200px;
-  object-fit: cover;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
+  object-fit: contain;
 }
 
 .sidebar-tools {
