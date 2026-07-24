@@ -79,7 +79,7 @@ onUnmounted(() => {
 <template>
   <div class="common-layout">
     <el-container>
-      <el-header height="40px">
+      <el-header :height="'var(--header-height)'">
         <Header></Header>
       </el-header>
       <el-container class="main-container">
@@ -123,7 +123,7 @@ onUnmounted(() => {
 }
 
 .main-container {
-  height: calc(100% - 40px);
+  height: calc(100% - var(--header-height));
   overflow: hidden;
   display: flex;
   flex: 1;

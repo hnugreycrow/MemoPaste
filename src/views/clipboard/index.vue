@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, onActivated } from "vue";
 import DetailPanel from "./components/DetailPanel.vue";
-import FilterSidebar from "./components/FilterSidebar.vue";
+import FilterChips from "./components/FilterChips.vue";
 import { ClipboardItem } from "@/utils/type";
 import { truncateText, formatRelativeTime } from "@/utils/utils";
 import { useSearch } from "./composables/useSearch";
@@ -38,6 +38,22 @@ const typeLabel: Record<string, string> = {
   image: "图片",
 };
 
+/** 列表有数据且无有效选中时，默认选中首条 */
+const ensureSelection = () => {
+  const items = clipboardData.value;
+  if (items.length === 0) {
+    selectedItem.value = null;
+    return;
+  }
+
+  if (selectedItem.value) {
+    const stillExists = items.some((item) => item.id === selectedItem.value?.id);
+    if (stillExists) return;
+  }
+
+  selectItem(items[0]);
+};
+
 // 监听类型过滤器变化，重新加载数据
 watch(activeFilter, (newType) => {
   // 切换类型时，重置页码并重新加载数据
@@ -47,22 +63,9 @@ watch(activeFilter, (newType) => {
 
 // 监听 store 的 items 变化
 watch(
-  () => clipboardData,
-  (newItems, oldItems) => {
-    // 当 items 被清空时
-    if (newItems.value.length === 0 && oldItems.value.length > 0) {
-      selectedItem.value = null;
-    }
-
-    // 如果当前选中的项目不在新列表中，也需要重置
-    if (selectedItem.value) {
-      const stillExists = newItems.value.some(
-        (item) => item.id === selectedItem.value?.id,
-      );
-      if (!stillExists) {
-        selectedItem.value = null;
-      }
-    }
+  () => clipboardData.value,
+  () => {
+    ensureSelection();
   },
   { deep: true },
 );
@@ -171,9 +174,7 @@ onActivated(() => {
 
 <template>
   <div class="main-content">
-    <!-- 三栏主体 -->
-    <div class="three-column-body">
-      <FilterSidebar />
+    <div class="two-column-body">
       <div class="content-container">
         <!-- 搜索区域 -->
         <div class="search-container">
@@ -187,8 +188,8 @@ onActivated(() => {
             />
           </div>
           <el-dropdown trigger="click" placement="bottom-end">
-            <el-button class="search-action-btn">
-              <i-ep-Plus />
+            <el-button class="search-action-btn" title="更多操作">
+              <i-ep-MoreFilled />
             </el-button>
             <template #dropdown>
               <el-dropdown-menu>
@@ -202,6 +203,8 @@ onActivated(() => {
             </template>
           </el-dropdown>
         </div>
+
+        <FilterChips />
 
         <!-- 内容列表 -->
         <div class="content-list" ref="contentListRef" @scroll="handleScroll">
@@ -297,7 +300,7 @@ onActivated(() => {
   overflow: hidden;
 }
 
-.three-column-body {
+.two-column-body {
   display: flex;
   flex: 1;
   min-height: 0;
@@ -306,9 +309,8 @@ onActivated(() => {
 
 /* 搜索区域 */
 .search-container {
-  padding: 12px;
+  padding: 12px 12px 8px;
   background: var(--list-bg);
-  border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -350,8 +352,9 @@ onActivated(() => {
 .content-container {
   display: flex;
   flex-direction: column;
-  width: var(--list-width, 400px);
-  flex-shrink: 0;
+  flex: 0 1 42%;
+  min-width: 300px;
+  max-width: var(--list-max-width, 560px);
   overflow: hidden;
   height: 100%;
 }
@@ -360,7 +363,7 @@ onActivated(() => {
 .content-list {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 24px;
+  padding: 12px 16px;
   background: var(--list-bg);
   scroll-behavior: smooth;
   position: relative;

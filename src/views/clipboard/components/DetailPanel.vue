@@ -86,7 +86,9 @@
     </div>
 
     <div v-else class="detail-empty">
-      <el-empty description="选择一个剪贴板项目查看详情" />
+      <i-ep-Document-Copy class="empty-icon" />
+      <div class="empty-title">暂无选中项</div>
+      <div class="empty-desc">选择一个剪贴板项目查看详情</div>
     </div>
 
     <!-- 放大查看对话框 -->
@@ -252,7 +254,7 @@ const closeZoomView = () => {
 
 .detail-content {
   flex: 1;
-  padding: 20px 16px;
+  padding: 10px 16px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -302,7 +304,7 @@ const closeZoomView = () => {
 
 .detail-text-body {
   padding-top: 15px;
-  max-height: 50vh;
+  max-height: 40vh;
   overflow: auto;
 }
 
@@ -375,6 +377,24 @@ const closeZoomView = () => {
   justify-content: center;
   color: var(--text-secondary);
   text-align: center;
+  padding: 60px 24px;
+}
+
+.detail-empty .empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+
+.detail-empty .empty-title {
+  font-size: 16px;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+}
+
+.detail-empty .empty-desc {
+  font-size: 14px;
+  color: var(--text-tertiary);
 }
 
 .expend-button {
