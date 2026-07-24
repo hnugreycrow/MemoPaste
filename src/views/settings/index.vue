@@ -580,14 +580,7 @@ onUnmounted(() => {
 
     .theme-preview {
       border-color: var(--accent-primary);
-      box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 25%, transparent);
     }
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--accent-primary);
-    outline-offset: 3px;
-    border-radius: 8px;
   }
 }
 

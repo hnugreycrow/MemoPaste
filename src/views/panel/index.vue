@@ -4,7 +4,7 @@
  * - 点击条目：写入剪贴板并模拟粘贴到当前输入焦点
  * - 键盘导航在 focusable:false 下基本不可用，以鼠标为主；Esc 由主进程全局快捷键处理
  */
-import { ref, onMounted, onUnmounted, computed } from "vue";
+import { ref, onMounted, onUnmounted, computed, nextTick } from "vue";
 import { storeToRefs } from "pinia";
 import { useClipboardStore } from "@/stores/clipboardStore";
 import type { ClipboardItem } from "@/utils/type";
@@ -34,10 +34,19 @@ let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 const hasItems = computed(() => clipboardData.value.length > 0);
 
+/** 打开/刷新后滚回顶部，避免沿用上次滚动位置 */
+const resetScrollToTop = async () => {
+  await nextTick();
+  if (listRef.value) {
+    listRef.value.scrollTop = 0;
+  }
+};
+
 const refreshList = async () => {
   clipboardStore.pageSize = 30;
   await clipboardStore.loadClipboardHistory(1, false, activeFilter.value);
   focusedIndex.value = 0;
+  await resetScrollToTop();
 };
 
 const setFilter = async (key: string) => {
@@ -45,6 +54,7 @@ const setFilter = async (key: string) => {
   activeFilter.value = key;
   focusedIndex.value = 0;
   await clipboardStore.loadClipboardHistory(1, false, key);
+  await resetScrollToTop();
 };
 
 const hidePanel = () => {
