@@ -161,7 +161,6 @@ export const useClipboardStore = defineStore('clipboard', {
           ElMessage({ message: '清空失败', type: 'error' });
         }
       } catch (error) {
-        console.error('清空出错:', error);
         if (error !== 'cancel') {
           ElMessage({ message: '清空失败', type: 'error' });
         }
@@ -188,7 +187,6 @@ export const useClipboardStore = defineStore('clipboard', {
           ElMessage({ message: '清空失败', type: 'error' });
         }
       } catch (error) {
-        console.error('清空出错:', error);
         if (error !== 'cancel') {
           ElMessage({ message: '清空失败', type: 'error' });
         }
