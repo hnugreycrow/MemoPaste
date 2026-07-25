@@ -30,6 +30,7 @@
     "electron": "^30.0.1",
     "electron-builder": "^24.13.3",
     "electron-rebuild": "^3.2.9",
+    "sass": "^1.102.0",
     "sass-embedded": "^1.90.0",
     "typescript": "^5.2.2",
     "unplugin-auto-import": "^20.0.0",

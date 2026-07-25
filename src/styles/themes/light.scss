@@ -1,0 +1,166 @@
+/* ===== ClipMint 浅色主题：薄荷绿底 + 薰衣草紫主色 ===== */
+:root.light {
+  /* Element Plus */
+  --el-color-primary-rgb: 139, 109, 232;
+  --el-color-primary: #8b6de8;
+
+  --el-bg-color: #f7fbfa;
+  --el-bg-color-overlay: #ffffff;
+  --el-bg-color-page: #f4f8f6;
+
+  --el-text-color-primary: #2a2438;
+  --el-text-color-regular: #5c566e;
+  --el-text-color-secondary: #8f889e;
+
+  --el-border-color: #d5e8e1;
+  --el-border-color-light: #e2f0eb;
+  --el-border-color-lighter: #eef7f3;
+
+  --el-fill-color: #eaf4f0;
+  --el-fill-color-light: #f3faf7;
+  --el-fill-color-blank: #ffffff;
+
+  --el-mask-color: rgba(42, 36, 56, 0.45);
+  --el-mask-color-extra-light: rgba(42, 36, 56, 0.05);
+
+  /* 背景：薄荷绿洗色 */
+  --bg-primary: #f4f8f6;
+  --bg-secondary: #eaf4f0; /* 侧栏 */
+  --bg-tertiary: #ffffff;
+  --bg-hover: #ede4ff;
+  --bg-active: #e8deff;
+
+  --list-bg: #f7fbfa;
+  --detail-bg: #f3f8f6;
+  --setting-card-bg: #f7fbfa;
+
+  /* 文本 */
+  --text-primary: #2a2438;
+  --text-secondary: #5c566e;
+  --text-tertiary: #8f889e;
+  --text-inverse: #ffffff;
+
+  /* 边框 */
+  --border-light: #d5e8e1;
+  --border-medium: #c2d9d0;
+
+  /* 强调色：薰衣草紫主色 */
+  --accent-primary: #8b6de8;
+  --accent-primary-hover: #7a5ad9;
+  --accent-on-primary: #ffffff;
+  --accent-secondary: #3db88a; /* 薄荷绿辅色 */
+  --accent-danger: #e45d7a;
+  --accent-tertiary: #9b7aef;
+  --accent-quaternary: #e0a14a;
+
+  --gradient-active-start: #8b6de8;
+  --gradient-active-end: #a78bfa;
+
+  --favorite-bg: rgba(224, 161, 74, 0.1);
+  --favorite-border: #e0a14a;
+
+  --type-text-bg: rgba(139, 109, 232, 0.12);
+  --type-url-bg: rgba(61, 184, 138, 0.12);
+  --type-code-bg: rgba(155, 122, 239, 0.14);
+  --type-image-bg: rgba(228, 93, 122, 0.12);
+  --type-favorite-bg: rgba(224, 161, 74, 0.12);
+
+  --type-text-fg: #7a5ad9;
+  --type-url-fg: #2f9e74;
+  --type-code-fg: #8b6de8;
+  --type-image-fg: #d44d6a;
+
+  --radius-sm: 7px;
+  --radius-md: 11px;
+  --radius-lg: 14px;
+  --shadow-soft: 0 2px 12px rgba(139, 109, 232, 0.07);
+  --shadow-lift: 0 6px 18px rgba(61, 184, 138, 0.1);
+}
+
+/* ClipMint：侧栏淡薄荷洗色 + 品牌区轻渐变 */
+html.light {
+  .nav-sidebar {
+    background:
+      radial-gradient(
+        ellipse 120% 60% at 50% 100%,
+        rgba(139, 109, 232, 0.08),
+        transparent 55%
+      ),
+      linear-gradient(180deg, #eef8f4 0%, #eaf4f0 45%, #e8f2f6 100%);
+    border-right-color: color-mix(
+      in srgb,
+      var(--border-light) 80%,
+      var(--accent-primary)
+    );
+  }
+
+  .brand-logo {
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .nav-item {
+    border-radius: var(--radius-md);
+
+    &.active {
+      background: color-mix(in srgb, var(--accent-primary) 14%, white);
+      color: var(--accent-primary);
+      box-shadow: inset 0 0 0 1px
+        color-mix(in srgb, var(--accent-primary) 22%, transparent);
+    }
+  }
+
+  .content-item {
+    border-radius: var(--radius-md);
+
+    &:hover {
+      box-shadow: var(--shadow-soft);
+    }
+
+    &.active {
+      background: var(--bg-active);
+      box-shadow:
+        inset 0 0 0 1px
+          color-mix(in srgb, var(--accent-primary) 28%, transparent),
+        var(--shadow-soft);
+    }
+  }
+
+  .filter-chip {
+    border-radius: var(--radius-pill);
+
+    &.active {
+      background: color-mix(in srgb, var(--accent-primary) 12%, white);
+      border-color: color-mix(in srgb, var(--accent-primary) 30%, transparent);
+      color: var(--accent-primary);
+    }
+  }
+
+  .detail-text,
+  .search-box,
+  .el-input__wrapper {
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .el-button--primary {
+    border-radius: var(--radius-md);
+    box-shadow: 0 4px 14px rgba(139, 109, 232, 0.28);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(
+      in srgb,
+      var(--accent-primary) 25%,
+      var(--border-light)
+    );
+
+    &:hover {
+      background: color-mix(
+        in srgb,
+        var(--accent-primary) 40%,
+        var(--border-medium)
+      );
+    }
+  }
+}

@@ -4,4 +4,14 @@
   --nav-width: 220px;
   --header-height: 40px;
   --list-max-width: 640px;
+
+  /* 圆角阶梯（主题可覆盖） */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+
+  /* 柔和投影默认值 */
+  --shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.04);
+  --shadow-lift: 0 4px 16px rgba(0, 0, 0, 0.06);
 }

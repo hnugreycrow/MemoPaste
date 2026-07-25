@@ -110,14 +110,14 @@ html.is-panel #app {
 
 .el-button--primary {
   --el-button-bg-color: var(--accent-primary);
-  --el-button-text-color: var(--text-inverse);
+  --el-button-text-color: var(--accent-on-primary, var(--text-inverse));
   --el-button-border-color: var(--accent-primary);
   --el-button-hover-bg-color: var(
     --accent-primary-hover,
     var(--bg-active)
   );
   --el-button-hover-border-color: var(--accent-primary-hover, var(--bg-active));
-  --el-button-hover-text-color: var(--text-inverse);
+  --el-button-hover-text-color: var(--accent-on-primary, var(--text-inverse));
 }
 
 .el-input__wrapper {

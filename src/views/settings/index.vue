@@ -595,28 +595,28 @@ onUnmounted(() => {
   }
 
   &.light {
-    background: #f4f4f4;
+    background: #f4f8f6;
 
     .preview-sidebar {
-      background: #fafafa;
-      border-right: 1px solid #e5e5e5;
+      background: #eaf4f0;
+      border-right: 1px solid #d5e8e1;
     }
 
     .preview-line {
-      background: #d4d4d4;
+      background: #c9b6f5;
     }
   }
 
   &.dark {
-    background: #111111;
+    background: #221c2e;
 
     .preview-sidebar {
-      background: #151515;
-      border-right: 1px solid #2a2a2a;
+      background: #1b1624;
+      border-right: 1px solid #3a3148;
     }
 
     .preview-line {
-      background: #3a3a3a;
+      background: #7ddbb8;
     }
   }
 }
@@ -682,7 +682,7 @@ onUnmounted(() => {
 
   &.active {
     background: var(--accent-primary);
-    color: #fff;
+    color: var(--accent-on-primary, #fff);
   }
 
   &:focus-visible {

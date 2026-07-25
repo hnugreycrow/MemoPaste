@@ -1,0 +1,182 @@
+/* ===== Midnight Lavender 深色主题：深紫炭 + 薄荷绿点缀 ===== */
+:root.dark {
+  /* Element Plus */
+  --el-color-primary-rgb: 125, 219, 184;
+  --el-color-primary: #7ddbb8;
+
+  --el-bg-color: #221c2e;
+  --el-bg-color-overlay: #2a2438;
+  --el-bg-color-page: #19141f;
+
+  --el-text-color-primary: #ede6f7;
+  --el-text-color-regular: #b8b0c9;
+  --el-text-color-secondary: #8e8aa3;
+
+  --el-border-color: #3a3148;
+  --el-border-color-light: #433a54;
+  --el-border-color-lighter: #4d4460;
+
+  --el-fill-color: #2e2740;
+  --el-fill-color-light: #352e4a;
+  --el-fill-color-blank: #221c2e;
+
+  --el-mask-color: rgba(10, 8, 16, 0.78);
+  --el-mask-color-extra-light: rgba(10, 8, 16, 0.35);
+
+  /* 背景：深紫炭分层 */
+  --bg-primary: #19141f;
+  --bg-secondary: #1b1624; /* 侧栏更深 */
+  --bg-tertiary: #2a2438;
+  --bg-hover: #2e2740;
+  --bg-active: #352e4a;
+
+  --list-bg: #221c2e;
+  --detail-bg: #19141f;
+  --setting-card-bg: #221c2e;
+
+  /* 文本 */
+  --text-primary: #ede6f7;
+  --text-secondary: rgba(237, 230, 247, 0.72);
+  --text-tertiary: rgba(237, 230, 247, 0.5);
+  --text-inverse: #1a1524;
+
+  /* 边框 */
+  --border-light: #3a3148;
+  --border-medium: #4d4460;
+
+  /* 强调色：薄荷主色（CTA / 选中），薰衣草辅色 */
+  --accent-primary: #7ddbb8;
+  --accent-primary-hover: #6bcfa8;
+  --accent-on-primary: #1a1524;
+  --accent-secondary: #b79cff; /* 薰衣草紫 */
+  --accent-danger: #f0728a;
+  --accent-tertiary: #c4a8ff;
+  --accent-quaternary: #f0b45a;
+
+  --gradient-active-start: #b79cff;
+  --gradient-active-end: #7ddbb8;
+
+  --favorite-bg: rgba(240, 180, 90, 0.1);
+  --favorite-border: #f0b45a;
+
+  --type-text-bg: rgba(183, 156, 255, 0.16);
+  --type-url-bg: rgba(125, 219, 184, 0.14);
+  --type-code-bg: rgba(196, 168, 255, 0.16);
+  --type-image-bg: rgba(240, 114, 138, 0.14);
+  --type-favorite-bg: rgba(240, 180, 90, 0.14);
+
+  --type-text-fg: #c4a8ff;
+  --type-url-fg: #7ddbb8;
+  --type-code-fg: #b79cff;
+  --type-image-fg: #f0728a;
+
+  --radius-sm: 7px;
+  --radius-md: 11px;
+  --radius-lg: 14px;
+  --shadow-soft: 0 2px 14px rgba(0, 0, 0, 0.28);
+  --shadow-lift: 0 8px 22px rgba(125, 219, 184, 0.12);
+}
+
+/* Midnight Lavender：侧栏更深 + 底部淡紫光晕 */
+html.dark {
+  .nav-sidebar {
+    background:
+      radial-gradient(
+        ellipse 130% 55% at 50% 108%,
+        rgba(183, 156, 255, 0.14),
+        transparent 52%
+      ),
+      linear-gradient(180deg, #1b1624 0%, #17121f 100%);
+    border-right-color: var(--border-light);
+  }
+
+  .brand-logo {
+    border-radius: var(--radius-md);
+    box-shadow: 0 0 0 1px
+      color-mix(in srgb, var(--accent-secondary) 35%, transparent);
+  }
+
+  .nav-item {
+    border-radius: var(--radius-md);
+
+    &.active {
+      background: color-mix(in srgb, var(--accent-primary) 14%, transparent);
+      color: var(--accent-primary);
+      box-shadow: inset 0 0 0 1px
+        color-mix(in srgb, var(--accent-primary) 28%, transparent);
+
+      .nav-count {
+        color: var(--accent-primary);
+      }
+    }
+  }
+
+  .content-item {
+    border-radius: var(--radius-md);
+
+    &:hover {
+      background: var(--bg-hover);
+    }
+
+    &.active {
+      background: color-mix(
+        in srgb,
+        var(--accent-secondary) 12%,
+        var(--bg-active)
+      );
+      box-shadow:
+        inset 0 0 0 1px
+          color-mix(in srgb, var(--accent-secondary) 45%, transparent),
+        0 0 18px rgba(183, 156, 255, 0.08);
+    }
+  }
+
+  .filter-chip {
+    border-radius: var(--radius-pill);
+
+    &.active {
+      background: color-mix(in srgb, var(--accent-primary) 14%, transparent);
+      border-color: color-mix(in srgb, var(--accent-primary) 32%, transparent);
+      color: var(--accent-primary);
+
+      .filter-count {
+        color: var(--accent-primary);
+      }
+    }
+  }
+
+  .detail-text {
+    border-radius: var(--radius-md);
+    border-color: color-mix(
+      in srgb,
+      var(--accent-secondary) 22%,
+      var(--border-light)
+    );
+    background: color-mix(in srgb, var(--bg-tertiary) 88%, #000);
+  }
+
+  .el-button--primary {
+    border-radius: var(--radius-md);
+    box-shadow: 0 4px 16px rgba(125, 219, 184, 0.22);
+  }
+
+  .panel-shell {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(
+      in srgb,
+      var(--accent-secondary) 30%,
+      var(--border-light)
+    );
+
+    &:hover {
+      background: color-mix(
+        in srgb,
+        var(--accent-primary) 35%,
+        var(--border-medium)
+      );
+    }
+  }
+}

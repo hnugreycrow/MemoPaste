@@ -88,10 +88,6 @@ const toggleTheme = () => {
       </button>
     </nav>
 
-    <div class="mascot-wrap">
-      <img src="/mascot.png?v=2" class="mascot" alt="" draggable="false" />
-    </div>
-
     <div class="sidebar-tools">
       <button
         type="button"
@@ -260,6 +256,7 @@ const toggleTheme = () => {
   align-items: center;
   justify-content: space-between;
   gap: 4px;
+  margin-top: auto;
   padding-top: 8px;
   border-top: 1px solid var(--border-light);
   -webkit-app-region: no-drag;
