@@ -199,7 +199,7 @@ onActivated(() => {
         <div class="content-list" ref="contentListRef" @scroll="handleScroll">
           <template v-if="clipboardData.length === 0">
             <div class="empty-state">
-              <i-ep-Document-Copy class="empty-icon" />
+              <img src="/mascot.png" class="mascot" alt="MemoPaste" />
               <div class="empty-title">暂无记录</div>
               <div class="empty-desc">开始复制内容，它们会出现在这里</div>
             </div>
@@ -279,6 +279,13 @@ onActivated(() => {
 </template>
 
 <style lang="scss" scoped>
+.mascot {
+  width: 168px;
+  max-width: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
 .main-content {
   display: flex;
   flex-direction: column;
@@ -368,12 +375,6 @@ onActivated(() => {
   color: var(--text-secondary);
   text-align: center;
   padding: 60px 0;
-}
-
-.empty-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-  opacity: 0.3;
 }
 
 .empty-title {

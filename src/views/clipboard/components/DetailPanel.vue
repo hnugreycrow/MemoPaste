@@ -85,7 +85,7 @@
     </template>
 
     <div v-else class="detail-empty">
-      <i-ep-Document-Copy class="empty-icon" />
+      <img src="/mascot.png" class="mascot" alt="MemoPaste" />
       <div class="empty-title">暂无选中项</div>
       <div class="empty-desc">选择一个剪贴板项目查看详情</div>
     </div>
@@ -197,6 +197,13 @@ const closeZoomView = () => {
 </script>
 
 <style lang="scss" scoped>
+.mascot {
+  width: 168px;
+  max-width: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
 .detail-panel {
   flex: 1;
   min-width: 0;
@@ -363,12 +370,6 @@ const closeZoomView = () => {
   color: var(--text-secondary);
   text-align: center;
   padding: 60px 24px;
-}
-
-.detail-empty .empty-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-  opacity: 0.3;
 }
 
 .detail-empty .empty-title {
