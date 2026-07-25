@@ -275,6 +275,10 @@ app.whenReady().then(() => {
   syncOpenAtLoginFromSystem();
 });
 
+app.on("before-quit", () => {
+  setAppIsQuitting(true);
+});
+
 // 应用退出前清理资源
 app.on("will-quit", () => {
   setAppIsQuitting(true);

@@ -278,8 +278,8 @@ onUnmounted(() => {
 
           <div class="setting-row">
             <div class="setting-meta">
-              <span class="setting-label">最小化到托盘</span>
-              <span class="setting-desc">最小化时隐藏到系统托盘</span>
+              <span class="setting-label">关闭时最小化到托盘</span>
+              <span class="setting-desc">点击关闭时隐藏到托盘</span>
             </div>
             <el-switch
               v-model="minimizeToTray"

@@ -74,6 +74,7 @@ export class TrayService {
       {
         label: '退出',
         click: () => {
+          // before-quit 会置 appIsQuitting，避免被「关闭到托盘」拦截
           app.quit();
         },
       },

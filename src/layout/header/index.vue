@@ -19,17 +19,7 @@ const handleMaximize = () => {
 };
 
 const handleClose = () => {
-  ElMessageBox.confirm("确认关闭应用吗？", "提示", {
-    confirmButtonText: "确定",
-    cancelButtonText: "取消",
-    type: "info",
-  })
-    .then(() => {
-      window.windowControls.close();
-    })
-    .catch(() => {
-      // 取消关闭
-    });
+  window.windowControls.close();
 };
 
 onMounted(async () => {

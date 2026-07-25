@@ -160,19 +160,30 @@ export class WindowService {
       this.win?.webContents.send("window-maximize-changed", false);
     });
 
-    // 主窗口销毁时退出应用（面板常驻隐藏，不会触发 window-all-closed）
+    // 唯一关主窗策略：点 × / Alt+F4 / IPC 都走 close；托盘退出前会置 appIsQuitting
+    this.win.on("close", (event) => {
+      if (appIsQuitting) return;
+      if (this.configService.get<boolean>("minimizeToTray")) {
+        event.preventDefault();
+        this.win?.hide();
+      }
+    });
+
+    // 场景：用户主动关闭主窗口（点击 ×），且应用未开启「关闭到托盘」功能。
+    // 判定：如果 appIsQuitting === false，说明这次关闭不是由 app.quit() 发起的正常退出流程。
+    // 动作：此时主窗口虽已销毁，但 panelWin（常驻面板）可能仍在运行，会阻止 Electron 进程退出。
+    //       必须手动清理 panelWin 并主动调用 app.quit()，否则应用会在后台常驻挂起。
     this.win.on("closed", () => {
       this.win = null;
-      if (!appIsQuitting) {
-        appIsQuitting = true;
-        uninstallOutsideClickHook();
-        this.unregisterPanelShortcuts();
-        if (this.panelWin && !this.panelWin.isDestroyed()) {
-          this.panelWin.destroy();
-        }
-        this.panelWin = null;
-        app.quit();
+      if (appIsQuitting) return;
+      appIsQuitting = true;
+      uninstallOutsideClickHook();
+      this.unregisterPanelShortcuts();
+      if (this.panelWin && !this.panelWin.isDestroyed()) {
+        this.panelWin.destroy();
       }
+      this.panelWin = null;
+      app.quit();
     });
 
     return this.win;
@@ -264,12 +275,7 @@ export class WindowService {
 
   private registerIpcHandlers(): void {
     ipcMain.on("window-minimize", () => {
-      const minimizeToTray = this.configService.get<boolean>("minimizeToTray");
-      if (minimizeToTray) {
-        this.win?.hide();
-      } else {
-        this.win?.minimize();
-      }
+      this.win?.minimize();
     });
 
     ipcMain.on("window-maximize", () => {
@@ -291,6 +297,7 @@ export class WindowService {
         this.hidePanel();
         return;
       }
+      // 主窗一律 close；是否藏托盘由 win.on("close") 统一决定
       this.win?.close();
     });
 
