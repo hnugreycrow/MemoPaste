@@ -228,22 +228,16 @@ const remindLater = () => {
 }
 
 .app-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-light);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 
   img {
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
     object-fit: cover;
-    image-rendering: pixelated;
   }
 }
 
