@@ -1,6 +1,10 @@
 import { BrowserWindow, ipcMain, screen, app, globalShortcut } from "electron";
 import path from "node:path";
 import { ConfigService } from "./config-service";
+import {
+  installOutsideClickHook,
+  uninstallOutsideClickHook,
+} from "../utils/outside-click-hook";
 
 const PANEL_WIDTH = 360;
 const PANEL_HEIGHT = 480;
@@ -18,7 +22,6 @@ export class WindowService {
   private readonly rendererPath: string;
   private readonly devServerUrl: string | undefined;
   private configService: ConfigService;
-  private blurHideTimer: NodeJS.Timeout | null = null;
   /** 面板显示期间临时注册的导航快捷键（Esc/↑↓/Enter） */
   private panelShortcutsRegistered = false;
 
@@ -162,6 +165,7 @@ export class WindowService {
       this.win = null;
       if (!appIsQuitting) {
         appIsQuitting = true;
+        uninstallOutsideClickHook();
         this.unregisterPanelShortcuts();
         if (this.panelWin && !this.panelWin.isDestroyed()) {
           this.panelWin.destroy();
@@ -376,14 +380,12 @@ export class WindowService {
     this.panelWin.setAlwaysOnTop(true, "pop-up-menu");
     this.panelWin.showInactive();
     this.registerPanelShortcuts();
+    this.installPanelOutsideClickHook();
     this.panelWin.webContents.send("panel-shown");
   }
 
   public hidePanel(): void {
-    if (this.blurHideTimer) {
-      clearTimeout(this.blurHideTimer);
-      this.blurHideTimer = null;
-    }
+    uninstallOutsideClickHook();
     this.unregisterPanelShortcuts();
     if (this.panelWin && !this.panelWin.isDestroyed() && this.panelWin.isVisible()) {
       this.panelWin.hide();
@@ -406,10 +408,7 @@ export class WindowService {
   }
 
   public dispose(): void {
-    if (this.blurHideTimer) {
-      clearTimeout(this.blurHideTimer);
-      this.blurHideTimer = null;
-    }
+    uninstallOutsideClickHook();
     this.unregisterPanelShortcuts();
     if (this.panelWin && !this.panelWin.isDestroyed()) {
       this.panelWin.removeAllListeners("close");
@@ -417,6 +416,26 @@ export class WindowService {
     }
     this.panelWin = null;
     this.win = null;
+  }
+
+  /** 面板可见时：点击落在 bounds 外则隐藏（WH_MOUSE_LL） */
+  private installPanelOutsideClickHook(): void {
+    installOutsideClickHook({
+      isPointInside: (screenX, screenY) => {
+        const win = this.panelWin;
+        if (!win || win.isDestroyed() || !win.isVisible()) return false;
+        // 钩子坐标为屏幕物理像素；getBounds 为 DIP
+        const dipPoint = screen.screenToDipPoint({ x: screenX, y: screenY });
+        const b = win.getBounds();
+        return (
+          dipPoint.x >= b.x &&
+          dipPoint.x < b.x + b.width &&
+          dipPoint.y >= b.y &&
+          dipPoint.y < b.y + b.height
+        );
+      },
+      onOutsideClick: () => this.hidePanel(),
+    });
   }
 }
 
