@@ -50,7 +50,7 @@ const toggleTheme = () => {
       <img src="/icon.png" class="brand-logo" alt="MemoPaste" />
       <div class="brand-text">
         <div class="brand-name">MemoPaste</div>
-        <div class="brand-tagline">clipboard manager</div>
+        <div class="brand-tagline">剪贴板工具</div>
       </div>
     </div>
 

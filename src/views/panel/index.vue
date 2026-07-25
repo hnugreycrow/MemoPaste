@@ -41,14 +41,6 @@ const refreshList = async () => {
   await resetScrollToTop();
 };
 
-const setFilter = async (key: string) => {
-  if (activeFilter.value === key) return;
-  activeFilter.value = key;
-  focusedIndex.value = 0;
-  await clipboardStore.loadClipboardHistory(1, false, key);
-  await resetScrollToTop();
-};
-
 const hidePanel = () => {
   window.panel.hide();
 };
@@ -137,54 +129,6 @@ onUnmounted(() => {
         </button>
       </div>
     </header>
-
-    <nav class="filter-tabs" aria-label="筛选">
-      <button
-        type="button"
-        class="filter-tab"
-        :class="{ active: activeFilter === 'all' }"
-        @click="setFilter('all')"
-      >
-        <el-icon class="tab-icon"><i-ep-Menu /></el-icon>
-        <span>全部</span>
-      </button>
-      <button
-        type="button"
-        class="filter-tab"
-        :class="{ active: activeFilter === 'text' }"
-        @click="setFilter('text')"
-      >
-        <el-icon class="tab-icon"><i-ep-Document /></el-icon>
-        <span>文本</span>
-      </button>
-      <button
-        type="button"
-        class="filter-tab"
-        :class="{ active: activeFilter === 'url' }"
-        @click="setFilter('url')"
-      >
-        <el-icon class="tab-icon"><i-ep-Link /></el-icon>
-        <span>链接</span>
-      </button>
-      <button
-        type="button"
-        class="filter-tab"
-        :class="{ active: activeFilter === 'code' }"
-        @click="setFilter('code')"
-      >
-        <el-icon class="tab-icon"><i-ep-Cpu /></el-icon>
-        <span>代码</span>
-      </button>
-      <button
-        type="button"
-        class="filter-tab"
-        :class="{ active: activeFilter === 'favorite' }"
-        @click="setFilter('favorite')"
-      >
-        <el-icon class="tab-icon"><i-ep-Star /></el-icon>
-        <span>收藏</span>
-      </button>
-    </nav>
 
     <div class="panel-toolbar">
       <span class="toolbar-title">
@@ -326,71 +270,24 @@ onUnmounted(() => {
   }
 }
 
-.filter-tabs {
-  display: flex;
-  gap: 4px;
-  padding: 0 10px 10px;
-  overflow-x: auto;
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
-}
-
-.filter-tab {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 28px;
-  padding: 0 10px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text-tertiary);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    color 0.15s ease,
-    background-color 0.15s ease,
-    border-color 0.15s ease;
-
-  &:hover {
-    color: var(--text-secondary);
-    background: var(--bg-hover);
-  }
-
-  &.active {
-    color: var(--accent-primary);
-    background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
-    border-color: color-mix(in srgb, var(--accent-primary) 28%, transparent);
-  }
-}
-
-.tab-icon {
-  font-size: 13px;
-}
-
 .panel-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 14px 10px;
+  padding: 10px 14px 10px;
 }
 
 .toolbar-title {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-secondary);
 }
 
 .toolbar-icon {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-tertiary);
 }
 
@@ -519,7 +416,7 @@ onUnmounted(() => {
   color: var(--text-primary);
   white-space: pre-wrap;
   word-break: break-word;
-  max-height: 3.9em;
+  height: 3.9em;
   overflow: hidden;
   padding-right: 28px;
 }
