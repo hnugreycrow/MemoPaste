@@ -84,9 +84,20 @@ export interface UpdateControls {
   onUpdateStatus: (callback: (status: { status: string; data?: any }) => void) => () => void;
 }
 
+/** 开机自启设置结果 */
+export interface OpenAtLoginResult {
+  success: boolean;
+  openAtLogin: boolean;
+  /** 是否已写入系统登录项（开发环境为 false） */
+  applied: boolean;
+  error?: string;
+}
+
 /** 应用信息 API */
 export interface AppAPI {
   getVersion: () => Promise<string>;
+  /** 设置开机自启（写配置；打包后同步系统登录项） */
+  setOpenAtLogin: (enabled: boolean) => Promise<OpenAtLoginResult>;
 }
 
 /** 快捷键更新结果 */

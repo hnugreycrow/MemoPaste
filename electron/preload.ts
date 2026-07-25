@@ -88,6 +88,8 @@ contextBridge.exposeInMainWorld('config', {
 
 contextBridge.exposeInMainWorld('app', {
   getVersion: () => ipcRenderer.invoke('app-get-version'),
+  setOpenAtLogin: (enabled: boolean) =>
+    ipcRenderer.invoke('open-at-login-set', enabled),
 } as AppAPI)
 
 contextBridge.exposeInMainWorld('shortcut', {

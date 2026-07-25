@@ -62,11 +62,15 @@ PageExEnd
 !macroend
 
 ; -----------------------------
-; 卸载时清理桌面快捷方式与 updater 缓存
+; 卸载时清理桌面快捷方式、开机自启与 updater 缓存
 ; -----------------------------
 !macro customUnInstall
   IfFileExists "$DESKTOP\${APP_FILENAME}.lnk" 0 +2
     Delete "$DESKTOP\${APP_FILENAME}.lnk"
+
+  ; Electron setLoginItemSettings 实际键名：electron.app.<app.getName()>
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "electron.app.${PRODUCT_NAME}"
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "electron.app.${APP_FILENAME}"
 
   ; electron-updater 下载缓存（%LOCALAPPDATA%\<name>-updater）
   RMDir /r "$LOCALAPPDATA\${APP_FILENAME}-updater"

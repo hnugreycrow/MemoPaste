@@ -190,12 +190,52 @@ function registerConfigIpcHandlers() {
 }
 
 /**
+ * 将开机自启状态同步到系统登录项（仅打包后生效，避免开发态注册 electron.exe）
+ */
+function applyOpenAtLogin(enabled: boolean): void {
+  if (!app.isPackaged) return;
+  app.setLoginItemSettings({ openAtLogin: enabled });
+}
+
+/**
+ * 启动时以系统登录项为准回写配置（跟随任务管理器禁用：用 executableWillLaunchAtLogin）
+ */
+function syncOpenAtLoginFromSystem(): void {
+  if (!app.isPackaged || !configService) return;
+  const settings = app.getLoginItemSettings();
+  // 已注册但被任务管理器禁用时，此字段为 false（openAtLogin 仍可能为 true）
+  const systemEnabled = !!settings.executableWillLaunchAtLogin;
+  const stored = !!configService.get<boolean>("openAtLogin");
+  if (stored !== systemEnabled) {
+    configService.set("openAtLogin", systemEnabled);
+  }
+}
+
+/**
  * 注册应用程序相关的IPC处理程序
  */
 function registerAppIpcHandlers() {
   // 获取应用版本
   ipcMain.handle('app-get-version', () => {
     return app.getVersion();
+  });
+
+  // 开机自启：写配置 + 打包后同步系统登录项
+  ipcMain.handle('open-at-login-set', (_event, enabled: boolean) => {
+    const value = !!enabled;
+    configService?.set('openAtLogin', value);
+    try {
+      applyOpenAtLogin(value);
+      return { success: true, openAtLogin: value, applied: app.isPackaged };
+    } catch (error) {
+      console.error('Failed to set open at login:', error);
+      return {
+        success: false,
+        openAtLogin: value,
+        applied: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
   });
   
   // 打开外部链接
@@ -230,6 +270,9 @@ app.whenReady().then(() => {
   
   // 注册应用程序相关的IPC处理程序
   registerAppIpcHandlers();
+
+  // 启动时以系统登录项为准回写配置（仅打包环境）
+  syncOpenAtLoginFromSystem();
 });
 
 // 应用退出前清理资源

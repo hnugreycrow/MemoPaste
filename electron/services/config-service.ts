@@ -5,6 +5,7 @@ interface ConfigSchema {
   theme: 'light' | 'dark';
   shortcut: string;
   minimizeToTray: boolean;
+  openAtLogin: boolean;
   dataRetentionDays: number; // 数据保存天数
   // 可以在这里添加更多配置项
   [key: string]: any; // 允许任意键值对
@@ -31,6 +32,7 @@ export class ConfigService {
         theme: 'dark',
         shortcut: 'Alt+Shift+C',
         minimizeToTray: false,
+        openAtLogin: false,
         dataRetentionDays: 1, // 默认保存1天
         version: '1.0.0'
       },

@@ -20,6 +20,7 @@ const tempKeys = ref<string[]>([]);
 const isRecording = ref(false);
 const shortcutInput = ref<HTMLElement | null>(null);
 const minimizeToTray = ref<boolean>(false);
+const openAtLogin = ref<boolean>(false);
 const dataRetentionDays = ref<number>(1);
 const isLoading = ref<boolean>(false);
 const appVersion = ref("–");
@@ -122,6 +123,7 @@ const onKeyUp = async (_e: KeyboardEvent) => {
 
 onMounted(async () => {
   minimizeToTray.value = await window.config.get<boolean>("minimizeToTray");
+  openAtLogin.value = await window.config.get<boolean>("openAtLogin");
   dataRetentionDays.value = await window.config.get<number>("dataRetentionDays");
 
   try {
@@ -143,6 +145,25 @@ onMounted(async () => {
 
 const handleMinimizeToTrayChange = (value: boolean) => {
   window.config.set("minimizeToTray", value);
+};
+
+const handleOpenAtLoginChange = async (value: boolean) => {
+  const previous = !value;
+  try {
+    const result = await window.app.setOpenAtLogin(value);
+    if (!result?.success) {
+      openAtLogin.value = previous;
+      ElMessage.error(`开机自启设置失败: ${result?.error ?? "未知错误"}`);
+      return;
+    }
+    openAtLogin.value = result.openAtLogin;
+    if (!result.applied) {
+      ElMessage.success("已保存（打包后生效）");
+    }
+  } catch (error) {
+    openAtLogin.value = previous;
+    ElMessage.error(`开机自启设置失败: ${error}`);
+  }
 };
 
 const handleDataRetentionChange = (value: number) => {
@@ -263,6 +284,17 @@ onUnmounted(() => {
             <el-switch
               v-model="minimizeToTray"
               @change="handleMinimizeToTrayChange"
+            />
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-meta">
+              <span class="setting-label">开机自启</span>
+              <span class="setting-desc">电脑开机后自动启动</span>
+            </div>
+            <el-switch
+              v-model="openAtLogin"
+              @change="handleOpenAtLoginChange"
             />
           </div>
 
