@@ -9,7 +9,7 @@ const windowRole = ref<"main" | "panel">("main");
 onMounted(async () => {
   // 同一套渲染代码跑在主窗口与面板窗口，需先分辨角色
   try {
-    const role = await window.ipcRenderer.invoke("window-get-role");
+    const role = await window.windowControls.getRole();
     windowRole.value = role === "panel" ? "panel" : "main";
   } catch {
     windowRole.value = "main";
@@ -26,7 +26,7 @@ onMounted(async () => {
   // 版本更新日志仅在主窗口提示
   if (windowRole.value !== "main") return;
 
-  const currentVersion = await window.ipcRenderer.invoke("app-get-version");
+  const currentVersion = await window.app.getVersion();
   const savedVersion = await window.config.get("version");
 
   if (savedVersion !== currentVersion) {
@@ -43,6 +43,7 @@ onMounted(async () => {
 
 <style>
 @import "./styles/themes.css";
+@import "./styles/type-badges.css";
 
 html,
 body,
@@ -130,5 +131,12 @@ html.is-panel #app {
 
 .el-dropdown-menu__item {
   --el-dropdown-menuItem-hover-fill: var(--bg-hover)
+}
+
+button {
+  &:focus,
+  &:focus-visible {
+    outline: none;
+  }
 }
 </style>

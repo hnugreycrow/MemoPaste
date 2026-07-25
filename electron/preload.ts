@@ -1,4 +1,11 @@
-import { WindowControls, UpdateControls, PanelControls } from '@/utils/type'
+import {
+  WindowControls,
+  UpdateControls,
+  PanelControls,
+  AppAPI,
+  ShortcutAPI,
+  ShellAPI,
+} from '@/utils/type'
 import { ipcRenderer, contextBridge } from 'electron'
 
 // --------- Expose some API to the Renderer process ---------
@@ -34,7 +41,8 @@ contextBridge.exposeInMainWorld('windowControls', {
     const wrappedCallback = (_: any, isMaximized: boolean) => callback(isMaximized);
     ipcRenderer.on('window-maximize-changed', wrappedCallback);
     return () => ipcRenderer.removeListener('window-maximize-changed', wrappedCallback);
-  }
+  },
+  getRole: () => ipcRenderer.invoke('window-get-role'),
 } as WindowControls)
 
 contextBridge.exposeInMainWorld('panel', {
@@ -52,7 +60,6 @@ contextBridge.exposeInMainWorld('panel', {
 
 // 剪切板 API
 contextBridge.exposeInMainWorld('clipboard', {
-  read: () => ipcRenderer.invoke('clipboard-read'),
   write: (text: string) => ipcRenderer.invoke('clipboard-write', text),
   /** 写入剪贴板、隐藏面板并模拟粘贴到当前输入焦点 */
   pasteAndHide: (text: string) => ipcRenderer.invoke('clipboard-paste-and-hide', text),
@@ -65,12 +72,10 @@ contextBridge.exposeInMainWorld('clipboard', {
   },
   saveItem: (item: any) => ipcRenderer.invoke('clipboard-save-item', item),
   deleteItem: (id: number) => ipcRenderer.invoke('clipboard-delete-item', id),
-  deleteBatch: (ids: number[]) => ipcRenderer.invoke('clipboard-delete-batch', ids),
   clearAll: () => ipcRenderer.invoke('clipboard-clear-all'),
   clearExceptFavorites: () => ipcRenderer.invoke('clipboard-clear-except-favorites'),
   getHistory: (page: number, pageSize: number, type: string, keyword: string = '') => ipcRenderer.invoke('clipboard-get-history', page, pageSize, type, keyword),
   setFavorite: (id: number, isFavorite: boolean) => ipcRenderer.invoke('clipboard-set-favorite', id, isFavorite),
-  getFavorites: () => ipcRenderer.invoke('clipboard-get-favorites'),
   getCounts: () => ipcRenderer.invoke('clipboard-get-counts')
 })
 
@@ -80,6 +85,19 @@ contextBridge.exposeInMainWorld('config', {
   set: (key: string, value: any) => ipcRenderer.invoke('config-set', key, value),
   getAll: () => ipcRenderer.invoke('config-get-all'),
 })
+
+contextBridge.exposeInMainWorld('app', {
+  getVersion: () => ipcRenderer.invoke('app-get-version'),
+} as AppAPI)
+
+contextBridge.exposeInMainWorld('shortcut', {
+  get: () => ipcRenderer.invoke('shortcut-get'),
+  update: (newShortcut: string) => ipcRenderer.invoke('shortcut-update', newShortcut),
+} as ShortcutAPI)
+
+contextBridge.exposeInMainWorld('shell', {
+  openExternal: (url: string) => ipcRenderer.invoke('open-external-url', url),
+} as ShellAPI)
 
 // 暴露更新相关API
 contextBridge.exposeInMainWorld('updater', {

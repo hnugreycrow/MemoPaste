@@ -5,6 +5,8 @@ export interface WindowControls {
   close: () => void;
   isMaximized: () => Promise<boolean>;
   onMaximizeChange: (callback: (isMaximized: boolean) => void) => () => void;
+  /** 当前窗口角色：主窗口或快捷面板 */
+  getRole: () => Promise<"main" | "panel">;
 }
 
 /** 剪贴板单项数据 */
@@ -25,13 +27,6 @@ export interface ClipboardHistoryResult {
   pageSize: number;
 }
 
-/** 批量删除结果 */
-export interface DeleteBatchResult {
-  success: boolean;
-  deletedCount: number;
-  failedIds: number[];
-}
-
 /** 按类型统计的剪贴板计数 */
 export interface TypeCounts {
   all: number;
@@ -43,7 +38,6 @@ export interface TypeCounts {
 
 /** 渲染进程暴露的剪贴板 API */
 export interface ClipboardAPI {
-  read: () => Promise<string>;
   write: (text: string) => Promise<boolean>;
   // 监听
   startWatching: () => Promise<void>;
@@ -52,7 +46,6 @@ export interface ClipboardAPI {
   // 数据操作
   saveItem: (item: ClipboardItem) => Promise<number | null>;
   deleteItem: (id: number) => Promise<boolean>;
-  deleteBatch: (idsToDelete: number[]) => Promise<DeleteBatchResult>;
   clearAll: () => Promise<boolean>;
   clearExceptFavorites: () => Promise<number>;
   getHistory: (page: number, pageSize: number, type: string, keyword?: string) => Promise<ClipboardHistoryResult>;
@@ -60,7 +53,6 @@ export interface ClipboardAPI {
   pasteAndHide: (text: string) => Promise<boolean>;
   // 收藏
   setFavorite: (id: number, isFavorite: boolean) => Promise<boolean>;
-  getFavorites: () => Promise<ClipboardItem[]>;
   // 计数
   getCounts: () => Promise<TypeCounts>;
 }
@@ -90,4 +82,27 @@ export interface UpdateControls {
   setAutoUpdate: (enabled: boolean) => Promise<boolean>;
   getAutoUpdate: () => Promise<boolean>;
   onUpdateStatus: (callback: (status: { status: string; data?: any }) => void) => () => void;
+}
+
+/** 应用信息 API */
+export interface AppAPI {
+  getVersion: () => Promise<string>;
+}
+
+/** 快捷键更新结果 */
+export interface ShortcutUpdateResult {
+  success: boolean;
+  error?: string;
+  shortcut: string;
+}
+
+/** 快捷键 API */
+export interface ShortcutAPI {
+  get: () => Promise<string | null>;
+  update: (shortcut: string) => Promise<ShortcutUpdateResult>;
+}
+
+/** 打开外部链接 API */
+export interface ShellAPI {
+  openExternal: (url: string) => Promise<boolean>;
 }

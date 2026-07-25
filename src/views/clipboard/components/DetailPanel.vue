@@ -235,23 +235,6 @@ const closeZoomView = () => {
   padding: 3px 10px;
   border-radius: 6px;
   letter-spacing: 0.02em;
-
-  &.type-text {
-    background: var(--type-text-bg);
-    color: var(--accent-primary);
-  }
-  &.type-url {
-    background: var(--type-url-bg);
-    color: var(--accent-secondary);
-  }
-  &.type-code {
-    background: var(--type-code-bg);
-    color: var(--accent-tertiary);
-  }
-  &.type-image {
-    background: var(--type-image-bg);
-    color: var(--accent-danger);
-  }
 }
 
 .detail-time {

@@ -101,10 +101,7 @@ const onKeyUp = async (_e: KeyboardEvent) => {
   shortcut.value = newShortcut;
 
   try {
-    const result = await window.ipcRenderer.invoke(
-      "shortcut-update",
-      newShortcut,
-    );
+    const result = await window.shortcut.update(newShortcut);
     shortcutInput.value?.blur();
     if (!result?.success) {
       shortcut.value = result?.shortcut || previous;
@@ -123,20 +120,18 @@ const onKeyUp = async (_e: KeyboardEvent) => {
 };
 
 onMounted(async () => {
-  await themeService.initTheme();
-
   minimizeToTray.value = await window.config.get<boolean>("minimizeToTray");
   dataRetentionDays.value = await window.config.get<number>("dataRetentionDays");
 
   try {
-    const version = await window.ipcRenderer.invoke("app-get-version");
+    const version = await window.app.getVersion();
     if (version) appVersion.value = version;
   } catch (error) {
     console.error("获取应用版本失败:", error);
   }
 
   try {
-    const currentShortcut = await window.ipcRenderer.invoke("shortcut-get");
+    const currentShortcut = await window.shortcut.get();
     if (currentShortcut) {
       shortcut.value = currentShortcut;
     }
@@ -185,8 +180,7 @@ const viewChangelog = () => {
 };
 
 const openGithub = () => {
-  window.ipcRenderer.invoke(
-    "open-external-url",
+  window.shell.openExternal(
     "https://github.com/hnugreycrow/MemoPaste",
   );
 };

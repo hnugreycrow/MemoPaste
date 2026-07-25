@@ -14,7 +14,7 @@ let removeUpdateListener: (() => void) | null = null;
 
 onMounted(async () => {
   try {
-    const version = await window.ipcRenderer.invoke('app-get-version');
+    const version = await window.app.getVersion();
     if (version) currentVersion.value = version;
   } catch (error) {
     console.error('获取应用版本失败:', error);

@@ -55,11 +55,8 @@ const setTheme = (theme: ThemeType): void => {
   window.ipcRenderer.send('theme-changed', theme);
 };
 
-// 应用主题到DOM
+// 应用主题到 DOM（:root.dark / :root.light）
 const applyTheme = (theme: ThemeType): void => {
-  document.documentElement.setAttribute('data-theme', theme);
-  
-  // 为body添加对应的主题类
   document.documentElement.classList.remove('dark', 'light');
   document.documentElement.classList.add(theme);
 };

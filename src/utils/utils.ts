@@ -169,14 +169,15 @@ export const formatTime = (timestamp: Date) => {
  * @param type 类型
  * @returns 类型标签
  */
+export const TYPE_LABELS: Record<string, string> = {
+  text: "文本",
+  url: "链接",
+  code: "代码",
+  image: "图片",
+};
+
 export const getTypeLabel = (type: string) => {
-  const labels: Record<string, string> = {
-    text: "文本",
-    url: "链接",
-    code: "代码",
-    image: "图片",
-  };
-  return labels[type] || "文件";
+  return TYPE_LABELS[type] || "文本";
 };
 
 /**

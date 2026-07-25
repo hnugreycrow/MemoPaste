@@ -3,10 +3,9 @@ import { ref, onMounted, onUnmounted, watch, onActivated } from "vue";
 import DetailPanel from "./components/DetailPanel.vue";
 import FilterChips from "./components/FilterChips.vue";
 import { ClipboardItem } from "@/utils/type";
-import { truncateText, formatRelativeTime } from "@/utils/utils";
+import { truncateText, formatRelativeTime, getTypeLabel } from "@/utils/utils";
 import { useSearch } from "./composables/useSearch";
 import { useVirtualScroll } from "./composables/useVirtualScroll";
-import { useSelection } from "./composables/useSelection";
 import { useClipboardStore } from "@/stores/clipboardStore";
 import { storeToRefs } from "pinia";
 
@@ -22,21 +21,11 @@ const { clipboardData, isLoadingMore, activeFilter, totalItems, currentPage } =
 // 搜索功能（输入下推到 store，由后端 SQL LIKE 处理）
 const { searchQuery } = useSearch();
 
-// 选择功能
-const { selectedIds } = useSelection(() => clipboardData.value);
-
 // 虚拟滚动
 const { contentListRef, virtualScroll, visibleItems, handleScroll } =
   useVirtualScroll(() => clipboardData.value);
 
 const selectedItem = ref<ClipboardItem | null>(null);
-
-const typeLabel: Record<string, string> = {
-  text: "文本",
-  url: "链接",
-  code: "代码",
-  image: "图片",
-};
 
 /** 列表有数据且无有效选中时，默认选中首条 */
 const ensureSelection = () => {
@@ -238,12 +227,11 @@ onActivated(() => {
                 :class="{
                   active: selectedItem?.id === item.id,
                   favorite: item.is_favorite,
-                  selected: selectedIds.has(item.id),
                 }"
                 @click="selectItem(item)"
               >
                 <div class="item-type-badge" :class="`type-${item.type}`">
-                  {{ typeLabel[item.type] ?? "文本" }}
+                  {{ getTypeLabel(item.type) }}
                 </div>
                 <div class="item-content">
                   <div class="item-title">
@@ -422,12 +410,6 @@ onActivated(() => {
     background-origin: border-box;
     background-clip: padding-box, border-box;
   }
-
-  /* 选中状态样式 */
-  &.selected {
-    background: var(--bg-active);
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
-  }
 }
 
 .item-type-badge {
@@ -437,23 +419,6 @@ onActivated(() => {
   padding: 3px 8px;
   border-radius: 6px;
   letter-spacing: 0.02em;
-
-  &.type-text {
-    background: var(--type-text-bg);
-    color: var(--accent-primary);
-  }
-  &.type-url {
-    background: var(--type-url-bg);
-    color: var(--accent-secondary);
-  }
-  &.type-code {
-    background: var(--type-code-bg);
-    color: var(--accent-tertiary);
-  }
-  &.type-image {
-    background: var(--type-image-bg);
-    color: var(--accent-danger);
-  }
 }
 
 .item-content {

@@ -3,12 +3,10 @@ import { createRequire } from "node:module";
 import {
   saveClipboardItem,
   deleteClipboardItem,
-  deleteBatchClipboardItems,
   clearClipboardHistory,
   clearClipboardExceptFavorites,
   getClipboardHistory,
   setFavoriteStatus,
-  getFavoriteClipboardItems,
   getClipboardCounts,
 } from "../database/clipboard";
 import { simulatePaste } from "../utils/simulate-paste";
@@ -44,10 +42,6 @@ export class ClipboardService {
   }
 
   private registerIpcHandlers(): void {
-    ipcMain.handle("clipboard-read", () => {
-      return clipboard.readText();
-    });
-
     ipcMain.handle("clipboard-write", (_, text) => {
       clipboard.writeText(text);
       // 同步 lastContent，防止应用自身写入再次触发「新记录」
@@ -97,10 +91,6 @@ export class ClipboardService {
       return deleteClipboardItem(id);
     });
 
-    ipcMain.handle("clipboard-delete-batch", (_, ids) => {
-      return deleteBatchClipboardItems(ids);
-    });
-
     ipcMain.handle("clipboard-clear-all", () => {
       return clearClipboardHistory();
     });
@@ -118,10 +108,6 @@ export class ClipboardService {
 
     ipcMain.handle("clipboard-set-favorite", (_, id, isFavorite) => {
       return setFavoriteStatus(id, isFavorite);
-    });
-
-    ipcMain.handle("clipboard-get-favorites", () => {
-      return getFavoriteClipboardItems();
     });
 
     ipcMain.handle("clipboard-get-counts", () => {

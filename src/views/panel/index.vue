@@ -8,8 +8,7 @@ import { ref, onMounted, onUnmounted, computed, nextTick } from "vue";
 import { storeToRefs } from "pinia";
 import { useClipboardStore } from "@/stores/clipboardStore";
 import type { ClipboardItem } from "@/utils/type";
-import { truncateText, formatRelativeTime } from "@/utils/utils";
-import { themeService } from "@/utils/theme";
+import { truncateText, formatRelativeTime, getTypeLabel } from "@/utils/utils";
 
 defineOptions({
   name: "Panel",
@@ -18,13 +17,6 @@ defineOptions({
 const clipboardStore = useClipboardStore();
 const { clipboardData, isLoadingMore, activeFilter, totalItems } =
   storeToRefs(clipboardStore);
-
-const typeLabel: Record<string, string> = {
-  text: "文本",
-  url: "链接",
-  code: "代码",
-  image: "图片",
-};
 
 const focusedIndex = ref(0);
 const listRef = ref<HTMLElement | null>(null);
@@ -103,11 +95,9 @@ const onScroll = () => {
 };
 
 onMounted(async () => {
-  await themeService.initTheme();
   await refreshList();
 
   removeShownListener = window.panel.onShown(() => {
-    themeService.initTheme();
     refreshList();
   });
 
@@ -234,7 +224,7 @@ onUnmounted(() => {
               <i-ep-Picture v-else-if="item.type === 'image'" />
               <i-ep-Document v-else />
             </el-icon>
-            {{ typeLabel[item.type] ?? "文本" }}
+            {{ getTypeLabel(item.type) }}
           </span>
           <span class="card-time">{{ formatRelativeTime(item.timestamp) }}</span>
         </div>
@@ -512,24 +502,6 @@ onUnmounted(() => {
   font-weight: 600;
   padding: 2px 7px 2px 5px;
   border-radius: 5px;
-  color: var(--text-secondary);
-
-  &.type-text {
-    background: var(--type-text-bg);
-    color: var(--accent-primary);
-  }
-  &.type-url {
-    background: var(--type-url-bg);
-    color: var(--accent-secondary);
-  }
-  &.type-code {
-    background: var(--type-code-bg);
-    color: var(--accent-tertiary);
-  }
-  &.type-image {
-    background: var(--type-image-bg);
-    color: var(--accent-danger);
-  }
 }
 
 .type-icon {

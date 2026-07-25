@@ -113,28 +113,28 @@ export const useClipboardStore = defineStore('clipboard', {
     },
 
     // 删除项目
-    deleteItem(itemOrId: ClipboardItem | number, event?: Event) {
+    async deleteItem(itemOrId: ClipboardItem | number, event?: Event) {
       event?.stopPropagation();
       const id = typeof itemOrId === 'number' ? itemOrId : itemOrId.id;
 
-      // 本地删除
-      const index = this.clipboardData.findIndex(item => item.id === id);
-      if (index !== -1) {
-        this.clipboardData.splice(index, 1);
-        this.totalItems -= 1;
-        ElMessage({ message: '删除成功', type: 'success' });
-      }
-
-      // 数据库删除
-      window.clipboard.deleteItem(id)
-        .then(() => {
-          this.refreshCounts();
-        })
-        .catch((error) => {
-          console.error('删除出错:', error);
+      try {
+        const success = await window.clipboard.deleteItem(id);
+        if (!success) {
           ElMessage({ message: '删除失败，请重试', type: 'error' });
-          this.loadClipboardHistory(); // 不一致时刷新
-        });
+          return;
+        }
+
+        const index = this.clipboardData.findIndex(item => item.id === id);
+        if (index !== -1) {
+          this.clipboardData.splice(index, 1);
+          this.totalItems -= 1;
+        }
+        ElMessage({ message: '删除成功', type: 'success' });
+        this.refreshCounts();
+      } catch (error) {
+        console.error('删除出错:', error);
+        ElMessage({ message: '删除失败，请重试', type: 'error' });
+      }
     },
 
     // 清空所有记录（包括收藏）

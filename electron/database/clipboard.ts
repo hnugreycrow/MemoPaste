@@ -124,60 +124,6 @@ export function deleteClipboardItem(id: string) {
 }
 
 /**
- * 批量删除剪贴板项目
- * @param ids 项目ID数组
- * @returns 删除结果对象，包含成功数量和失败的ID列表
- */
-export function deleteBatchClipboardItems(ids: string[]) {
-  if (!ids || ids.length === 0) {
-    return { success: true, deletedCount: 0, failedIds: [] };
-  }
-
-  try {
-    // 使用事务确保批量操作的原子性
-    const transaction = db.transaction((itemIds: string[]) => {
-      const deleteQuery = db.prepare(
-        "DELETE FROM clipboard_items WHERE id = ?"
-      );
-      const results = [];
-
-      for (const id of itemIds) {
-        try {
-          const result = deleteQuery.run(id);
-          results.push({ id, success: result.changes > 0 });
-        } catch (error) {
-          console.error(`Failed to delete clipboard item ${id}:`, error);
-          results.push({ id, success: false });
-        }
-      }
-
-      return results;
-    });
-
-    const results = transaction(ids);
-    const failedIds = results
-      .filter((r: { success: any }) => !r.success)
-      .map((r: { id: any }) => r.id);
-    const deletedCount = results.filter(
-      (r: { success: any }) => r.success
-    ).length;
-
-    return {
-      success: failedIds.length === 0,
-      deletedCount,
-      failedIds,
-    };
-  } catch (error) {
-    console.error("Failed to batch delete clipboard items:", error);
-    return {
-      success: false,
-      deletedCount: 0,
-      failedIds: ids,
-    };
-  }
-}
-
-/**
  * 清空剪贴板历史并重置ID
  * @returns 是否清空成功
  */
@@ -285,23 +231,6 @@ export function clearExpiredClipboardItems(retentionDays: number) {
 }
 
 /**
- * 获取剪贴板历史总数
- * @returns 剪贴板历史总数
- */
-export function getClipboardHistoryCount() {
-  try {
-    const countQuery = `
-      SELECT COUNT(*) as total FROM clipboard_items
-    `;
-    const result = db.prepare(countQuery).get();
-    return result.total;
-  } catch (error) {
-    console.error("Failed to get clipboard history count:", error);
-    return 0;
-  }
-}
-
-/**
  * 转义 LIKE 通配符，避免用户输入中的 % _ \ 被当成模式字符
  */
 function escapeLike(s: string): string {
@@ -369,7 +298,12 @@ export function getClipboardHistory(
     };
   } catch (error) {
     console.error("Failed to get clipboard history:", error);
-    return [];
+    return {
+      items: [],
+      total: 0,
+      page,
+      pageSize,
+    };
   }
 }
 
@@ -389,23 +323,6 @@ export function setFavoriteStatus(id: string, isFavorite: boolean) {
   } catch (error) {
     console.error("Failed to update favorite status:", error);
     return false;
-  }
-}
-
-/**
- * 获取收藏的剪贴板项目
- * @returns 收藏的剪贴板项目列表
- */
-export function getFavoriteClipboardItems() {
-  try {
-    const selectQuery = `
-      SELECT * FROM clipboard_items WHERE is_favorite = 1 ORDER BY id DESC
-    `;
-    const rows = db.prepare(selectQuery).all();
-    return rows;
-  } catch (error) {
-    console.error("Failed to get favorite clipboard items:", error);
-    return [];
   }
 }
 
