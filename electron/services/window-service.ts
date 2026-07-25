@@ -19,8 +19,8 @@ export class WindowService {
   private readonly devServerUrl: string | undefined;
   private configService: ConfigService;
   private blurHideTimer: NodeJS.Timeout | null = null;
-  /** 面板显示期间临时注册的 Esc 全局快捷键 */
-  private escapeRegistered = false;
+  /** 面板显示期间临时注册的导航快捷键（Esc/↑↓/Enter） */
+  private panelShortcutsRegistered = false;
 
   constructor(
     preloadPath: string,
@@ -162,7 +162,7 @@ export class WindowService {
       this.win = null;
       if (!appIsQuitting) {
         appIsQuitting = true;
-        this.unregisterPanelEscape();
+        this.unregisterPanelShortcuts();
         if (this.panelWin && !this.panelWin.isDestroyed()) {
           this.panelWin.destroy();
         }
@@ -211,19 +211,51 @@ export class WindowService {
     return this.panelWin;
   }
 
-  /** 面板打开时注册 Esc 关闭（面板自身收不到键盘焦点） */
-  private registerPanelEscape(): void {
-    if (this.escapeRegistered) return;
-    const ok = globalShortcut.register("Escape", () => {
-      this.hidePanel();
-    });
-    this.escapeRegistered = !!ok;
+  /** 向面板发送导航指令（面板 focusable:false，需全局快捷键转发） */
+  private sendPanelNav(action: "up" | "down" | "enter"): void {
+    if (!this.panelWin || this.panelWin.isDestroyed() || !this.panelWin.isVisible()) {
+      return;
+    }
+    this.panelWin.webContents.send("panel-nav", action);
   }
 
-  private unregisterPanelEscape(): void {
-    if (!this.escapeRegistered) return;
-    globalShortcut.unregister("Escape");
-    this.escapeRegistered = false;
+  /** 面板打开时注册 Esc / ↑↓ / Enter（面板自身收不到键盘焦点） */
+  private registerPanelShortcuts(): void {
+    if (this.panelShortcutsRegistered) return;
+
+    const bindings: Array<{ accelerator: string; handler: () => void }> = [
+      { accelerator: "Escape", handler: () => this.hidePanel() },
+      { accelerator: "Up", handler: () => this.sendPanelNav("up") },
+      { accelerator: "Down", handler: () => this.sendPanelNav("down") },
+      { accelerator: "Return", handler: () => this.sendPanelNav("enter") },
+    ];
+
+    let anyOk = false;
+    for (const { accelerator, handler } of bindings) {
+      try {
+        const ok = globalShortcut.register(accelerator, handler);
+        if (!ok) {
+          console.warn(`Failed to register panel shortcut: ${accelerator}`);
+        } else {
+          anyOk = true;
+        }
+      } catch (error) {
+        console.warn(`Error registering panel shortcut ${accelerator}:`, error);
+      }
+    }
+    this.panelShortcutsRegistered = anyOk;
+  }
+
+  private unregisterPanelShortcuts(): void {
+    if (!this.panelShortcutsRegistered) return;
+    for (const accelerator of ["Escape", "Up", "Down", "Return"]) {
+      try {
+        globalShortcut.unregister(accelerator);
+      } catch {
+        // ignore
+      }
+    }
+    this.panelShortcutsRegistered = false;
   }
 
   private registerIpcHandlers(): void {
@@ -343,7 +375,7 @@ export class WindowService {
     this.positionPanelNearCursor();
     this.panelWin.setAlwaysOnTop(true, "pop-up-menu");
     this.panelWin.showInactive();
-    this.registerPanelEscape();
+    this.registerPanelShortcuts();
     this.panelWin.webContents.send("panel-shown");
   }
 
@@ -352,7 +384,7 @@ export class WindowService {
       clearTimeout(this.blurHideTimer);
       this.blurHideTimer = null;
     }
-    this.unregisterPanelEscape();
+    this.unregisterPanelShortcuts();
     if (this.panelWin && !this.panelWin.isDestroyed() && this.panelWin.isVisible()) {
       this.panelWin.hide();
     }
@@ -378,7 +410,7 @@ export class WindowService {
       clearTimeout(this.blurHideTimer);
       this.blurHideTimer = null;
     }
-    this.unregisterPanelEscape();
+    this.unregisterPanelShortcuts();
     if (this.panelWin && !this.panelWin.isDestroyed()) {
       this.panelWin.removeAllListeners("close");
       this.panelWin.destroy();

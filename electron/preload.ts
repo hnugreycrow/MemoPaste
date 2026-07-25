@@ -55,7 +55,14 @@ contextBridge.exposeInMainWorld('panel', {
     const wrappedCallback = () => callback();
     ipcRenderer.on('panel-shown', wrappedCallback);
     return () => ipcRenderer.removeListener('panel-shown', wrappedCallback);
-  }
+  },
+  /** 主进程全局快捷键转发的 ↑↓/Enter */
+  onNav: (callback: (action: 'up' | 'down' | 'enter') => void) => {
+    const wrappedCallback = (_: unknown, action: 'up' | 'down' | 'enter') =>
+      callback(action);
+    ipcRenderer.on('panel-nav', wrappedCallback);
+    return () => ipcRenderer.removeListener('panel-nav', wrappedCallback);
+  },
 } as PanelControls)
 
 // 剪切板 API

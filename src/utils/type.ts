@@ -64,6 +64,9 @@ export interface ConfigAPI {
   getAll: () => Promise<any>;
 }
 
+/** 快捷面板键盘导航动作 */
+export type PanelNavAction = "up" | "down" | "enter";
+
 /** 渲染进程暴露的快捷面板 API */
 export interface PanelControls {
   /** 隐藏快捷面板 */
@@ -72,6 +75,8 @@ export interface PanelControls {
   openMain: () => void;
   /** 监听面板显示事件，返回取消监听函数 */
   onShown: (callback: () => void) => () => void;
+  /** 监听主进程转发的键盘导航（面板不抢焦点，由全局快捷键转发） */
+  onNav: (callback: (action: PanelNavAction) => void) => () => void;
 }
 
 /** 渲染进程暴露的自动更新 API */

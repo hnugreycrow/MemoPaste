@@ -7,7 +7,7 @@
 import { ref, onMounted, onUnmounted, computed, nextTick } from "vue";
 import { storeToRefs } from "pinia";
 import { useClipboardStore } from "@/stores/clipboardStore";
-import type { ClipboardItem } from "@/utils/type";
+import type { ClipboardItem, PanelNavAction } from "@/utils/type";
 import { truncateText, formatRelativeTime, getTypeLabel } from "@/utils/utils";
 import { APP_ICON_URL } from "@/constants/assets";
 
@@ -23,6 +23,7 @@ const focusedIndex = ref(0);
 const listRef = ref<HTMLElement | null>(null);
 let removeShownListener: (() => void) | null = null;
 let removeClipboardListener: (() => void) | null = null;
+let removeNavListener: (() => void) | null = null;
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 const hasItems = computed(() => clipboardData.value.length > 0);
@@ -33,6 +34,14 @@ const resetScrollToTop = async () => {
   if (listRef.value) {
     listRef.value.scrollTop = 0;
   }
+};
+
+const scrollFocusedIntoView = async () => {
+  await nextTick();
+  const el = listRef.value?.querySelector(
+    `.clip-card[data-index="${focusedIndex.value}"]`,
+  ) as HTMLElement | null;
+  el?.scrollIntoView({ block: "nearest" });
 };
 
 const refreshList = async () => {
@@ -57,6 +66,24 @@ const pasteItem = async (item: ClipboardItem) => {
   } catch (error) {
     console.error("粘贴失败:", error);
   }
+};
+
+const handlePanelNav = (action: PanelNavAction) => {
+  const len = clipboardData.value.length;
+  if (action === "enter") {
+    if (len === 0) return;
+    const item = clipboardData.value[focusedIndex.value];
+    if (item) void pasteItem(item);
+    return;
+  }
+
+  if (len === 0) return;
+  if (action === "up") {
+    focusedIndex.value = Math.max(0, focusedIndex.value - 1);
+  } else if (action === "down") {
+    focusedIndex.value = Math.min(len - 1, focusedIndex.value + 1);
+  }
+  void scrollFocusedIntoView();
 };
 
 const toggleFavorite = async (item: ClipboardItem, event: Event) => {
@@ -94,6 +121,8 @@ onMounted(async () => {
     refreshList();
   });
 
+  removeNavListener = window.panel.onNav(handlePanelNav);
+
   removeClipboardListener = window.clipboard.onChanged(() => {
     if (refreshTimer) clearTimeout(refreshTimer);
     refreshTimer = setTimeout(() => {
@@ -105,6 +134,7 @@ onMounted(async () => {
 onUnmounted(() => {
   removeShownListener?.();
   removeClipboardListener?.();
+  removeNavListener?.();
   if (refreshTimer) clearTimeout(refreshTimer);
 });
 </script>
@@ -190,9 +220,11 @@ onUnmounted(() => {
     </div>
 
     <footer class="panel-footer">
-      <span class="footer-hint">点击粘贴</span>
+      <span class="footer-hint">↑↓ 选择</span>
       <span class="footer-sep">·</span>
-      <span class="footer-hint">Esc / 快捷键关闭</span>
+      <span class="footer-hint">Enter 粘贴</span>
+      <span class="footer-sep">·</span>
+      <span class="footer-hint">Esc 关闭</span>
     </footer>
   </div>
 </template>
@@ -357,10 +389,6 @@ onUnmounted(() => {
   background: var(--bg-tertiary);
   color: var(--text-primary);
   cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease,
-    transform 0.15s ease;
 
   &:hover,
   &.focused {
