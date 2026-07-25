@@ -1,0 +1,69 @@
+:root.light {
+  /* ===== 浅色主题 ===== */
+  /* Element Plus 官方变量 */
+  --el-color-primary-rgb: 37, 99, 235;
+  --el-color-primary: #2563eb;
+
+  --el-bg-color: #f8fafc;
+  --el-bg-color-overlay: #ffffff;
+  --el-bg-color-page: #f8fafc;
+
+  --el-text-color-primary: #0f172a;
+  --el-text-color-regular: #475569;
+  --el-text-color-secondary: #94a3b8;
+
+  --el-border-color: #e2e8f0;
+  --el-border-color-light: #f1f5f9;
+  --el-border-color-lighter: #f8fafc;
+
+  --el-fill-color: #f1f5f9;
+  --el-fill-color-light: #f8fafc;
+  --el-fill-color-blank: #ffffff;
+
+  --el-mask-color: rgba(15, 23, 42, 0.5);
+  --el-mask-color-extra-light: rgba(15, 23, 42, 0.05);
+
+  /* 自定义语义化背景变量 */
+  --bg-primary:   #f4f4f4;
+  --bg-secondary: #fafafa;
+  --bg-tertiary:  #ffffff;
+  --bg-hover:     #eef2ff;
+  --bg-active:    #eaefff;
+
+  --list-bg: #f9f9f9;
+  --detail-bg: #f7f7f7;
+  --setting-card-bg: #f9f9f9;
+
+  /* 文本颜色 */
+  --text-primary:   #111111;
+  --text-secondary: #555555;
+  --text-tertiary:  #999999;
+  --text-inverse:   #ffffff;
+
+  /* 边框颜色 */
+  --border-light:  #e5e5e5;
+  --border-medium: #d4d4d4;
+
+  /* 强调色 - 现代饱和色系 */
+  --accent-primary:       #2563eb;
+  --accent-primary-hover: #1d4ed8;
+  --accent-secondary:     #16a34a;
+  --accent-danger:        #dc2626;
+  --accent-tertiary:      #7c3aed;
+  --accent-quaternary:    #d97706;
+
+  /* 渐变色边框变量 - 浅色主题 */
+  --gradient-active-start: #2563eb;
+  --gradient-active-end: #60a5fa;
+
+  /* 收藏项目颜色 */
+  --favorite-bg:   rgba(217,119,6,.07);
+  --favorite-border: #d97706;
+
+  /* 剪贴板项目类型背景色 - 更柔和的低饱和度 */
+  --type-text-bg:  rgba(37,99,235,.08);
+  --type-url-bg:   rgba(22,163,74,.08);
+  --type-code-bg:  rgba(124,58,237,.08);
+  --type-image-bg: rgba(220,38,38,.08);
+  --type-favorite-bg: rgba(217, 119, 6, 0.10);
+}

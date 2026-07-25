@@ -1,0 +1,69 @@
+:root.dark {
+  /* ===== 深色主题（默认） ===== */
+  /* Element Plus 官方变量，覆盖即可 */
+  --el-color-primary-rgb: 64, 158, 255;
+  --el-color-primary: #0084ff;
+
+  --el-bg-color: #181818; /* 主背景（页面/整体）*/
+  --el-bg-color-overlay: #1e1e1e; /* 弹窗、抽屉、浮层背景 */
+  --el-bg-color-page: #181818; /* <body> 背景 */
+
+  --el-text-color-primary: #e6e6e6; /* 主文本 */
+  --el-text-color-regular: #b3b3b3; /* 普通文本 */
+  --el-text-color-secondary: #777777; /* 次文本/提示 */
+
+  --el-border-color: #2c2c2c;
+  --el-border-color-light: #333333;
+  --el-border-color-lighter: #3c3c3c;
+
+  --el-fill-color: #252525; /* 表单填充、列表项 hover */
+  --el-fill-color-light: #2a2a2a;
+  --el-fill-color-blank: #181818; /* 卡片、空白区域 */
+
+  --el-mask-color: rgba(0, 0, 0, 0.8); /* 遮罩层 */
+  --el-mask-color-extra-light: rgba(0, 0, 0, 0.3);
+
+  /* 自定义语义化背景变量（层级由高到低） */
+  --bg-primary:   #171717;  /* 页面底色 */
+  --bg-secondary: #1a1a1a;  /* 侧边栏、导航 */
+  --bg-tertiary:  #1f1f1f;  /* 代码块、输入框 */
+  --bg-hover:     #232323;
+  --bg-active:    #282828;
+
+  --list-bg: #191919;
+  --detail-bg: #171717;
+  --setting-card-bg: #1d1d1d;
+
+  /* 文本颜色（按重要程度） */
+  --text-primary:   rgba(255, 255, 255, 0.92);  /* 统一用 alpha，0.92 略微柔化纯白刺眼感 */
+  --text-secondary: rgba(255, 255, 255, 0.72);  /* 改成同源 alpha，约等于 #a3a3a3，但能跟着背景色调微调 */
+  --text-tertiary:  rgba(255, 255, 255, 0.62);  /* 约等于 #6e6e6e，提示文字，弱化但仍可读 */
+  --text-inverse:   #ffffff;
+
+  /* 边框颜色 */
+  --border-light:  #2a2a2a;
+  --border-medium: #383838;
+
+  /* 强调色（主题无关，两个主题保持一致） */
+  --accent-primary:       #0ea5e9; /* 天际蓝 */
+  --accent-primary-hover: #0284c7;
+  --accent-secondary:     #22c55e; /* 翡翠绿 */
+  --accent-danger:        #f43f5e; /* 玫瑰红 */
+  --accent-tertiary:      #a855f7; /* 极光紫 */
+  --accent-quaternary:    #f59e0b; /* 琥珀金 */
+
+  /* 渐变色边框变量 - 深色主题 */
+  --gradient-active-start: var(--accent-tertiary);
+  --gradient-active-end: var(--accent-primary);
+
+  /* 收藏项目颜色 */
+  --favorite-bg:   rgba(245,158,11,.07);
+  --favorite-border: #f59e0b;
+
+  /* 剪贴板项目类型背景色 */
+  --type-text-bg:     rgba(59,130,246,.12);
+  --type-url-bg:      rgba(34,197,94,.12);
+  --type-code-bg:     rgba(139,92,246,.12);
+  --type-image-bg:    rgba(239,68,68,.12);
+  --type-favorite-bg: rgba(245,158,11,.12);
+}
