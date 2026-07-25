@@ -13,8 +13,3 @@
   background: var(--type-code-bg);
   color: var(--type-code-fg, var(--accent-tertiary));
 }
-
-.type-image {
-  background: var(--type-image-bg);
-  color: var(--type-image-fg, var(--accent-danger));
-}

@@ -221,7 +221,6 @@ onUnmounted(() => {
               <i-ep-Document v-if="item.type === 'text'" />
               <i-ep-Link v-else-if="item.type === 'url'" />
               <i-ep-Cpu v-else-if="item.type === 'code'" />
-              <i-ep-Picture v-else-if="item.type === 'image'" />
               <i-ep-Document v-else />
             </el-icon>
             {{ getTypeLabel(item.type) }}

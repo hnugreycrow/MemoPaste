@@ -1,135 +1,59 @@
-// 获取内容的类型
-// 预编译正则表达式以提高性能
-const URL_REGEX_STRONG =
-  /^(https?:\/\/|www\.)[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}(:[0-9]{1,5})?(\/.*)?(\?.*)?$/i;
-const URL_REGEX_WEAK = /\b(https?:\/\/|www\.)([\w\-\.]+)\.[a-z]{2,}[^\s]*\b/i;
-const EMAIL_REGEX = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/;
-const CODE_KEYWORDS =
-  /\b(function|class|const|let|var|import|export|return|if|for|while|switch|case|break|continue|try|catch|throw|async|await|new|this|extends|implements|interface|private|public|protected|static|typeof|instanceof|null|undefined|true|false|console|document|window|module|require|from|as|of|in|do|else|finally|get|set|super|yield)\b/g;
-const CODE_SYNTAX = /[{\[\(][^{}\[\]\(\)]*[}\]\)]/;
-const CODE_OPERATORS =
-  /(=>|\+=|-=|\*=|\/=|%=|\*\*=|&&=|\|\|=|\?\?=|&&|\|\||===|!==|==|!=|>=|<=|\+\+|--|\*\*|<<|>>|>>>|\?\.|\.\.\.\?|\?:|\?\?)/g;
+export type ContentType = "text" | "url" | "code";
+
+/** 整段内容是 URL（不含弱匹配 / 邮箱） */
+const URL_WHOLE =
+  /^(https?:\/\/|www\.)[a-z0-9]+([\-.]{1}[a-z0-9]+)*\.[a-z]{2,}(:[0-9]{1,5})?(\/[^\s]*)?(\?[^\s]*)?$/i;
+
+/** 完整 HTML/XML 片段 */
 const HTML_COMPLETE = /^\s*<[\w\-]+[^>]*>[\s\S]*<\/[\w\-]+>\s*$/;
-const HTML_PARTIAL = /<[\w\-]+[^>]*>|<\/[\w\-]+>/;
-const INDENT_PATTERN = /^(\s+)\S/;
-const SENTENCE_PATTERN = /[.!?]+\s/;
+
+/** 行首常见代码语句 */
+const CODE_LINE_START =
+  /^\s*(import\b|export\b|function\b|const\b|let\b|var\b|class\b|def\b|async\b|#include\b|package\b|using\b|fn\b|pub\b)/m;
+
+/** 典型代码运算符 */
+const CODE_OPERATORS = /=>|===|!==|\?\?|\?\.|\+\+|--/;
+
+const JSON_PARSE_MAX = 10_000;
+
+function isJsonObjectOrArray(content: string): boolean {
+  if (content.length > JSON_PARSE_MAX) return false;
+  if (!(content.startsWith("{") || content.startsWith("["))) return false;
+  try {
+    const parsed = JSON.parse(content);
+    return parsed !== null && typeof parsed === "object";
+  } catch {
+    return false;
+  }
+}
+
+/** 多行且结构像代码 */
+function looksLikeCode(content: string): boolean {
+  const lines = content.split("\n");
+  if (lines.length < 2) return false;
+  if (CODE_LINE_START.test(content)) return true;
+  const hasBraces = content.includes("{") && content.includes("}");
+  const hasOperator = CODE_OPERATORS.test(content) || /;\s*$/m.test(content);
+  return hasBraces && hasOperator;
+}
 
 /**
- * 推断剪贴板内容的类型
- * @param {string} content - 剪贴板文本
- * @returns {"text" | "url" | "code"} 返回最可能的类型
+ * 推断剪贴板内容的类型（优先级：url → code → text）
  * @example
- * getContentType("const a = 1") // => "code"
+ * getContentType("https://a.com") // => "url"
+ * getContentType('{"a":1}') // => "code"
  */
-export const getContentType = (content: string) => {
+export const getContentType = (content: string): ContentType => {
+  const text = content.trim();
+  if (text.length < 2) return "text";
 
-  // 对于非常短的内容，快速判断为文本
-  if (content.length < 5) {
-    return "text";
-  }
+  if (URL_WHOLE.test(text)) return "url";
 
-  // 高精度内容类型检测
-  let type = "text";
+  if (isJsonObjectOrArray(text)) return "code";
+  if (HTML_COMPLETE.test(text)) return "code";
+  if (looksLikeCode(text)) return "code";
 
-  // 创建一个评分系统来确定内容类型
-  const typeScores = {
-    url: 0,
-    code: 0,
-    text: 0,
-  };
-
-  // URL检测 - 使用更精确的URL正则表达式
-  if (URL_REGEX_STRONG.test(content)) {
-    typeScores.url += 10; // 强匹配
-  } else if (URL_REGEX_WEAK.test(content)) {
-    typeScores.url += 5; // 弱匹配
-  }
-
-  // 电子邮件检测
-  if (EMAIL_REGEX.test(content)) {
-    typeScores.url += 3; // 电子邮件也归类为URL
-  }
-
-  // 代码检测 - 多层次检测
-  // 1. 编程语言关键字检测
-  const keywordMatches = content.match(CODE_KEYWORDS) || [];
-  if (keywordMatches.length > 0) {
-    // 根据关键字数量增加分数
-    typeScores.code += Math.min(keywordMatches.length, 5);
-  }
-
-  // 2. 代码语法模式检测
-  if (CODE_SYNTAX.test(content)) {
-    typeScores.code += 2;
-  }
-
-  // 3. 操作符检测
-  const operatorMatches = content.match(CODE_OPERATORS) || [];
-  typeScores.code += Math.min(operatorMatches.length, 3);
-
-  // 4. HTML/XML检测
-  if (HTML_COMPLETE.test(content)) {
-    typeScores.code += 5; // 完整的HTML/XML结构
-  } else if (HTML_PARTIAL.test(content)) {
-    typeScores.code += 3; // HTML/XML标签片段
-  }
-
-  // 5. JSON检测 - 对于长内容，跳过此检测以提高性能
-  if (
-    content.length < 10000 &&
-    (content.startsWith("{") || content.startsWith("["))
-  ) {
-    try {
-      const parsed = JSON.parse(content);
-      if (parsed && typeof parsed === "object") {
-        typeScores.code += 5;
-      }
-    } catch (e) {
-      // 不是有效的JSON，不加分
-    }
-  }
-
-  // 6. 缩进模式检测 (代码通常有一致的缩进)
-  // 对于长内容，采样检测以提高性能
-  const lines = content.split("\n");
-  if (lines.length > 2) {
-    // 对于非常长的内容，只检查前50行
-    const linesToCheck = lines.length > 50 ? lines.slice(0, 50) : lines;
-    let indentedLines = 0;
-
-    for (const line of linesToCheck) {
-      if (INDENT_PATTERN.test(line)) {
-        indentedLines++;
-      }
-    }
-
-    if (indentedLines / linesToCheck.length > 0.3) {
-      // 如果30%以上的行有缩进
-      typeScores.code += 2;
-    }
-  }
-
-  // 普通文本特征检测
-  // 对于长内容，只检查前200个字符
-  const textToCheck =
-    content.length > 200 ? content.substring(0, 200) : content;
-  const sentences = textToCheck
-    .split(SENTENCE_PATTERN)
-    .filter((s) => s.length > 0);
-  if (sentences.length > 2) {
-    typeScores.text += sentences.length > 5 ? 3 : 1;
-  }
-
-  // 根据评分确定最终类型
-  if (typeScores.url >= 5 && typeScores.url > typeScores.code) {
-    type = "url";
-  } else if (typeScores.code >= 3 && typeScores.code > typeScores.url) {
-    type = "code";
-  } else {
-    type = "text"; // 默认为文本
-  }
-
-  return type;
+  return "text";
 };
 
 /**
@@ -173,7 +97,6 @@ export const TYPE_LABELS: Record<string, string> = {
   text: "文本",
   url: "链接",
   code: "代码",
-  image: "图片",
 };
 
 export const getTypeLabel = (type: string) => {
