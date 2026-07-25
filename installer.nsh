@@ -7,15 +7,6 @@ Var ShortcutCheckboxHwnd
 Var CreateDesktopShortcut
 Var DescLabelHwnd
 
-; -------------------------------------
-;   自定义目录验证
-; -------------------------------------
-Function .onVerifyInstDir
-  ${IfNot} ${FileExists} "$INSTDIR\${APP_FILENAME}\*"
-    StrCpy $INSTDIR "$INSTDIR\${APP_FILENAME}"
-  ${EndIf}
-FunctionEnd
-
 ; -----------------------------
 ; 自定义页面：安装选项
 ; -----------------------------
@@ -63,21 +54,20 @@ PageExEnd
 ; -----------------------------
 !macro customInstall
   ${If} $CreateDesktopShortcut == ${BST_CHECKED}
-    CreateShortcut "$DESKTOP\${APP_FILENAME}.lnk" \
-                    "$INSTDIR\${APP_FILENAME}.exe" \
-                    "" \
-                    "$INSTDIR\${APP_FILENAME}.exe" \
-                    0 \
-                    "" \
-                    "" \
-                    "$INSTDIR"
+    ; 工作目录由 SetOutPath 决定；勿把路径塞进 CreateShortCut 的 description 参数
+    SetOutPath "$INSTDIR"
+    CreateShortCut "$DESKTOP\${APP_FILENAME}.lnk" "$INSTDIR\${APP_FILENAME}.exe"
+    System::Call 'shell32::SHChangeNotify(i 0x8000000, i 0, i 0, i 0)'
   ${EndIf}
 !macroend
 
 ; -----------------------------
-; 卸载时清理桌面快捷方式
+; 卸载时清理桌面快捷方式与 updater 缓存
 ; -----------------------------
 !macro customUnInstall
   IfFileExists "$DESKTOP\${APP_FILENAME}.lnk" 0 +2
     Delete "$DESKTOP\${APP_FILENAME}.lnk"
+
+  ; electron-updater 下载缓存（%LOCALAPPDATA%\<name>-updater）
+  RMDir /r "$LOCALAPPDATA\${APP_FILENAME}-updater"
 !macroend

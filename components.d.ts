@@ -36,7 +36,6 @@ declare module 'vue' {
     IEpKey: typeof import('~icons/ep/key')['default']
     IEpLink: typeof import('~icons/ep/link')['default']
     IEpLoading: typeof import('~icons/ep/loading')['default']
-    IEpMenu: typeof import('~icons/ep/menu')['default']
     IEpMinus: typeof import('~icons/ep/minus')['default']
     IEpMonitor: typeof import('~icons/ep/monitor')['default']
     IEpMoon: typeof import('~icons/ep/moon')['default']

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { ArrowRight, Download, Check } from '@element-plus/icons-vue';
+import { APP_ICON_URL } from '@/constants/assets';
 
 const updateAvailable = ref<boolean>(false);
 const updateInfo = ref<any>(null);
@@ -94,7 +95,7 @@ const remindLater = () => {
           <h2 class="main-title">v{{ updateInfo?.version || "–" }} 已发布</h2>
         </div>
         <div class="app-icon">
-          <img src="/icon.png" alt="App icon" />
+          <img :src="APP_ICON_URL" alt="App icon" />
         </div>
       </div>
 

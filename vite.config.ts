@@ -12,6 +12,8 @@ import svgLoader from "vite-svg-loader";
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // Electron 生产环境用 file:// 加载，绝对路径 /xxx 会落到磁盘根目录导致资源 404
+  base: "./",
   plugins: [
     vue(),
     svgLoader(),

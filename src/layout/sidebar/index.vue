@@ -4,6 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useClipboardStore } from "@/stores/clipboardStore";
 import { themeService, type ThemeType } from "@/utils/theme";
+import { APP_ICON_URL } from "@/constants/assets";
 
 const route = useRoute();
 const router = useRouter();
@@ -47,7 +48,7 @@ const toggleTheme = () => {
 <template>
   <aside class="nav-sidebar">
     <div class="brand">
-      <img src="/icon.png" class="brand-logo" alt="MemoPaste" />
+      <img :src="APP_ICON_URL" class="brand-logo" alt="MemoPaste" />
       <div class="brand-text">
         <div class="brand-name">MemoPaste</div>
         <div class="brand-tagline">剪贴板工具</div>

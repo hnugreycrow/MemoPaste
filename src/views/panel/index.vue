@@ -9,6 +9,7 @@ import { storeToRefs } from "pinia";
 import { useClipboardStore } from "@/stores/clipboardStore";
 import type { ClipboardItem } from "@/utils/type";
 import { truncateText, formatRelativeTime, getTypeLabel } from "@/utils/utils";
+import { APP_ICON_URL } from "@/constants/assets";
 
 defineOptions({
   name: "Panel",
@@ -112,7 +113,7 @@ onUnmounted(() => {
   <div class="panel-shell">
     <header class="panel-header">
       <div class="header-left">
-        <img src="/icon.png" class="panel-logo" alt="" draggable="false" />
+        <img :src="APP_ICON_URL" class="panel-logo" alt="" draggable="false" />
         <span class="panel-title">MemoPaste</span>
       </div>
       <div class="header-actions">

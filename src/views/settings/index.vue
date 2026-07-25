@@ -9,6 +9,7 @@ import {
   formatShortcutForDisplay,
   normalKeyFromCode,
 } from "@shared/shortcut";
+import { APP_ICON_URL } from "@/constants/assets";
 
 defineOptions({
   name: "settings",
@@ -342,9 +343,9 @@ onUnmounted(() => {
           <div class="about-intro">
             <el-image
               class="about-logo"
-              src="/icon.png"
+              :src="APP_ICON_URL"
               alt="MemoPaste"
-              :preview-src-list="['/icon.png']"
+              :preview-src-list="[APP_ICON_URL]"
               fit="cover"
             />
             <div class="about-intro-text">
