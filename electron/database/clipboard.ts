@@ -5,15 +5,77 @@ import { app } from "electron";
 
 // 在ES模块中模拟CommonJS的require功能（因为Electron有时需要使用CommonJS模块）
 const require = createRequire(import.meta.url);
-const Database = require("better-sqlite3");
+const BetterSqlite3 = require("better-sqlite3");
+
+/** SQLite 行：timestamp 存 ISO 字符串；is_favorite 为 0/1 */
+export type ClipboardRow = {
+  id: number;
+  content: string;
+  type: string;
+  timestamp: string;
+  size: string | null;
+  is_favorite: number;
+};
+
+/** 写入用入参（与渲染进程 ClipboardItem 字段对齐） */
+export type ClipboardItemInput = {
+  content: string;
+  type: string;
+  timestamp: Date | string;
+  size?: string;
+  is_favorite?: boolean;
+};
+
+/** better-sqlite3 未自带完整 d.ts 时的最小类型 */
+type SqliteStatement = {
+  run: (...params: unknown[]) => { changes: number; lastInsertRowid: number | bigint };
+  get: (...params: unknown[]) => unknown;
+  all: (...params: unknown[]) => unknown[];
+};
+
+type SqliteDatabase = {
+  prepare: (sql: string) => SqliteStatement;
+  close: () => void;
+  transaction: <T>(fn: () => T) => () => T;
+};
 
 // 数据库连接实例
-let db: any = null;
+let db: SqliteDatabase | null = null;
+
+function requireDb(): SqliteDatabase {
+  if (!db) {
+    throw new Error("Database is not initialized");
+  }
+  return db;
+}
+
+/**
+ * 按当前表内最大 id 重置 sqlite 自增序列；无记录则删除序列行
+ */
+function resetIdSequence(): void {
+  const database = requireDb();
+  const maxIdResult = database
+    .prepare("SELECT MAX(id) as maxId FROM clipboard_items")
+    .get() as { maxId: number | null } | undefined;
+  const maxId = maxIdResult?.maxId ?? 0;
+
+  if (maxId > 0) {
+    database
+      .prepare(
+        `UPDATE sqlite_sequence SET seq = ? WHERE name = 'clipboard_items'`,
+      )
+      .run(maxId);
+  } else {
+    database
+      .prepare(`DELETE FROM sqlite_sequence WHERE name = 'clipboard_items'`)
+      .run();
+  }
+}
 
 /**
  * 初始化数据库
  * @param _isDevelopment 是否为开发环境
- * @returns 数据库实例
+ * @returns 是否初始化成功
  */
 export function initDatabase(_isDevelopment = false) {
   try {
@@ -34,13 +96,13 @@ export function initDatabase(_isDevelopment = false) {
     // 创建或打开数据库
     console.log("尝试创建或打开数据库:", dbFile);
     try {
-      db = new Database(dbFile);
+      db = new BetterSqlite3(dbFile) as SqliteDatabase;
     } catch (dbError) {
       console.error("数据库创建/打开失败:", dbError);
       throw dbError;
     }
 
-    const createCliboardItemQuery = `
+    const createClipboardItemQuery = `
       CREATE TABLE IF NOT EXISTS clipboard_items (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         content TEXT NOT NULL,
@@ -50,7 +112,7 @@ export function initDatabase(_isDevelopment = false) {
         is_favorite BOOLEAN DEFAULT 0
       );
     `;
-    db.prepare(createCliboardItemQuery).run();
+    db.prepare(createClipboardItemQuery).run();
 
     return true;
   } catch (error) {
@@ -64,7 +126,6 @@ export function initDatabase(_isDevelopment = false) {
  */
 export function closeDatabase() {
   try {
-    // 关闭数据库连接
     if (db) {
       db.close();
       db = null;
@@ -80,9 +141,9 @@ export function closeDatabase() {
  * @param item 剪贴板项目
  * @returns 保存后的项目ID，失败时返回null
  */
-export function saveClipboardItem(item: any) {
+export function saveClipboardItem(item: ClipboardItemInput) {
   try {
-    // 将Date对象转换为ISO字符串
+    const database = requireDb();
     const timestamp =
       item.timestamp instanceof Date
         ? item.timestamp.toISOString()
@@ -93,11 +154,10 @@ export function saveClipboardItem(item: any) {
       INSERT INTO clipboard_items (content, type, timestamp, size, is_favorite)
       VALUES (?, ?, ?, ?, ?)
     `;
-    const result = db
+    const result = database
       .prepare(insertQuery)
-      .run(item.content, item.type, timestamp, item.size, isFavorite);
+      .run(item.content, item.type, timestamp, item.size ?? null, isFavorite);
 
-    // 返回插入的记录ID
     return result.lastInsertRowid;
   } catch (error) {
     console.error("Failed to save clipboard item:", error);
@@ -110,12 +170,9 @@ export function saveClipboardItem(item: any) {
  * @param id 项目ID
  * @returns 是否删除成功
  */
-export function deleteClipboardItem(id: string) {
+export function deleteClipboardItem(id: number | string) {
   try {
-    const deleteQuery = `
-      DELETE FROM clipboard_items WHERE id = ?
-    `;
-    db.prepare(deleteQuery).run(id);
+    requireDb().prepare(`DELETE FROM clipboard_items WHERE id = ?`).run(id);
     return true;
   } catch (error) {
     console.error("Failed to delete clipboard item:", error);
@@ -129,11 +186,10 @@ export function deleteClipboardItem(id: string) {
  */
 export function clearClipboardHistory() {
   try {
-    db.transaction(() => {
-      db.prepare(`DELETE FROM clipboard_items`).run();
-      db.prepare(
-        `DELETE FROM sqlite_sequence WHERE name='clipboard_items'`
-      ).run();
+    const database = requireDb();
+    database.transaction(() => {
+      database.prepare(`DELETE FROM clipboard_items`).run();
+      resetIdSequence();
     })();
     return true;
   } catch (err) {
@@ -148,29 +204,14 @@ export function clearClipboardHistory() {
  */
 export function clearClipboardExceptFavorites() {
   try {
+    const database = requireDb();
     let deletedCount = 0;
-    db.transaction(() => {
-      // 删除所有非收藏记录
-      const result = db
+    database.transaction(() => {
+      const result = database
         .prepare(`DELETE FROM clipboard_items WHERE is_favorite = 0`)
         .run();
       deletedCount = result.changes;
-
-      // 重新整理ID序列
-      const maxIdResult = db
-        .prepare("SELECT MAX(id) as maxId FROM clipboard_items")
-        .get();
-      const maxId = maxIdResult?.maxId || 0;
-
-      if (maxId > 0) {
-        db.prepare(
-          `UPDATE sqlite_sequence SET seq = ? WHERE name = 'clipboard_items'`
-        ).run(maxId);
-      } else {
-        db.prepare(
-          `DELETE FROM sqlite_sequence WHERE name = 'clipboard_items'`
-        ).run();
-      }
+      resetIdSequence();
     })();
     console.log(`已清除 ${deletedCount} 条非收藏记录`);
     return deletedCount;
@@ -187,39 +228,21 @@ export function clearClipboardExceptFavorites() {
  */
 export function clearExpiredClipboardItems(retentionDays: number) {
   try {
-    // 计算过期时间点
+    const database = requireDb();
     const expiredDate = new Date();
     expiredDate.setDate(expiredDate.getDate() - retentionDays);
     const expiredTimestamp = expiredDate.toISOString();
 
     console.log(`清除 ${expiredTimestamp} 之前的非收藏记录`);
 
-    // 删除过期且非收藏的记录
     const deleteQuery = `
       DELETE FROM clipboard_items 
       WHERE timestamp < ? AND is_favorite = 0
     `;
-    const result = db.prepare(deleteQuery).run(expiredTimestamp);
+    const result = database.prepare(deleteQuery).run(expiredTimestamp);
 
-    // 如果删除了记录，重新整理ID序列
     if (result.changes > 0) {
-      // 获取当前最大ID
-      const maxIdResult = db
-        .prepare("SELECT MAX(id) as maxId FROM clipboard_items")
-        .get();
-      const maxId = maxIdResult?.maxId || 0;
-
-      // 重置自增序列
-      if (maxId > 0) {
-        db.prepare(
-          `UPDATE sqlite_sequence SET seq = ? WHERE name = 'clipboard_items'`
-        ).run(maxId);
-      } else {
-        // 如果没有记录了，删除序列记录
-        db.prepare(
-          `DELETE FROM sqlite_sequence WHERE name = 'clipboard_items'`
-        ).run();
-      }
+      resetIdSequence();
     }
 
     console.log(`已清除 ${result.changes} 条过期记录`);
@@ -249,13 +272,14 @@ export function getClipboardHistory(
   page = 1,
   pageSize = 50,
   type = "all",
-  keyword = ""
+  keyword = "",
 ) {
   try {
+    const database = requireDb();
     const offset = (page - 1) * pageSize;
 
     const whereClauses: string[] = [];
-    const filterParams: any[] = [];
+    const filterParams: unknown[] = [];
 
     if (type === "favorite") {
       whereClauses.push("is_favorite = 1");
@@ -283,12 +307,14 @@ export function getClipboardHistory(
       ${whereSql}
     `;
 
-    const totalResult = db.prepare(countQuery).get(...filterParams);
+    const totalResult = database.prepare(countQuery).get(...filterParams) as
+      | { total: number }
+      | undefined;
     const total = totalResult ? totalResult.total : 0;
 
-    const items = db
+    const items = database
       .prepare(selectQuery)
-      .all(...filterParams, pageSize, offset);
+      .all(...filterParams, pageSize, offset) as ClipboardRow[];
 
     return {
       items,
@@ -299,7 +325,7 @@ export function getClipboardHistory(
   } catch (error) {
     console.error("Failed to get clipboard history:", error);
     return {
-      items: [],
+      items: [] as ClipboardRow[],
       total: 0,
       page,
       pageSize,
@@ -313,12 +339,11 @@ export function getClipboardHistory(
  * @param isFavorite 是否收藏
  * @returns 是否设置成功
  */
-export function setFavoriteStatus(id: string, isFavorite: boolean) {
+export function setFavoriteStatus(id: number | string, isFavorite: boolean) {
   try {
-    const updateQuery = `
-      UPDATE clipboard_items SET is_favorite = ? WHERE id = ?
-    `;
-    db.prepare(updateQuery).run(isFavorite ? 1 : 0, id);
+    requireDb()
+      .prepare(`UPDATE clipboard_items SET is_favorite = ? WHERE id = ?`)
+      .run(isFavorite ? 1 : 0, id);
     return true;
   } catch (error) {
     console.error("Failed to update favorite status:", error);
@@ -333,7 +358,8 @@ export function setFavoriteStatus(id: string, isFavorite: boolean) {
 export function getClipboardCounts() {
   const counts = { all: 0, text: 0, url: 0, code: 0, favorite: 0 };
   try {
-    const typeRows = db
+    const database = requireDb();
+    const typeRows = database
       .prepare(`SELECT type, COUNT(*) as c FROM clipboard_items GROUP BY type`)
       .all() as Array<{ type: string; c: number }>;
     for (const row of typeRows) {
@@ -342,7 +368,7 @@ export function getClipboardCounts() {
         counts[row.type] = row.c;
       }
     }
-    const favRow = db
+    const favRow = database
       .prepare(`SELECT COUNT(*) as c FROM clipboard_items WHERE is_favorite = 1`)
       .get() as { c: number } | undefined;
     counts.favorite = favRow?.c ?? 0;
