@@ -1,4 +1,9 @@
 import Store from 'electron-store';
+import { app, ipcMain } from 'electron';
+import {
+  applyOpenAtLogin,
+  syncOpenAtLoginFromSystem,
+} from '../utils/login-item';
 
 // 定义配置类型
 interface ConfigSchema {
@@ -7,6 +12,7 @@ interface ConfigSchema {
   minimizeToTray: boolean;
   openAtLogin: boolean;
   dataRetentionDays: number; // 数据保存天数
+  version?: string;
   // 可以在这里添加更多配置项
   [key: string]: any; // 允许任意键值对
 }
@@ -16,7 +22,7 @@ interface ConfigSchema {
  * 负责处理所有与配置相关的操作，包括：
  * - 读取配置
  * - 保存配置
- * - 监听配置变更
+ * - 配置 / 开机自启 IPC
  */
 export class ConfigService {
   private store: Store<ConfigSchema>;
@@ -90,5 +96,47 @@ export class ConfigService {
    */
   public getAll(): ConfigSchema {
     return this.store.store;
+  }
+
+  /** 以系统登录项为准回写 openAtLogin */
+  public syncOpenAtLoginFromSystem(): void {
+    syncOpenAtLoginFromSystem(
+      () => !!this.get<boolean>('openAtLogin'),
+      (enabled) => this.set('openAtLogin', enabled),
+    );
+  }
+
+  /** 注册配置与开机自启相关 IPC */
+  public registerIpcHandlers(): void {
+    ipcMain.handle('config-get', (_event, key: string) => {
+      return this.get(key);
+    });
+
+    ipcMain.handle('config-set', (_event, key: string, value: unknown) => {
+      this.set(key, value);
+      return true;
+    });
+
+    ipcMain.handle('config-get-all', () => {
+      return this.getAll();
+    });
+
+    // 开机自启：写配置 + 打包后同步系统登录项
+    ipcMain.handle('open-at-login-set', (_event, enabled: boolean) => {
+      const value = !!enabled;
+      this.set('openAtLogin', value);
+      try {
+        applyOpenAtLogin(value);
+        return { success: true, openAtLogin: value, applied: app.isPackaged };
+      } catch (error) {
+        console.error('Failed to set open at login:', error);
+        return {
+          success: false,
+          openAtLogin: value,
+          applied: false,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+    });
   }
 }

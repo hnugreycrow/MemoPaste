@@ -73,66 +73,18 @@ const selectItem = (item: ClipboardItem) => {
 
 /**
  * 切换收藏状态
- * @param {ClipboardItem} item - 待切换收藏状态的项目
- * @param {Event} [event] - 可选的事件对象，用于阻止事件冒泡
- * @returns {void}
  */
 const toggleFavorite = (item: ClipboardItem, event?: Event) => {
-  if (event) event.stopPropagation();
-  const newStatus = !item.is_favorite;
-
-  window.clipboard
-    .setFavorite(item.id, newStatus)
-    .then((success) => {
-      if (success) {
-        // 更新本地状态
-        item.is_favorite = newStatus;
-        clipboardStore.refreshCounts();
-        ElMessage({
-          message: newStatus ? "已添加到收藏" : "已取消收藏",
-          type: newStatus ? "success" : "info",
-        });
-      } else {
-        console.error("设置收藏状态失败");
-        ElMessage({
-          message: "操作失败",
-          type: "error",
-        });
-      }
-    })
-    .catch((error) => {
-      console.error("设置收藏状态出错:", error);
-      ElMessage({
-        message: "操作失败",
-        type: "error",
-      });
-    });
+  void clipboardStore.toggleFavorite(item, event);
 };
 
 /**
  * 复制项目内容到剪贴板
- * @param {ClipboardItem} item - 待复制的项目
- * @param {Event} [event] - 可选的事件对象，用于阻止事件冒泡
- * @returns {void}
  */
 const copyItem = (item: ClipboardItem, event?: Event) => {
-  if (event) event.stopPropagation();
-  window.clipboard
-    .write(item.content)
-    .then(() => {
-      ElMessage({
-        message: "复制成功",
-        type: "primary",
-      });
-    })
-    .catch((error) => {
-      console.error("复制失败:", error);
-      ElMessage({
-        message: "复制失败",
-        type: "error",
-      });
-    });
+  void clipboardStore.copyItem(item, event);
 };
+
 
 // 组件挂载时启动监听，加载历史记录，卸载时停止监听
 onMounted(() => {

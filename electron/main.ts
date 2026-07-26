@@ -13,6 +13,7 @@ import {
   UpdateService,
   setAppIsQuitting,
 } from "./services";
+import { isLaunchedHiddenAtLogin } from "./utils/login-item";
 
 // 防止多开：单实例锁
 const gotTheLock = app.requestSingleInstanceLock();
@@ -170,101 +171,16 @@ function initializeServices() {
   updateService = new UpdateService(mainWindow, configService);
 }
 
-// 注册配置相关的IPC处理程序
-function registerConfigIpcHandlers() {
-  if (!configService) return;
-  
-  // 通用的获取配置
-  ipcMain.handle('config-get', (_event, key: string) => {
-    return configService?.get(key);
-  });
-  
-  // 通用的设置配置
-  ipcMain.handle('config-set', (_event, key: string, value: any) => {
-    configService?.set(key, value);
-    return true;
-  });
-  
-  // 获取所有配置
-  ipcMain.handle('config-get-all', () => {
-    return configService?.getAll();
-  });
-}
-
-/** 登录启动时附带的参数，用于隐藏主窗口；set/get 必须用同一套 args */
-const LOGIN_HIDDEN_ARG = "--hidden";
-const loginItemArgs = [LOGIN_HIDDEN_ARG];
-
 /**
- * 将开机自启状态同步到系统登录项（仅打包后生效，避免开发态注册 electron.exe）
- */
-function applyOpenAtLogin(enabled: boolean): void {
-  if (!app.isPackaged) return;
-  app.setLoginItemSettings({
-    openAtLogin: enabled,
-    args: enabled ? loginItemArgs : [],
-  });
-}
-
-/** set 写了 args 后，get 必须传相同 args，否则会误报未注册 */
-function getLoginItemSettingsMatched() {
-  return app.getLoginItemSettings({ args: loginItemArgs });
-}
-
-/** 是否由登录项以隐藏方式启动（Windows 看 argv；macOS 补充 wasOpenedAtLogin） */
-function isLaunchedHiddenAtLogin(): boolean {
-  if (process.argv.includes(LOGIN_HIDDEN_ARG)) return true;
-  if (process.platform === "darwin") {
-    return !!getLoginItemSettingsMatched().wasOpenedAtLogin;
-  }
-  return false;
-}
-
-/**
- * 启动时以系统登录项为准回写配置（跟随任务管理器禁用：用 executableWillLaunchAtLogin）
- */
-function syncOpenAtLoginFromSystem(): void {
-  if (!app.isPackaged || !configService) return;
-  const settings = getLoginItemSettingsMatched();
-  // 已注册但被任务管理器禁用时，此字段为 false（openAtLogin 仍可能为 true）
-  const systemEnabled = !!settings.executableWillLaunchAtLogin;
-  const stored = !!configService.get<boolean>("openAtLogin");
-  if (stored !== systemEnabled) {
-    configService.set("openAtLogin", systemEnabled);
-  }
-}
-
-/**
- * 注册应用程序相关的IPC处理程序
+ * 注册应用程序相关的IPC处理程序（版本、外链；配置/开机自启在 ConfigService）
  */
 function registerAppIpcHandlers() {
-  // 获取应用版本
   ipcMain.handle('app-get-version', () => {
     return app.getVersion();
   });
-
-  // 开机自启：写配置 + 打包后同步系统登录项
-  ipcMain.handle('open-at-login-set', (_event, enabled: boolean) => {
-    const value = !!enabled;
-    configService?.set('openAtLogin', value);
-    try {
-      applyOpenAtLogin(value);
-      return { success: true, openAtLogin: value, applied: app.isPackaged };
-    } catch (error) {
-      console.error('Failed to set open at login:', error);
-      return {
-        success: false,
-        openAtLogin: value,
-        applied: false,
-        error: error instanceof Error ? error.message : String(error),
-      };
-    }
-  });
   
-  // 打开外部链接
   ipcMain.handle('open-external-url', async (_event, url: string) => {
     try {
-      // 导入shell模块用于打开外部链接
       const { shell } = await import('electron');
       await shell.openExternal(url);
       return true;
@@ -287,15 +203,10 @@ app.whenReady().then(() => {
 
   // 初始化所有服务
   initializeServices();
-  
-  // 注册配置相关的IPC处理程序
-  registerConfigIpcHandlers();
-  
-  // 注册应用程序相关的IPC处理程序
-  registerAppIpcHandlers();
 
-  // 启动时以系统登录项为准回写配置（仅打包环境）
-  syncOpenAtLoginFromSystem();
+  configService?.registerIpcHandlers();
+  registerAppIpcHandlers();
+  configService?.syncOpenAtLoginFromSystem();
 });
 
 app.on("before-quit", () => {

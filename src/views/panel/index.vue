@@ -87,16 +87,7 @@ const handlePanelNav = (action: PanelNavAction) => {
 };
 
 const toggleFavorite = async (item: ClipboardItem, event: Event) => {
-  event.stopPropagation();
-  const next = !item.is_favorite;
-  try {
-    const ok = await window.clipboard.setFavorite(item.id, next);
-    if (ok) {
-      item.is_favorite = next;
-    }
-  } catch (error) {
-    console.error("收藏失败:", error);
-  }
+  await clipboardStore.toggleFavorite(item, event, { silent: true });
 };
 
 const clearHistory = async () => {

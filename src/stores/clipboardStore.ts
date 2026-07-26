@@ -2,7 +2,7 @@
 import { defineStore } from 'pinia';
 import { ClipboardItem, TypeCounts } from '@/utils/type';
 import { formatSize, getContentType } from '@/utils/utils';
-import { ElMessage, ElMessageBox } from 'element-plus'; // 确保导入UI组件
+import { ElMessage, ElMessageBox } from 'element-plus';
 
 export const useClipboardStore = defineStore('clipboard', {
   state: () => ({
@@ -197,6 +197,78 @@ export const useClipboardStore = defineStore('clipboard', {
     loadMoreData() {
       if (this.isLoadingMore || this.clipboardData.length >= this.totalItems) return;
       this.loadClipboardHistory(this.currentPage + 1, true);
+    },
+
+    /**
+     * 切换收藏状态
+     * @param silent 为 true 时不弹 toast（快捷面板等场景）
+     */
+    async toggleFavorite(
+      item: ClipboardItem,
+      event?: Event,
+      options?: { silent?: boolean },
+    ): Promise<boolean> {
+      event?.stopPropagation();
+      const newStatus = !item.is_favorite;
+      const silent = !!options?.silent;
+
+      try {
+        const success = await window.clipboard.setFavorite(item.id, newStatus);
+        if (!success) {
+          if (!silent) {
+            ElMessage({ message: '操作失败', type: 'error' });
+          }
+          return false;
+        }
+
+        item.is_favorite = newStatus;
+        const listed = this.clipboardData.find((row) => row.id === item.id);
+        if (listed && listed !== item) {
+          listed.is_favorite = newStatus;
+        }
+        this.refreshCounts();
+
+        if (!silent) {
+          ElMessage({
+            message: newStatus ? '已添加到收藏' : '已取消收藏',
+            type: newStatus ? 'success' : 'info',
+          });
+        }
+        return true;
+      } catch (error) {
+        console.error('设置收藏状态出错:', error);
+        if (!silent) {
+          ElMessage({ message: '操作失败', type: 'error' });
+        }
+        return false;
+      }
+    },
+
+    /**
+     * 复制项目内容到系统剪贴板
+     * @param silent 为 true 时不弹 toast
+     */
+    async copyItem(
+      item: ClipboardItem,
+      event?: Event,
+      options?: { silent?: boolean },
+    ): Promise<boolean> {
+      event?.stopPropagation();
+      const silent = !!options?.silent;
+
+      try {
+        await window.clipboard.write(item.content);
+        if (!silent) {
+          ElMessage({ message: '复制成功', type: 'primary' });
+        }
+        return true;
+      } catch (error) {
+        console.error('复制失败:', error);
+        if (!silent) {
+          ElMessage({ message: '复制失败', type: 'error' });
+        }
+        return false;
+      }
     },
   },
 });
