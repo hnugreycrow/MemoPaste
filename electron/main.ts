@@ -142,7 +142,9 @@ function initializeServices() {
   );
   
   // 创建主窗口与不抢焦点的快捷面板（面板默认隐藏）
-  const mainWindow = windowService.createWindow();
+  const mainWindow = windowService.createWindow({
+    startHidden: isLaunchedHiddenAtLogin(),
+  });
   windowService.createPanelWindow();
   
   // 创建托盘服务
@@ -189,12 +191,33 @@ function registerConfigIpcHandlers() {
   });
 }
 
+/** 登录启动时附带的参数，用于隐藏主窗口；set/get 必须用同一套 args */
+const LOGIN_HIDDEN_ARG = "--hidden";
+const loginItemArgs = [LOGIN_HIDDEN_ARG];
+
 /**
  * 将开机自启状态同步到系统登录项（仅打包后生效，避免开发态注册 electron.exe）
  */
 function applyOpenAtLogin(enabled: boolean): void {
   if (!app.isPackaged) return;
-  app.setLoginItemSettings({ openAtLogin: enabled });
+  app.setLoginItemSettings({
+    openAtLogin: enabled,
+    args: enabled ? loginItemArgs : [],
+  });
+}
+
+/** set 写了 args 后，get 必须传相同 args，否则会误报未注册 */
+function getLoginItemSettingsMatched() {
+  return app.getLoginItemSettings({ args: loginItemArgs });
+}
+
+/** 是否由登录项以隐藏方式启动（Windows 看 argv；macOS 补充 wasOpenedAtLogin） */
+function isLaunchedHiddenAtLogin(): boolean {
+  if (process.argv.includes(LOGIN_HIDDEN_ARG)) return true;
+  if (process.platform === "darwin") {
+    return !!getLoginItemSettingsMatched().wasOpenedAtLogin;
+  }
+  return false;
 }
 
 /**
@@ -202,7 +225,7 @@ function applyOpenAtLogin(enabled: boolean): void {
  */
 function syncOpenAtLoginFromSystem(): void {
   if (!app.isPackaged || !configService) return;
-  const settings = app.getLoginItemSettings();
+  const settings = getLoginItemSettingsMatched();
   // 已注册但被任务管理器禁用时，此字段为 false（openAtLogin 仍可能为 true）
   const systemEnabled = !!settings.executableWillLaunchAtLogin;
   const stored = !!configService.get<boolean>("openAtLogin");

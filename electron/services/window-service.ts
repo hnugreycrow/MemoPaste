@@ -127,8 +127,10 @@ export class WindowService {
 
   /**
    * 创建主窗口
+   * @param options.startHidden 登录启动时为 true，ready-to-show 后不自动显示
    */
-  public createWindow(): BrowserWindow {
+  public createWindow(options?: { startHidden?: boolean }): BrowserWindow {
+    const startHidden = !!options?.startHidden;
     const { width, height } = this.calculateSmartWindowSize();
 
     this.win = new BrowserWindow({
@@ -149,7 +151,9 @@ export class WindowService {
     this.loadRenderer(this.win);
 
     this.win.once("ready-to-show", () => {
-      this.win?.show();
+      if (!startHidden) {
+        this.win?.show();
+      }
     });
 
     this.win.on("maximize", () => {
