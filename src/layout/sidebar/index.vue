@@ -17,12 +17,15 @@ onMounted(() => {
 
 const activeModule = computed(() => {
   if (route.path.includes("/settings")) return "settings";
-  if (route.path.includes("/changelog")) return "changelog";
   if (route.path.includes("/clipboard")) {
     return activeFilter.value === "favorite" ? "favorite" : "clipboard";
   }
   return "";
 });
+
+const themeLabel = computed(() =>
+  themeService.currentTheme.value === "dark" ? "深色主题" : "浅色主题",
+);
 
 const goClipboard = (filter: "all" | "favorite") => {
   clipboardStore.activeFilter = filter;
@@ -32,10 +35,6 @@ const goClipboard = (filter: "all" | "favorite") => {
 
 const goSettings = () => {
   router.push("/settings");
-};
-
-const goChangelog = () => {
-  router.push("/changelog");
 };
 
 const toggleTheme = () => {
@@ -77,53 +76,38 @@ const toggleTheme = () => {
         <span class="nav-label">收藏</span>
         <span class="nav-count">{{ typeCounts.favorite }}</span>
       </button>
-
-      <button
-        type="button"
-        class="nav-item"
-        :class="{ active: activeModule === 'settings' }"
-        @click="goSettings"
-      >
-        <i-ep-Setting class="nav-icon" />
-        <span class="nav-label">设置</span>
-      </button>
     </nav>
 
     <div class="sidebar-tools">
       <button
         type="button"
-        class="tool-btn"
+        class="util-item"
         :aria-label="
           themeService.currentTheme.value === 'dark'
             ? '切换到浅色主题'
             : '切换到深色主题'
         "
-        :title="
-          themeService.currentTheme.value === 'dark' ? '浅色主题' : '深色主题'
-        "
         @click="toggleTheme"
       >
-        <i-ep-Moon v-if="themeService.currentTheme.value === 'dark'" />
-        <i-ep-Sunny v-else />
+        <span class="util-icon-wrap" aria-hidden="true">
+          <i-ep-Moon v-if="themeService.currentTheme.value === 'dark'" />
+          <i-ep-Sunny v-else />
+        </span>
+        <span class="util-label">{{ themeLabel }}</span>
+        <span class="util-meta">切换</span>
       </button>
+
       <button
         type="button"
-        class="tool-btn"
-        :class="{ active: activeModule === 'changelog' }"
-        title="更新日志"
-        aria-label="更新日志"
-        @click="goChangelog"
-      >
-        <i-ep-Notebook />
-      </button>
-      <button
-        type="button"
-        class="tool-btn"
-        title="关于"
-        aria-label="关于"
+        class="util-item"
+        :class="{ active: activeModule === 'settings' }"
+        aria-label="设置"
         @click="goSettings"
       >
-        <i-ep-InfoFilled />
+        <span class="util-icon-wrap" aria-hidden="true">
+          <i-ep-Setting />
+        </span>
+        <span class="util-label">设置</span>
       </button>
     </div>
   </aside>
@@ -185,7 +169,8 @@ const toggleTheme = () => {
   -webkit-app-region: no-drag;
 }
 
-.nav-item {
+.nav-item,
+.util-item {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -197,7 +182,9 @@ const toggleTheme = () => {
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
   text-align: left;
 
   &:hover {
@@ -216,7 +203,8 @@ const toggleTheme = () => {
   flex-shrink: 0;
 }
 
-.nav-label {
+.nav-label,
+.util-label {
   flex: 1;
   min-width: 0;
   font-size: 13px;
@@ -234,28 +222,9 @@ const toggleTheme = () => {
   color: var(--accent-primary);
 }
 
-.mascot-wrap {
-  margin-top: auto;
-  display: flex;
-  justify-content: center;
-  align-items: flex-end;
-  padding: 8px 4px 4px;
-  min-height: 168px;
-  -webkit-app-region: no-drag;
-  pointer-events: none;
-}
-
-.mascot {
-  width: 168px;
-  max-width: 100%;
-  height: auto;
-  object-fit: contain;
-}
-
 .sidebar-tools {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 4px;
   margin-top: auto;
   padding-top: 8px;
@@ -263,28 +232,34 @@ const toggleTheme = () => {
   -webkit-app-region: no-drag;
 }
 
-.tool-btn {
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
+.util-icon-wrap {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  transition: background 0.15s ease, color 0.15s ease;
+  line-height: 0;
 
-  &:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
+  :deep(svg) {
+    width: 16px;
+    height: 16px;
+    display: block;
   }
+}
 
-  &.active {
-    color: var(--accent-primary);
-    background: var(--bg-active);
-  }
+.util-meta {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.util-item:hover .util-meta {
+  color: var(--text-secondary);
+}
+
+.util-item.active .util-meta {
+  color: var(--accent-primary);
 }
 </style>

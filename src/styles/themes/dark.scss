@@ -94,7 +94,8 @@ html.dark {
       color-mix(in srgb, var(--accent-secondary) 35%, transparent);
   }
 
-  .nav-item {
+  .nav-item,
+  .util-item {
     border-radius: var(--radius-md);
 
     &.active {
