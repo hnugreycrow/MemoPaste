@@ -15,9 +15,15 @@ defineOptions({
   name: "settings",
 });
 
+/** 当前已生效的全局快捷键（Electron accelerator） */
 const shortcut = ref("Alt+Shift+C");
+/** 录制中的按键预览（规范化片段，如 CommandOrControl、A） */
 const tempKeys = ref<string[]>([]);
 const isRecording = ref(false);
+/** 录制引导 / 错误提示文案 */
+const recordHint = ref("");
+/** 当前预览组合是否校验失败（用于标红） */
+const recordInvalid = ref(false);
 const shortcutInput = ref<HTMLElement | null>(null);
 const minimizeToTray = ref<boolean>(false);
 const openAtLogin = ref<boolean>(false);
@@ -28,11 +34,24 @@ const router = useRouter();
 
 const retentionOptions = [1, 2, 3, 4, 5, 6, 7];
 
+/** KeyboardEvent.code：仅修饰键本身（用于区分「按住 Ctrl」与「Ctrl+字母」） */
+const MODIFIER_KEY_CODES = new Set([
+  "ControlLeft",
+  "ControlRight",
+  "AltLeft",
+  "AltRight",
+  "ShiftLeft",
+  "ShiftRight",
+  "MetaLeft",
+  "MetaRight",
+]);
+
 const theme = computed<ThemeType>({
   get: () => themeService.currentTheme.value,
   set: (value: ThemeType) => themeService.setTheme(value),
 });
 
+/** 展示用 keycap：录制中看预览，否则看已保存值 */
 const displayKeyParts = computed(() => {
   const raw = isRecording.value
     ? tempKeys.value.length > 0
@@ -43,58 +62,108 @@ const displayKeyParts = computed(() => {
   return formatShortcutForDisplay(raw);
 });
 
+/** 从事件收集修饰键；Win/Cmd 映射为 Super（Ctrl 按下时忽略 meta，避免重复） */
+const collectModifiers = (e: KeyboardEvent): string[] => {
+  const mods: string[] = [];
+  if (e.ctrlKey) mods.push("CommandOrControl");
+  if (e.altKey) mods.push("Alt");
+  if (e.shiftKey) mods.push("Shift");
+  if (e.metaKey && !e.ctrlKey) mods.push("Super");
+  return mods;
+};
+
+/** 结束录制并清空预览状态 */
+const stopRecording = () => {
+  isRecording.value = false;
+  tempKeys.value = [];
+  recordHint.value = "";
+  recordInvalid.value = false;
+};
+
 const startRecording = () => {
   tempKeys.value = [];
+  recordHint.value = "按下 Ctrl / Alt / Win，再按普通键";
+  recordInvalid.value = false;
   isRecording.value = true;
   shortcutInput.value?.focus();
 };
 
 const onBlur = () => {
-  isRecording.value = false;
+  stopRecording();
 };
 
+/**
+ * 录制 keydown：即时预览 + 校验反馈，不在此处提交。
+ * - Esc：取消
+ * - 仅修饰键：引导继续按普通键
+ * - 不支持的普通键 / 弱组合 / 黑名单：标红提示，保持录制
+ * - 合法组合：提示松开确认
+ */
 const onKeyDown = (e: KeyboardEvent) => {
   if (!isRecording.value) return;
 
   e.preventDefault();
-  tempKeys.value = [];
+  e.stopPropagation();
 
-  if (e.ctrlKey) {
-    tempKeys.value.push("CommandOrControl");
+  if (e.key === "Escape") {
+    stopRecording();
+    shortcutInput.value?.blur();
+    return;
   }
-  if (e.altKey) {
-    tempKeys.value.push("Alt");
-  }
-  if (e.shiftKey) {
-    tempKeys.value.push("Shift");
-  }
-  // Win / Cmd（非 Ctrl）→ Super，与共享校验一致
-  if (e.metaKey && !e.ctrlKey) {
-    tempKeys.value.push("Super");
+
+  const mods = collectModifiers(e);
+
+  if (MODIFIER_KEY_CODES.has(e.code)) {
+    tempKeys.value = mods;
+    recordInvalid.value = false;
+    recordHint.value = mods.length
+      ? "再按一个字母、数字或 F 键…"
+      : "按下 Ctrl / Alt / Win，再按普通键";
+    return;
   }
 
   const normalKey = normalKeyFromCode(e.code);
-  if (normalKey) {
-    tempKeys.value.push(normalKey);
+  if (!normalKey) {
+    tempKeys.value = mods;
+    recordInvalid.value = true;
+    recordHint.value = "不支持此键";
+    return;
   }
+
+  tempKeys.value = [...mods, normalKey];
+  const check = validateShortcut(tempKeys.value.join("+"));
+  if (!check.success) {
+    recordInvalid.value = true;
+    recordHint.value = check.error;
+    return;
+  }
+
+  recordInvalid.value = false;
+  recordHint.value = "松开按键以确认";
 };
 
-const onKeyUp = async (_e: KeyboardEvent) => {
-  if (!isRecording.value || tempKeys.value.length === 0) return;
+/**
+ * 录制 keyup：仅在预览合法时提交到主进程。
+ * 修饰键抬起不提交，便于先按 Ctrl 再按字母。
+ */
+const onKeyUp = async (e: KeyboardEvent) => {
+  if (!isRecording.value) return;
+  if (e.key === "Escape") return;
+  // 修饰键抬起不提交，便于继续补按普通键
+  if (MODIFIER_KEY_CODES.has(e.code)) return;
+  if (tempKeys.value.length === 0 || recordInvalid.value) return;
 
   const recorded = tempKeys.value.join("+");
   const checkResult = validateShortcut(recorded);
-
   if (!checkResult.success) {
-    ElMessage.error(checkResult.error);
-    isRecording.value = false;
-    shortcutInput.value?.blur();
+    recordInvalid.value = true;
+    recordHint.value = checkResult.error;
     return;
   }
 
   const newShortcut = checkResult.shortcut;
   if (newShortcut === normalizeShortcut(shortcut.value)) {
-    isRecording.value = false;
+    stopRecording();
     shortcutInput.value?.blur();
     return;
   }
@@ -104,6 +173,7 @@ const onKeyUp = async (_e: KeyboardEvent) => {
 
   try {
     const result = await window.shortcut.update(newShortcut);
+    stopRecording();
     shortcutInput.value?.blur();
     if (!result?.success) {
       shortcut.value = result?.shortcut || previous;
@@ -114,11 +184,10 @@ const onKeyUp = async (_e: KeyboardEvent) => {
     }
   } catch (error) {
     shortcut.value = previous;
+    stopRecording();
+    shortcutInput.value?.blur();
     ElMessage.error(`快捷键设置失败: ${error}`);
   }
-
-  isRecording.value = false;
-  shortcutInput.value?.blur();
 };
 
 onMounted(async () => {
@@ -147,6 +216,7 @@ const handleMinimizeToTrayChange = (value: boolean) => {
   window.config.set("minimizeToTray", value);
 };
 
+/** 开机自启：开发态可能仅写入配置，打包后才真正生效 */
 const handleOpenAtLoginChange = async (value: boolean) => {
   const previous = !value;
   try {
@@ -176,6 +246,7 @@ const setTheme = (value: ThemeType) => {
   theme.value = value;
 };
 
+/** 检查更新时的状态监听清理函数 */
 let removeListener: (() => void) | null = null;
 
 const checkForUpdates = async () => {
@@ -334,31 +405,44 @@ onUnmounted(() => {
             <div class="setting-meta">
               <span class="setting-label">唤起快捷面板</span>
               <span class="setting-desc">
-                全局快捷键打开 Win+V 风格浮层，支持 Ctrl / Alt / Shift 组合
+                全局快捷键打开浮层；需包含 Ctrl / Alt / Win
+                之一，可叠加 Shift；普通键限字母、数字、F1–F12
               </span>
             </div>
-            <div
-              class="shortcut-capture"
-              :class="{ recording: isRecording }"
-              tabindex="0"
-              role="button"
-              :aria-label="isRecording ? '正在录制快捷键' : '点击设置快捷键'"
-              ref="shortcutInput"
-              @click="startRecording"
-              @blur="onBlur"
-              @keydown="onKeyDown"
-              @keyup="onKeyUp"
-            >
-              <template v-if="displayKeyParts.length">
-                <kbd
-                  v-for="(key, index) in displayKeyParts"
-                  :key="`${key}-${index}`"
-                  class="keycap"
-                >
-                  {{ key }}
-                </kbd>
-              </template>
-              <span v-else class="shortcut-hint">按下快捷键…</span>
+            <div class="shortcut-capture-wrap">
+              <div
+                class="shortcut-capture"
+                :class="{
+                  recording: isRecording,
+                  invalid: isRecording && recordInvalid,
+                }"
+                tabindex="0"
+                role="button"
+                :aria-label="isRecording ? '正在录制快捷键' : '点击设置快捷键'"
+                ref="shortcutInput"
+                @click="startRecording"
+                @blur="onBlur"
+                @keydown="onKeyDown"
+                @keyup="onKeyUp"
+              >
+                <template v-if="displayKeyParts.length">
+                  <kbd
+                    v-for="(key, index) in displayKeyParts"
+                    :key="`${key}-${index}`"
+                    class="keycap"
+                  >
+                    {{ key }}
+                  </kbd>
+                </template>
+                <span v-else class="shortcut-hint">按下快捷键…</span>
+              </div>
+              <span
+                v-if="isRecording && recordHint"
+                class="shortcut-record-tip"
+                :class="{ error: recordInvalid }"
+              >
+                {{ recordHint }}
+              </span>
             </div>
           </div>
         </div>
@@ -724,6 +808,15 @@ onUnmounted(() => {
   }
 }
 
+.shortcut-capture-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+  max-width: 100%;
+}
+
 .shortcut-capture {
   display: inline-flex;
   align-items: center;
@@ -752,9 +845,26 @@ onUnmounted(() => {
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 18%, transparent);
   }
 
+  &.invalid {
+    border-color: var(--el-color-danger, #f56c6c);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--el-color-danger, #f56c6c) 18%, transparent);
+  }
+
   &:focus-visible {
     outline: none;
     border-color: var(--accent-primary);
+  }
+}
+
+.shortcut-record-tip {
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--text-tertiary);
+  text-align: right;
+  max-width: 220px;
+
+  &.error {
+    color: var(--el-color-danger, #f56c6c);
   }
 }
 
@@ -797,10 +907,20 @@ onUnmounted(() => {
     align-items: flex-start;
   }
 
+  .shortcut-capture-wrap,
   .shortcut-capture,
   .segmented,
   .theme-picker {
     width: 100%;
+  }
+
+  .shortcut-capture-wrap {
+    align-items: stretch;
+  }
+
+  .shortcut-record-tip {
+    text-align: left;
+    max-width: none;
   }
 
   .segmented {

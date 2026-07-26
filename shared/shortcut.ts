@@ -4,6 +4,8 @@
  * 规范名与 Electron Accelerator 对齐：
  * - 修饰键：CommandOrControl、Alt、Shift、Super
  * - 普通键：A–Z、0–9、F1–F12、`
+ * - 至少包含一个强修饰键（Ctrl / Alt / Win），Shift 可叠加
+ * - 禁止系统/常用组合（见 RESERVED_SHORTCUTS）
  */
 
 export type ShortcutValidationResult =
@@ -18,6 +20,13 @@ const MODIFIER_ORDER = [
 ] as const;
 
 type CanonicalModifier = (typeof MODIFIER_ORDER)[number];
+
+/** 除 Shift 外的强修饰键：至少需要其中一个 */
+const STRONG_MODIFIERS = new Set<CanonicalModifier>([
+  "CommandOrControl",
+  "Alt",
+  "Super",
+]);
 
 const MODIFIER_ALIASES: Record<string, CanonicalModifier> = {
   commandorcontrol: "CommandOrControl",
@@ -35,6 +44,17 @@ const MODIFIER_ALIASES: Record<string, CanonicalModifier> = {
 };
 
 const NORMAL_KEY_RE = /^([A-Z0-9]|F([1-9]|1[0-2])|`)$/;
+
+/** 规范化后禁止注册的系统/常用组合 */
+const RESERVED_SHORTCUTS = new Set([
+  "CommandOrControl+A",
+  "CommandOrControl+C",
+  "CommandOrControl+V",
+  "CommandOrControl+X",
+  "CommandOrControl+Z",
+  "CommandOrControl+S",
+  "Alt+F4",
+]);
 
 /**
  * 将快捷键字符串规范为 Electron accelerator 形式。
@@ -88,34 +108,49 @@ export function validateShortcut(shortcut: string): ShortcutValidationResult {
   }
 
   const keys = normalized.split("+");
-  if (keys.length < 2) {
+  const canonicalMods = new Set<string>(MODIFIER_ORDER);
+
+  const modifiers: string[] = [];
+  const normalKeys: string[] = [];
+
+  for (const key of keys) {
+    if (canonicalMods.has(key)) {
+      modifiers.push(key);
+    } else {
+      normalKeys.push(key);
+    }
+  }
+
+  if (modifiers.length === 0 || normalKeys.length === 0) {
     return {
       success: false,
       error: "格式不正确！快捷键必须包含修饰键和普通键",
     };
   }
 
-  const normalKey = keys[keys.length - 1];
-  const modifiers = keys.slice(0, -1);
-
-  const canonicalMods = new Set<string>(MODIFIER_ORDER);
-  for (const mod of modifiers) {
-    if (!canonicalMods.has(mod)) {
-      return {
-        success: false,
-        error: "修饰键无效！请使用 Ctrl、Alt、Shift 或 Win",
-      };
-    }
+  if (normalKeys.length > 1) {
+    return { success: false, error: "只能包含一个普通键" };
   }
 
-  if (new Set(modifiers).size !== modifiers.length) {
-    return { success: false, error: "修饰键不能重复使用" };
+  if (!modifiers.some((m) => STRONG_MODIFIERS.has(m as CanonicalModifier))) {
+    return {
+      success: false,
+      error: "请至少包含 Ctrl、Alt 或 Win",
+    };
   }
 
+  const normalKey = normalKeys[0];
   if (!NORMAL_KEY_RE.test(normalKey)) {
     return {
       success: false,
-      error: "普通键无效！请使用字母、数字、F1-F12",
+      error: "普通键无效！请使用字母、数字、F1-F12 或 `",
+    };
+  }
+
+  if (RESERVED_SHORTCUTS.has(normalized)) {
+    return {
+      success: false,
+      error: "该快捷键为系统或常用组合，请换一个",
     };
   }
 
@@ -130,7 +165,6 @@ export function formatShortcutForDisplay(shortcut: string): string[] {
   return shortcut.split("+").map((key) => {
     if (key === "CommandOrControl") return "Ctrl";
     if (key === "Super") return "Win";
-    if (key === "Command") return "⌘";
     return key;
   });
 }
