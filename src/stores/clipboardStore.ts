@@ -2,7 +2,12 @@
 import { defineStore } from 'pinia';
 import { ClipboardItem, TypeCounts } from '@/utils/type';
 import { formatSize, getContentType } from '@/utils/utils';
-import { ElMessage, ElMessageBox } from 'element-plus';
+
+export type StoreActionResult = {
+  ok: boolean;
+  favorited?: boolean;
+  deletedCount?: number;
+};
 
 export const useClipboardStore = defineStore('clipboard', {
   state: () => ({
@@ -26,8 +31,16 @@ export const useClipboardStore = defineStore('clipboard', {
       }
     },
 
-    // 加载剪贴板历史（原 useClipboard 中的核心方法）
-    async loadClipboardHistory(page = 1, append = false, type?: string, keyword?: string) {
+    /**
+     * 加载剪贴板历史
+     * @returns 是否加载成功
+     */
+    async loadClipboardHistory(
+      page = 1,
+      append = false,
+      type?: string,
+      keyword?: string,
+    ): Promise<StoreActionResult> {
       this.isLoadingMore = true;
       this.currentPage = page;
 
@@ -35,7 +48,12 @@ export const useClipboardStore = defineStore('clipboard', {
       const effectiveKeyword = keyword ?? this.searchKeyword;
 
       try {
-        const result = await window.clipboard.getHistory(page, this.pageSize, effectiveType, effectiveKeyword);
+        const result = await window.clipboard.getHistory(
+          page,
+          this.pageSize,
+          effectiveType,
+          effectiveKeyword,
+        );
         if (result?.total !== undefined) {
           this.totalItems = result.total;
         }
@@ -47,15 +65,17 @@ export const useClipboardStore = defineStore('clipboard', {
             timestamp: new Date(item.timestamp),
           }));
 
-          this.clipboardData = append && page > 1
-            ? [...this.clipboardData, ...processedHistory]
-            : processedHistory;
+          this.clipboardData =
+            append && page > 1
+              ? [...this.clipboardData, ...processedHistory]
+              : processedHistory;
         } else if (!append) {
           this.clipboardData = [];
         }
+        return { ok: true };
       } catch (error) {
         console.error('加载剪贴板历史出错:', error);
-        ElMessage({ message: '加载历史记录失败', type: 'error', plain: true });
+        return { ok: false };
       } finally {
         this.isLoadingMore = false;
       }
@@ -67,7 +87,7 @@ export const useClipboardStore = defineStore('clipboard', {
       if (next === this.searchKeyword) return;
       this.searchKeyword = next;
       this.currentPage = 1;
-      this.loadClipboardHistory(1, false);
+      void this.loadClipboardHistory(1, false);
     },
 
     // 保存单个剪贴板项
@@ -83,7 +103,8 @@ export const useClipboardStore = defineStore('clipboard', {
     // 添加新剪贴板项
     async addClipboardItem(content: string) {
       const type = getContentType(content);
-      const shouldAddToCurrentView = this.activeFilter === 'all' || this.activeFilter === type;
+      const shouldAddToCurrentView =
+        this.activeFilter === 'all' || this.activeFilter === type;
       const size = formatSize(new Blob([content]).size);
 
       let newItem: ClipboardItem = {
@@ -99,12 +120,12 @@ export const useClipboardStore = defineStore('clipboard', {
         if (savedItemId && typeof savedItemId === 'number') {
           newItem.id = savedItemId;
           if (shouldAddToCurrentView) {
-            this.clipboardData.unshift(newItem); // 新增项放前面
+            this.clipboardData.unshift(newItem);
             this.totalItems += 1;
           }
           this.refreshCounts();
         } else {
-          await this.loadClipboardHistory(); // 保存失败时刷新
+          await this.loadClipboardHistory();
         }
       } catch (error) {
         console.error('添加剪贴板项目失败:', error);
@@ -112,113 +133,85 @@ export const useClipboardStore = defineStore('clipboard', {
       }
     },
 
-    // 删除项目
-    async deleteItem(itemOrId: ClipboardItem | number, event?: Event) {
+    /** 删除项目 */
+    async deleteItem(
+      itemOrId: ClipboardItem | number,
+      event?: Event,
+    ): Promise<StoreActionResult> {
       event?.stopPropagation();
       const id = typeof itemOrId === 'number' ? itemOrId : itemOrId.id;
 
       try {
         const success = await window.clipboard.deleteItem(id);
         if (!success) {
-          ElMessage({ message: '删除失败，请重试', type: 'error' });
-          return;
+          return { ok: false };
         }
 
-        const index = this.clipboardData.findIndex(item => item.id === id);
+        const index = this.clipboardData.findIndex((item) => item.id === id);
         if (index !== -1) {
           this.clipboardData.splice(index, 1);
           this.totalItems -= 1;
         }
-        ElMessage({ message: '删除成功', type: 'success' });
         this.refreshCounts();
+        return { ok: true };
       } catch (error) {
         console.error('删除出错:', error);
-        ElMessage({ message: '删除失败，请重试', type: 'error' });
+        return { ok: false };
       }
     },
 
-    // 清空所有记录（包括收藏）
-    async clearAll() {
+    /** 清空所有记录 */
+    async clearAll(): Promise<StoreActionResult> {
       try {
-        const favCount = this.typeCounts.favorite;
-        const confirmMsg = favCount > 0
-          ? `确定要清空所有记录吗？包括已收藏的 ${favCount} 条记录也会被删除。`
-          : '确定要清空所有记录吗？';
-
-        await ElMessageBox.confirm(
-          confirmMsg,
-          '清空全部记录',
-          { confirmButtonText: '确认清空', cancelButtonText: '取消', type: 'warning' }
-        );
-
         const success = await window.clipboard.clearAll();
-        if (success) {
-          this.clipboardData = [];
-          this.totalItems = 0;
-          this.typeCounts = { all: 0, text: 0, url: 0, code: 0, favorite: 0 };
-          ElMessage({ message: '已清空所有记录', type: 'success' });
-        } else {
-          ElMessage({ message: '清空失败', type: 'error' });
+        if (!success) {
+          return { ok: false };
         }
+        this.clipboardData = [];
+        this.totalItems = 0;
+        this.typeCounts = { all: 0, text: 0, url: 0, code: 0, favorite: 0 };
+        return { ok: true };
       } catch (error) {
-        if (error !== 'cancel') {
-          ElMessage({ message: '清空失败', type: 'error' });
-        }
+        console.error('清空全部失败:', error);
+        return { ok: false };
       }
     },
 
-    // 清空非收藏记录（保留收藏）
-    async clearExceptFavorites() {
+    /** 清空非收藏记录 */
+    async clearExceptFavorites(): Promise<StoreActionResult> {
       try {
         await this.refreshCounts();
-        const favCount = this.typeCounts.favorite;
-        await ElMessageBox.confirm(
-          `确定要清空非收藏记录吗？已收藏的 ${favCount} 条记录将被保留。`,
-          '清空非收藏记录',
-          { confirmButtonText: '确认清空', cancelButtonText: '取消', type: 'warning' }
-        );
-
         const deletedCount = await window.clipboard.clearExceptFavorites();
-        if (deletedCount >= 0) {
-          await this.loadClipboardHistory(1, false);
-          await this.refreshCounts();
-          ElMessage({ message: `已清空 ${deletedCount} 条记录，收藏记录已保留`, type: 'success' });
-        } else {
-          ElMessage({ message: '清空失败', type: 'error' });
+        if (deletedCount < 0) {
+          return { ok: false };
         }
+        await this.loadClipboardHistory(1, false);
+        await this.refreshCounts();
+        return { ok: true, deletedCount };
       } catch (error) {
-        if (error !== 'cancel') {
-          ElMessage({ message: '清空失败', type: 'error' });
-        }
+        console.error('清空非收藏失败:', error);
+        return { ok: false };
       }
     },
 
     // 加载更多
     loadMoreData() {
       if (this.isLoadingMore || this.clipboardData.length >= this.totalItems) return;
-      this.loadClipboardHistory(this.currentPage + 1, true);
+      void this.loadClipboardHistory(this.currentPage + 1, true);
     },
 
-    /**
-     * 切换收藏状态
-     * @param silent 为 true 时不弹 toast（快捷面板等场景）
-     */
+    /** 切换收藏状态 */
     async toggleFavorite(
       item: ClipboardItem,
       event?: Event,
-      options?: { silent?: boolean },
-    ): Promise<boolean> {
+    ): Promise<StoreActionResult> {
       event?.stopPropagation();
       const newStatus = !item.is_favorite;
-      const silent = !!options?.silent;
 
       try {
         const success = await window.clipboard.setFavorite(item.id, newStatus);
         if (!success) {
-          if (!silent) {
-            ElMessage({ message: '操作失败', type: 'error' });
-          }
-          return false;
+          return { ok: false };
         }
 
         item.is_favorite = newStatus;
@@ -227,47 +220,26 @@ export const useClipboardStore = defineStore('clipboard', {
           listed.is_favorite = newStatus;
         }
         this.refreshCounts();
-
-        if (!silent) {
-          ElMessage({
-            message: newStatus ? '已添加到收藏' : '已取消收藏',
-            type: newStatus ? 'success' : 'info',
-          });
-        }
-        return true;
+        return { ok: true, favorited: newStatus };
       } catch (error) {
         console.error('设置收藏状态出错:', error);
-        if (!silent) {
-          ElMessage({ message: '操作失败', type: 'error' });
-        }
-        return false;
+        return { ok: false };
       }
     },
 
-    /**
-     * 复制项目内容到系统剪贴板
-     * @param silent 为 true 时不弹 toast
-     */
+    /** 复制到系统剪贴板 */
     async copyItem(
       item: ClipboardItem,
       event?: Event,
-      options?: { silent?: boolean },
-    ): Promise<boolean> {
+    ): Promise<StoreActionResult> {
       event?.stopPropagation();
-      const silent = !!options?.silent;
 
       try {
         await window.clipboard.write(item.content);
-        if (!silent) {
-          ElMessage({ message: '复制成功', type: 'primary' });
-        }
-        return true;
+        return { ok: true };
       } catch (error) {
         console.error('复制失败:', error);
-        if (!silent) {
-          ElMessage({ message: '复制失败', type: 'error' });
-        }
-        return false;
+        return { ok: false };
       }
     },
   },

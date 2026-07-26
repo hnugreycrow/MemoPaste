@@ -29,18 +29,11 @@ import {
   shallowRef,
   watch,
 } from "vue";
-import hljs from "highlight.js/lib/core";
-import javascript from "highlight.js/lib/languages/javascript";
-import typescript from "highlight.js/lib/languages/typescript";
-import json from "highlight.js/lib/languages/json";
-import xml from "highlight.js/lib/languages/xml";
-import css from "highlight.js/lib/languages/css";
-import bash from "highlight.js/lib/languages/bash";
-import python from "highlight.js/lib/languages/python";
-import { themeService } from "@/utils/theme";
-// 按需加载：通过 ?url 获取样式文件的构建后地址
-import githubDarkUrl from "highlight.js/styles/github-dark.css?url";
-import githubLightUrl from "highlight.js/styles/github.css?url";
+import {
+  hljs,
+  acquireHljsTheme,
+  releaseHljsTheme,
+} from "@/utils/hljsSetup";
 
 const props = defineProps<{
   content: string;
@@ -50,70 +43,6 @@ const props = defineProps<{
 }>();
 
 const isCode = computed(() => props.type === "code");
-
-// 仅注册常用语言，降低自动检测开销
-hljs.registerLanguage("javascript", javascript);
-hljs.registerLanguage("typescript", typescript);
-hljs.registerLanguage("json", json);
-hljs.registerLanguage("xml", xml);
-hljs.registerLanguage("css", css);
-hljs.registerLanguage("bash", bash);
-hljs.registerLanguage("python", python);
-
-// 根据主题动态切换 highlight.js 的样式文件
-const HLJS_LINK_ID = "hljs-theme-css";
-
-// 模块作用域变量：所有实例共享
-let instanceCount = 0;
-let currentLinkElement: HTMLLinkElement | null = null;
-
-function createLink(href: string) {
-  if (currentLinkElement) {
-    currentLinkElement.remove();
-    currentLinkElement = null;
-  }
-  const link = document.createElement("link");
-  link.id = HLJS_LINK_ID;
-  link.rel = "stylesheet";
-  link.href = href;
-  document.head.appendChild(link);
-  currentLinkElement = link;
-}
-
-function removeLink() {
-  if (currentLinkElement) {
-    currentLinkElement.remove();
-    currentLinkElement = null;
-  }
-}
-
-function applyHljsTheme(theme: string) {
-  const href = theme === "dark" ? githubDarkUrl : githubLightUrl;
-  createLink(href);
-}
-
-onMounted(() => {
-  instanceCount++;
-  if (instanceCount === 1) {
-    applyHljsTheme(themeService.currentTheme.value);
-  }
-});
-
-watch(
-  () => themeService.currentTheme.value,
-  (t) => {
-    if (instanceCount > 0) {
-      applyHljsTheme(t);
-    }
-  }
-);
-
-onUnmounted(() => {
-  instanceCount--;
-  if (instanceCount === 0) {
-    removeLink();
-  }
-});
 
 function escapeHtml(str: string) {
   return str
@@ -166,7 +95,7 @@ const highlighted = new Set<number>();
 let observer: IntersectionObserver | null = null;
 
 const chunked = computed(
-  () => isCode.value && (props.content?.length ?? 0) > CHUNK_THRESHOLD
+  () => isCode.value && (props.content?.length ?? 0) > CHUNK_THRESHOLD,
 );
 
 function splitChunks(text: string): string[] {
@@ -256,7 +185,7 @@ async function setupObserver() {
         observer?.unobserve(e.target);
       }
     },
-    { root, rootMargin: ROOT_MARGIN, threshold: 0 }
+    { root, rootMargin: ROOT_MARGIN, threshold: 0 },
   );
   for (const node of chunkEls.values()) observer.observe(node);
 }
@@ -277,16 +206,18 @@ function rebuild() {
 }
 
 onMounted(() => {
+  acquireHljsTheme();
   rebuild();
 });
 
 watch(
   () => [props.content, props.language, props.type],
   () => rebuild(),
-  { flush: "post" }
+  { flush: "post" },
 );
 
 onUnmounted(() => {
+  releaseHljsTheme();
   teardownObserver();
   chunkEls.clear();
   highlighted.clear();

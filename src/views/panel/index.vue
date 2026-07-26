@@ -45,7 +45,6 @@ const scrollFocusedIntoView = async () => {
 };
 
 const refreshList = async () => {
-  clipboardStore.pageSize = 30;
   await clipboardStore.loadClipboardHistory(1, false, activeFilter.value);
   focusedIndex.value = 0;
   await resetScrollToTop();
@@ -87,12 +86,33 @@ const handlePanelNav = (action: PanelNavAction) => {
 };
 
 const toggleFavorite = async (item: ClipboardItem, event: Event) => {
-  await clipboardStore.toggleFavorite(item, event, { silent: true });
+  await clipboardStore.toggleFavorite(item, event);
 };
 
 const clearHistory = async () => {
-  await clipboardStore.clearExceptFavorites();
-  await refreshList();
+  try {
+    await clipboardStore.refreshCounts();
+    const favCount = clipboardStore.typeCounts.favorite;
+    await ElMessageBox.confirm(
+      `确定要清空非收藏记录吗？已收藏的 ${favCount} 条记录将被保留。`,
+      "清空非收藏记录",
+      {
+        confirmButtonText: "确认清空",
+        cancelButtonText: "取消",
+        type: "warning",
+      },
+    );
+    const result = await clipboardStore.clearExceptFavorites();
+    if (!result.ok) {
+      ElMessage({ message: "清空失败", type: "error" });
+      return;
+    }
+    await refreshList();
+  } catch (error) {
+    if (error !== "cancel") {
+      ElMessage({ message: "清空失败", type: "error" });
+    }
+  }
 };
 
 const onScroll = () => {

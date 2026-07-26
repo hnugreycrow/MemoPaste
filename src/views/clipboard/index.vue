@@ -74,27 +74,109 @@ const selectItem = (item: ClipboardItem) => {
 /**
  * 切换收藏状态
  */
-const toggleFavorite = (item: ClipboardItem, event?: Event) => {
-  void clipboardStore.toggleFavorite(item, event);
+const toggleFavorite = async (item: ClipboardItem, event?: Event) => {
+  const result = await clipboardStore.toggleFavorite(item, event);
+  if (!result.ok) {
+    ElMessage({ message: "操作失败", type: "error" });
+    return;
+  }
+  ElMessage({
+    message: result.favorited ? "已添加到收藏" : "已取消收藏",
+    type: result.favorited ? "success" : "info",
+  });
 };
 
 /**
  * 复制项目内容到剪贴板
  */
-const copyItem = (item: ClipboardItem, event?: Event) => {
-  void clipboardStore.copyItem(item, event);
+const copyItem = async (item: ClipboardItem, event?: Event) => {
+  const result = await clipboardStore.copyItem(item, event);
+  if (result.ok) {
+    ElMessage({ message: "复制成功", type: "primary" });
+  } else {
+    ElMessage({ message: "复制失败", type: "error" });
+  }
 };
 
+/** 删除项目 */
+const deleteItem = async (item: ClipboardItem, event?: Event) => {
+  const result = await clipboardStore.deleteItem(item, event);
+  if (result.ok) {
+    ElMessage({ message: "删除成功", type: "success" });
+  } else {
+    ElMessage({ message: "删除失败，请重试", type: "error" });
+  }
+};
+
+/** 清空非收藏（先确认） */
+const clearExceptFavorites = async () => {
+  try {
+    await clipboardStore.refreshCounts();
+    const favCount = clipboardStore.typeCounts.favorite;
+    await ElMessageBox.confirm(
+      `确定要清空非收藏记录吗？已收藏的 ${favCount} 条记录将被保留。`,
+      "清空非收藏记录",
+      {
+        confirmButtonText: "确认清空",
+        cancelButtonText: "取消",
+        type: "warning",
+      },
+    );
+    const result = await clipboardStore.clearExceptFavorites();
+    if (result.ok) {
+      ElMessage({
+        message: `已清空 ${result.deletedCount ?? 0} 条记录，收藏记录已保留`,
+        type: "success",
+      });
+    } else {
+      ElMessage({ message: "清空失败", type: "error" });
+    }
+  } catch (error) {
+    if (error !== "cancel") {
+      ElMessage({ message: "清空失败", type: "error" });
+    }
+  }
+};
+
+/** 清空全部（先确认） */
+const clearAll = async () => {
+  try {
+    const favCount = clipboardStore.typeCounts.favorite;
+    const confirmMsg =
+      favCount > 0
+        ? `确定要清空所有记录吗？包括已收藏的 ${favCount} 条记录也会被删除。`
+        : "确定要清空所有记录吗？";
+    await ElMessageBox.confirm(confirmMsg, "清空全部记录", {
+      confirmButtonText: "确认清空",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+    const result = await clipboardStore.clearAll();
+    if (result.ok) {
+      ElMessage({ message: "已清空所有记录", type: "success" });
+    } else {
+      ElMessage({ message: "清空失败", type: "error" });
+    }
+  } catch (error) {
+    if (error !== "cancel") {
+      ElMessage({ message: "清空失败", type: "error" });
+    }
+  }
+};
 
 // 组件挂载时启动监听，加载历史记录，卸载时停止监听
-onMounted(() => {
-  // 加载历史记录（只加载第一页）
-  clipboardStore.loadClipboardHistory(1, false, activeFilter.value);
-  // 拉取分类计数
+onMounted(async () => {
+  const loaded = await clipboardStore.loadClipboardHistory(
+    1,
+    false,
+    activeFilter.value,
+  );
+  if (!loaded.ok) {
+    ElMessage({ message: "加载历史记录失败", type: "error", plain: true });
+  }
   clipboardStore.refreshCounts();
 
   setTimeout(() => {
-    // 初始化滚动参数
     handleScroll();
   }, 100);
 
@@ -134,10 +216,10 @@ onActivated(() => {
             </el-button>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item @click="clipboardStore.clearExceptFavorites">
+                <el-dropdown-item @click="clearExceptFavorites">
                   <i-ep-Delete class="el-icon--left" />清空非收藏记录
                 </el-dropdown-item>
-                <el-dropdown-item @click="clipboardStore.clearAll" divided>
+                <el-dropdown-item @click="clearAll" divided>
                   <i-ep-Warning class="el-icon--left" />清空全部（含收藏）
                 </el-dropdown-item>
               </el-dropdown-menu>
@@ -223,7 +305,7 @@ onActivated(() => {
         :item="selectedItem"
         v-model:showAllContent="showAllContent"
         @copy="copyItem"
-        @delete="clipboardStore.deleteItem"
+        @delete="deleteItem"
         @favorite="toggleFavorite"
       />
     </div>
