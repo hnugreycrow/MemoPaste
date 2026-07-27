@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, onActivated } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch, onActivated } from "vue";
 import DetailPanel from "./components/DetailPanel.vue";
 import FilterChips from "./components/FilterChips.vue";
 import { ClipboardItem } from "@/utils/type";
@@ -17,6 +17,23 @@ defineOptions({
 const clipboardStore = useClipboardStore();
 const { clipboardData, isLoadingMore, activeFilter, totalItems, currentPage } =
   storeToRefs(clipboardStore);
+
+/** 侧栏「收藏」：长期抽屉视图，与流水历史区分文案与布局 */
+const isFavoritesView = computed(() => activeFilter.value === "favorite");
+
+const searchPlaceholder = computed(() =>
+  isFavoritesView.value ? "搜索收藏..." : "搜索剪贴板内容...",
+);
+
+const emptyTitle = computed(() =>
+  isFavoritesView.value ? "还没有收藏" : "暂无记录",
+);
+
+const emptyDesc = computed(() =>
+  isFavoritesView.value
+    ? "在历史里点星标，重要内容会留在这里"
+    : "开始复制内容，它们会出现在这里",
+);
 
 // 搜索功能（输入下推到 store，由后端 SQL LIKE 处理）
 const { searchQuery } = useSearch();
@@ -212,7 +229,7 @@ onActivated(() => {
             <el-input
               v-model="searchQuery"
               class="search-input"
-              placeholder="搜索剪贴板内容..."
+              :placeholder="searchPlaceholder"
               clearable
             />
           </div>
@@ -233,15 +250,23 @@ onActivated(() => {
           </el-dropdown>
         </div>
 
-        <FilterChips />
+        <FilterChips v-if="!isFavoritesView" />
+        <div v-else class="favorites-banner" role="status">
+          <i-ep-Star class="favorites-banner-icon" />
+          <div class="favorites-banner-text">
+            <span class="favorites-banner-desc"
+              >已收藏的内容不会随保留天数自动清理</span
+            >
+          </div>
+        </div>
 
         <!-- 内容列表 -->
         <div class="content-list" ref="contentListRef" @scroll="handleScroll">
           <template v-if="clipboardData.length === 0">
             <div class="empty-state">
               <img src="/mascot.png" class="mascot" alt="MemoPaste" />
-              <div class="empty-title">暂无记录</div>
-              <div class="empty-desc">开始复制内容，它们会出现在这里</div>
+              <div class="empty-title">{{ emptyTitle }}</div>
+              <div class="empty-desc">{{ emptyDesc }}</div>
             </div>
           </template>
           <template v-else>
@@ -382,6 +407,35 @@ onActivated(() => {
 
 :deep(.el-input__wrapper) {
   padding-left: 36px;
+}
+
+/* 收藏抽屉说明条（替换类型 Chips） */
+.favorites-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px 10px;
+  background: var(--list-bg);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.favorites-banner-icon {
+  flex-shrink: 0;
+  font-size: 16px;
+  color: var(--favorite-border);
+}
+
+.favorites-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.favorites-banner-desc {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  line-height: 1.35;
 }
 
 .content-container {

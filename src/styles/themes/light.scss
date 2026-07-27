@@ -135,11 +135,8 @@ html.light {
     }
   }
 
-  .detail-text,
-  .search-box,
-  .el-input__wrapper {
+  .detail-text {
     border-radius: var(--radius-md);
-    box-shadow: var(--shadow-soft);
   }
 
   .el-button--primary {
