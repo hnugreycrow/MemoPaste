@@ -136,29 +136,94 @@ export function closeDatabase() {
   }
 }
 
+/** 保存结果：新建或同内容置顶 */
+export type SaveClipboardResult = {
+  id: number;
+  isNew: boolean;
+  is_favorite: boolean;
+};
+
 /**
- * 保存剪贴板项目
+ * 保存剪贴板项目（按 content 精确去重：已存在则更新时间并置顶，保留收藏）
  * @param item 剪贴板项目
- * @returns 保存后的项目ID，失败时返回null
+ * @returns 保存结果，失败时返回 null
  */
-export function saveClipboardItem(item: ClipboardItemInput) {
+export function saveClipboardItem(
+  item: ClipboardItemInput,
+): SaveClipboardResult | null {
   try {
     const database = requireDb();
     const timestamp =
       item.timestamp instanceof Date
         ? item.timestamp.toISOString()
         : item.timestamp;
-    const isFavorite = item.is_favorite ? 1 : 0;
 
-    const insertQuery = `
-      INSERT INTO clipboard_items (content, type, timestamp, size, is_favorite)
-      VALUES (?, ?, ?, ?, ?)
-    `;
-    const result = database
-      .prepare(insertQuery)
-      .run(item.content, item.type, timestamp, item.size ?? null, isFavorite);
+    return database.transaction(() => {
+      const duplicates = database
+        .prepare(
+          `SELECT id, is_favorite FROM clipboard_items
+           WHERE content = ?
+           ORDER BY timestamp DESC, id DESC`,
+        )
+        .all(item.content) as Array<{ id: number; is_favorite: number }>;
 
-    return result.lastInsertRowid;
+      if (duplicates.length > 0) {
+        const keep = duplicates[0];
+        // 任一副本曾收藏则保留收藏
+        const isFavorite = duplicates.some((row) => !!row.is_favorite) ? 1 : 0;
+
+        database
+          .prepare(
+            `UPDATE clipboard_items
+             SET type = ?, timestamp = ?, size = ?, is_favorite = ?
+             WHERE id = ?`,
+          )
+          .run(
+            item.type,
+            timestamp,
+            item.size ?? null,
+            isFavorite,
+            keep.id,
+          );
+
+        if (duplicates.length > 1) {
+          const staleIds = duplicates.slice(1).map((row) => row.id);
+          database
+            .prepare(
+              `DELETE FROM clipboard_items WHERE id IN (${staleIds
+                .map(() => "?")
+                .join(",")})`,
+            )
+            .run(...staleIds);
+        }
+
+        return {
+          id: keep.id,
+          isNew: false,
+          is_favorite: isFavorite === 1,
+        };
+      }
+
+      const isFavorite = item.is_favorite ? 1 : 0;
+      const result = database
+        .prepare(
+          `INSERT INTO clipboard_items (content, type, timestamp, size, is_favorite)
+           VALUES (?, ?, ?, ?, ?)`,
+        )
+        .run(
+          item.content,
+          item.type,
+          timestamp,
+          item.size ?? null,
+          isFavorite,
+        );
+
+      return {
+        id: Number(result.lastInsertRowid),
+        isNew: true,
+        is_favorite: isFavorite === 1,
+      };
+    })();
   } catch (error) {
     console.error("Failed to save clipboard item:", error);
     return null;
@@ -300,7 +365,7 @@ export function getClipboardHistory(
     const selectQuery = `
       SELECT * FROM clipboard_items
       ${whereSql}
-      ORDER BY id DESC LIMIT ? OFFSET ?
+      ORDER BY timestamp DESC, id DESC LIMIT ? OFFSET ?
     `;
     const countQuery = `
       SELECT COUNT(*) as total FROM clipboard_items

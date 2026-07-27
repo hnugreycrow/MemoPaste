@@ -27,7 +27,7 @@ const { contentListRef, virtualScroll, visibleItems, handleScroll } =
 
 const selectedItem = ref<ClipboardItem | null>(null);
 
-/** 列表有数据且无有效选中时，默认选中首条 */
+/** 列表变化时：对齐到最新对象；选中项已不存在则默认首条 */
 const ensureSelection = () => {
   const items = clipboardData.value;
   if (items.length === 0) {
@@ -36,8 +36,14 @@ const ensureSelection = () => {
   }
 
   if (selectedItem.value) {
-    const stillExists = items.some((item) => item.id === selectedItem.value?.id);
-    if (stillExists) return;
+    // 去重置顶会换新对象（timestamp 等已变），不能只判断 id 还在就跳过
+    const latest = items.find((item) => item.id === selectedItem.value?.id);
+    if (latest) {
+      if (latest !== selectedItem.value) {
+        selectedItem.value = latest;
+      }
+      return;
+    }
   }
 
   selectItem(items[0]);

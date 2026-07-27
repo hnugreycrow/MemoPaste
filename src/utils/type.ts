@@ -27,6 +27,13 @@ export interface ClipboardHistoryResult {
   pageSize: number;
 }
 
+/** 保存剪贴板项结果（新建或同内容置顶） */
+export interface SaveClipboardResult {
+  id: number;
+  isNew: boolean;
+  is_favorite: boolean;
+}
+
 /** 按类型统计的剪贴板计数 */
 export interface TypeCounts {
   all: number;
@@ -44,7 +51,7 @@ export interface ClipboardAPI {
   stopWatching: () => Promise<void>;
   onChanged: (callback: (content: string) => void) => () => void;
   // 数据操作
-  saveItem: (item: ClipboardItem) => Promise<number | null>;
+  saveItem: (item: ClipboardItem) => Promise<SaveClipboardResult | null>;
   deleteItem: (id: number) => Promise<boolean>;
   clearAll: () => Promise<boolean>;
   clearExceptFavorites: () => Promise<number>;
