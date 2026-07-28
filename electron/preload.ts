@@ -32,9 +32,7 @@ contextBridge.exposeInMainWorld("windowControls", {
 } as WindowControls);
 
 contextBridge.exposeInMainWorld("panel", {
-  /** 隐藏快捷面板 */
   hide: () => ipcRenderer.send("panel-hide"),
-  /** 关闭面板并打开主窗口 */
   openMain: () => ipcRenderer.send("panel-open-main"),
   /** 面板每次显示时回调（用于刷新列表） */
   onShown: (callback: () => void) => {

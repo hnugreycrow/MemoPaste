@@ -12,24 +12,18 @@ import {
 import { simulatePaste } from "../utils/simulate-paste";
 import type { WindowService } from "./window-service";
 
-// 在ES模块中模拟CommonJS的require功能
+// clipboard-event 为 CJS；主进程是 ESM，用 createRequire 加载
 const require = createRequire(import.meta.url);
 const clipboardEvent = require("clipboard-event");
 
-/**
- * 剪贴板服务类
- * 负责处理所有与剪贴板相关的操作，包括：
- * - 读写剪贴板内容
- * - 监听剪贴板变化
- * - 管理剪贴板历史记录
- * - 快捷面板选中后自动粘贴
- */
+/** 系统剪贴板监听、历史 IPC，以及面板选中后的自动粘贴 */
 export class ClipboardService {
   private mainWindow: BrowserWindow | null = null;
   private windowService: WindowService | null = null;
   private lastClipboardContent: string = "";
   private isWatching: boolean = false;
   private debounceTimer: NodeJS.Timeout | null = null;
+  /** clipboard-event 一次粘贴常连发多次；合并后再通知渲染层 */
   private readonly DEBOUNCE_DELAY = 100;
   /** 自动粘贴进行中：忽略剪贴板监听，避免把自身写入再记一条 */
   private isAutoPasting = false;
@@ -138,7 +132,7 @@ export class ClipboardService {
           if (currentContent !== this.lastClipboardContent && currentContent.trim() !== "") {
             this.lastClipboardContent = currentContent;
             console.log("Clipboard content changed, notifying renderer");
-            // 主窗口负责入库，面板窗口仅刷新列表
+            // 主窗入库、面板刷新列表：两边都订阅同一事件，各自处理
             for (const win of BrowserWindow.getAllWindows()) {
               if (!win.isDestroyed()) {
                 win.webContents.send("clipboard-changed", currentContent);

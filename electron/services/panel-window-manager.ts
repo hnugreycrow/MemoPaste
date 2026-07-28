@@ -94,10 +94,11 @@ export class PanelWindowManager {
     this.panelWin.webContents.send("panel-nav", action);
   }
 
-  /** 面板打开时注册 Esc / ↑↓ / Enter（面板自身收不到键盘焦点） */
+  /** 面板打开时注册 Esc / ↑↓ / Enter（focusable:false 收不到键） */
   private registerShortcuts(): void {
     if (this.panelShortcutsRegistered) return;
 
+    // 裸方向键/回车是全局抢占：只在面板可见时注册，hide 时必须注销
     const bindings: Array<{ accelerator: string; handler: () => void }> = [
       { accelerator: "Escape", handler: () => this.hide() },
       { accelerator: "Up", handler: () => this.sendNav("up") },
@@ -139,6 +140,7 @@ export class PanelWindowManager {
       isPointInside: (screenX, screenY) => {
         const win = this.panelWin;
         if (!win || win.isDestroyed() || !win.isVisible()) return false;
+        // WH_MOUSE_LL 给的是物理像素；getBounds() 是 DIP，高分屏必须先转换
         const dipPoint = screen.screenToDipPoint({ x: screenX, y: screenY });
         const b = win.getBounds();
         return (

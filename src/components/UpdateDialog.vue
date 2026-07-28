@@ -88,7 +88,6 @@ const remindLater = () => {
     top="15vh"
   >
     <div class="update-body">
-      <!-- 标题区 -->
       <div class="update-head">
         <div class="title-block">
           <p class="eyebrow">有可用更新</p>
@@ -99,7 +98,6 @@ const remindLater = () => {
         </div>
       </div>
 
-      <!-- 版本对比 -->
       <div class="version-row">
         <div class="version-cell">
           <span class="v-label">当前版本</span>
@@ -112,13 +110,11 @@ const remindLater = () => {
         </div>
       </div>
 
-      <!-- 更新日志 -->
       <div v-if="updateInfo?.releaseNotes" class="release-notes">
         <p class="notes-title">更新内容</p>
         <div class="notes-body" v-html="updateInfo.releaseNotes" />
       </div>
 
-      <!-- 下载进度 -->
       <div v-if="isDownloading" class="progress-area">
         <div class="progress-header">
           <span class="progress-label">正在下载更新</span>
@@ -134,7 +130,6 @@ const remindLater = () => {
         />
       </div>
 
-      <!-- 操作按钮 -->
       <div class="actions">
         <template v-if="!isDownloading && !updateDownloaded">
           <el-button type="primary" size="large" style="width: 100%" @click="downloadUpdate">
@@ -167,7 +162,6 @@ const remindLater = () => {
 </template>
 
 <style lang="scss" scoped>
-/* ---- 内容主体 ---- */
 .update-body {
   position: relative;
   padding: 20px 22px 22px;
@@ -176,7 +170,6 @@ const remindLater = () => {
   gap: 14px;
 }
 
-/* ---- 标题区 ---- */
 .update-head {
   display: flex;
   justify-content: space-between;
@@ -220,7 +213,6 @@ const remindLater = () => {
   }
 }
 
-/* ---- 版本对比 ---- */
 .version-row {
   display: flex;
   align-items: center;
@@ -260,7 +252,6 @@ const remindLater = () => {
   margin: 0 4px;
 }
 
-/* ---- 更新日志 ---- */
 .release-notes {
   background: var(--bg-tertiary);
   border-radius: 8px;
@@ -299,7 +290,6 @@ const remindLater = () => {
   }
 }
 
-/* ---- 下载进度 ---- */
 .progress-area {
   display: flex;
   flex-direction: column;
@@ -324,7 +314,6 @@ const remindLater = () => {
   color: var(--text-primary);
 }
 
-/* ---- 操作按钮区 ---- */
 .actions {
   display: flex;
   flex-direction: column;

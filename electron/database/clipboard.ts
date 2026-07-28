@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import fs from "node:fs";
 import { app } from "electron";
 
-// 在ES模块中模拟CommonJS的require功能（因为Electron有时需要使用CommonJS模块）
+// better-sqlite3 是 CJS native addon；打包后的 ESM 主进程用 createRequire 更稳
 const require = createRequire(import.meta.url);
 const BetterSqlite3 = require("better-sqlite3");
 
@@ -39,7 +39,6 @@ type SqliteDatabase = {
   transaction: <T>(fn: () => T) => () => T;
 };
 
-// 数据库连接实例
 let db: SqliteDatabase | null = null;
 
 function requireDb(): SqliteDatabase {
@@ -50,7 +49,8 @@ function requireDb(): SqliteDatabase {
 }
 
 /**
- * 按当前表内最大 id 重置 sqlite 自增序列；无记录则删除序列行
+ * 清空/删后若不重置 sqlite_sequence，新 id 会一直增大。
+ * 列表与调试更习惯从较小 id 续号，故按当前 MAX(id) 回写序列。
  */
 function resetIdSequence(): void {
   const database = requireDb();
@@ -72,20 +72,15 @@ function resetIdSequence(): void {
   }
 }
 
-/**
- * 初始化数据库
- * @param _isDevelopment 是否为开发环境
- * @returns 是否初始化成功
- */
 export function initDatabase(_isDevelopment = false) {
   try {
     console.log("Initializing SQLite database");
 
     function getDbPath() {
-      return path.join(app.getPath("userData"), "database/clipboard.db"); // 生产 -> %APPDATA%/<your-app-name>/database/clipboard.db
+      // 跟安装目录走，卸载/换机不会丢在项目目录里
+      return path.join(app.getPath("userData"), "database/clipboard.db");
     }
 
-    // 确保数据库目录存在
     const dbFile = getDbPath();
     const dbDir = path.dirname(dbFile);
     if (!fs.existsSync(dbDir)) {
@@ -93,7 +88,6 @@ export function initDatabase(_isDevelopment = false) {
       fs.mkdirSync(dbDir, { recursive: true });
     }
 
-    // 创建或打开数据库
     console.log("尝试创建或打开数据库:", dbFile);
     try {
       db = new BetterSqlite3(dbFile) as SqliteDatabase;
@@ -121,9 +115,6 @@ export function initDatabase(_isDevelopment = false) {
   }
 }
 
-/**
- * 关闭数据库连接
- */
 export function closeDatabase() {
   try {
     if (db) {
@@ -143,11 +134,7 @@ export type SaveClipboardResult = {
   is_favorite: boolean;
 };
 
-/**
- * 保存剪贴板项目（按 content 精确去重：已存在则更新时间并置顶，保留收藏）
- * @param item 剪贴板项目
- * @returns 保存结果，失败时返回 null
- */
+/** 按 content 精确去重：已存在则更新时间置顶，并合并收藏标记 */
 export function saveClipboardItem(
   item: ClipboardItemInput,
 ): SaveClipboardResult | null {
@@ -230,11 +217,6 @@ export function saveClipboardItem(
   }
 }
 
-/**
- * 删除剪贴板项目
- * @param id 项目ID
- * @returns 是否删除成功
- */
 export function deleteClipboardItem(id: number | string) {
   try {
     requireDb().prepare(`DELETE FROM clipboard_items WHERE id = ?`).run(id);
@@ -245,10 +227,6 @@ export function deleteClipboardItem(id: number | string) {
   }
 }
 
-/**
- * 清空剪贴板历史并重置ID
- * @returns 是否清空成功
- */
 export function clearClipboardHistory() {
   try {
     const database = requireDb();
@@ -263,10 +241,6 @@ export function clearClipboardHistory() {
   }
 }
 
-/**
- * 清空剪贴板历史但保留收藏的记录
- * @returns 删除的记录数量，失败时返回 -1
- */
 export function clearClipboardExceptFavorites() {
   try {
     const database = requireDb();
@@ -286,11 +260,7 @@ export function clearClipboardExceptFavorites() {
   }
 }
 
-/**
- * 清除过期的剪贴板记录（保留收藏的记录）
- * @param retentionDays 保留天数
- * @returns 清除的记录数量
- */
+/** 按保留天数删过期非收藏记录（收藏不受保留策略影响） */
 export function clearExpiredClipboardItems(retentionDays: number) {
   try {
     const database = requireDb();
@@ -325,14 +295,6 @@ function escapeLike(s: string): string {
   return s.replace(/[\\%_]/g, (c) => "\\" + c);
 }
 
-/**
- * 获取剪贴板历史（支持分页、按类型筛选、关键词搜索）
- * @param page 页码（从1开始）
- * @param pageSize 每页数量
- * @param type 可选的类型筛选
- * @param keyword 可选的关键词，按 content 做 LIKE 模糊匹配
- * @returns 剪贴板历史列表和总数
- */
 export function getClipboardHistory(
   page = 1,
   pageSize = 50,
@@ -398,12 +360,6 @@ export function getClipboardHistory(
   }
 }
 
-/**
- * 设置剪贴板项目的收藏状态
- * @param id 项目ID
- * @param isFavorite 是否收藏
- * @returns 是否设置成功
- */
 export function setFavoriteStatus(id: number | string, isFavorite: boolean) {
   try {
     requireDb()
@@ -416,10 +372,6 @@ export function setFavoriteStatus(id: number | string, isFavorite: boolean) {
   }
 }
 
-/**
- * 按类型统计剪贴板项目数量
- * @returns 各类型计数对象
- */
 export function getClipboardCounts() {
   const counts = { all: 0, text: 0, url: 0, code: 0, favorite: 0 };
   try {

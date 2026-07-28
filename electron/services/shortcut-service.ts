@@ -34,7 +34,7 @@ export class ShortcutService {
   }
 
   /**
-   * 更新用户全局快捷键：校验 → 注销旧键 → 注册新键 → 失败回滚
+   * 更新用户全局快捷键：校验 → 注销旧键 → 注册新键；失败则回滚旧键，避免快捷键丢了
    */
   public updateShortcut(rawShortcut: string): ShortcutUpdateResult {
     const oldShortcut = this.currentShortcut ?? this.configService.get<string>("shortcut") ?? null;
@@ -74,9 +74,6 @@ export class ShortcutService {
     return { success: true, shortcut: newShortcut };
   }
 
-  /**
-   * 注册全局快捷键（启动时或更新时调用）
-   */
   public registerGlobalShortcut(shortcut: string): {
     success: boolean;
     error: string | null;

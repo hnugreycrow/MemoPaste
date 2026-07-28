@@ -18,12 +18,12 @@
 
 ## 技术栈
 
-| 类别 | 技术 |
-| --- | --- |
+| 类别 | 技术                                               |
+| ---- | -------------------------------------------------- |
 | 前端 | Vue 3、TypeScript、Pinia、Vue Router、Element Plus |
-| 构建 | Vite、vite-plugin-electron |
-| 桌面 | Electron |
-| 存储 | SQLite（better-sqlite3）、electron-store |
+| 构建 | Vite、vite-plugin-electron                         |
+| 桌面 | Electron                                           |
+| 存储 | SQLite（better-sqlite3）、electron-store           |
 
 ## 快速开始
 

@@ -1,56 +1,47 @@
 // @see - https://www.electron.build/configuration/configuration
 {
-  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "com.hnugreycrow.memopaste",
-  "asar": true,
-  "productName": "MemoPaste",
-  "directories": {
-    "output": "release/${version}"
+  $schema: "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  appId: "com.hnugreycrow.memopaste",
+  asar: true,
+  productName: "MemoPaste",
+  directories: {
+    output: "release/${version}",
   },
-  "files": [
-    "dist",
-    "dist-electron"
-  ],
-  "publish": [
+  files: ["dist", "dist-electron"],
+  publish: [
     {
-      "provider": "github",
-      "owner": "hnugreycrow",
-      "repo": "MemoPaste"
-    }
+      provider: "github",
+      owner: "hnugreycrow",
+      repo: "MemoPaste",
+    },
   ],
-  "mac": {
-    "target": [
-      "dmg"
-    ],
-    "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
+  mac: {
+    target: ["dmg"],
+    artifactName: "${productName}-Mac-${version}-Installer.${ext}",
   },
-  "win": {
-    "target": [
+  win: {
+    target: [
       {
-        "target": "nsis",
-        "arch": [
-          "x64"
-        ]
-      }
+        target: "nsis",
+        arch: ["x64"],
+      },
     ],
-    "artifactName": "${productName}-Windows-${version}-Setup.${ext}",
-    "icon": "public/icon.ico"
+    artifactName: "${productName}-Windows-${version}-Setup.${ext}",
+    icon: "public/icon.ico",
   },
-  "nsis": {
-    "oneClick": false,
-    "perMachine": false,
-    "allowToChangeInstallationDirectory": true,
-    "deleteAppDataOnUninstall": true,
-    "createDesktopShortcut": false,
-    "include": "installer.nsh",
-    "installerHeaderIcon": "public/icon.ico",
-    "unicode": true,
-    "warningsAsErrors": false
+  nsis: {
+    oneClick: false,
+    perMachine: false,
+    allowToChangeInstallationDirectory: true,
+    deleteAppDataOnUninstall: true,
+    createDesktopShortcut: false,
+    include: "installer.nsh",
+    installerHeaderIcon: "public/icon.ico",
+    unicode: true,
+    warningsAsErrors: false,
   },
-  "linux": {
-    "target": [
-      "AppImage"
-    ],
-    "artifactName": "${productName}-Linux-${version}.${ext}"
-  }
+  linux: {
+    target: ["AppImage"],
+    artifactName: "${productName}-Linux-${version}.${ext}",
+  },
 }

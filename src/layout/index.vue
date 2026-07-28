@@ -18,24 +18,20 @@ const cacheRoutes = computed<string[]>(() =>
     .filter((name): name is string => typeof name === "string"),
 );
 
-let clipboardWatcherCleanup: (() => void) | null = null; // 剪贴板监听清理函数
+let clipboardWatcherCleanup: (() => void) | null = null;
 
 /**
- * 启动剪贴板监听
- * @returns {void}
+ * 在 layout 统一启停监听：剪贴板页 keep-alive 反复激活时不会双订阅。
  */
 const startClipboardWatcher = () => {
-  // 如果已经有监听清理函数，说明监听已经启动，不需要重新启动
   if (clipboardWatcherCleanup) {
     console.log("剪贴板监听已经在运行中，无需重新启动");
     return;
   }
 
-  // 启动监听
   window.clipboard
     .startWatching()
     .then(() => {
-      // 设置变化回调
       clipboardWatcherCleanup = window.clipboard.onChanged(async (content) => {
         if (content && content.trim() !== "") {
           await clipboardStore.addClipboardItem(content);
@@ -47,12 +43,7 @@ const startClipboardWatcher = () => {
     });
 };
 
-/**
- * 停止剪贴板监听
- * @returns {void}
- */
 const stopClipboardWatcher = () => {
-  // 停止监听
   if (clipboardWatcherCleanup) {
     clipboardWatcherCleanup();
     clipboardWatcherCleanup = null;

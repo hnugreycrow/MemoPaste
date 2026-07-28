@@ -9,7 +9,7 @@ import { useVirtualScroll } from "./composables/useVirtualScroll";
 import { useClipboardStore } from "@/stores/clipboardStore";
 import { storeToRefs } from "pinia";
 
-// 定义组件名称，用于keep-alive识别
+// keep-alive 需要 name，与 router 缓存路由名对应
 defineOptions({
   name: "Clipboard",
 });
@@ -31,10 +31,9 @@ const emptyDesc = computed(() =>
   isFavoritesView.value ? "在历史里点星标，重要内容会留在这里" : "开始复制内容，它们会出现在这里",
 );
 
-// 搜索功能（输入下推到 store，由后端 SQL LIKE 处理）
+// 搜索下推到 store，由主进程 SQL LIKE 处理（非前端过滤）
 const { searchQuery } = useSearch();
 
-// 虚拟滚动
 const { contentListRef, virtualScroll, visibleItems, handleScroll } = useVirtualScroll(
   () => clipboardData.value,
 );
@@ -63,14 +62,11 @@ const ensureSelection = () => {
   selectItem(items[0]);
 };
 
-// 监听类型过滤器变化，重新加载数据
 watch(activeFilter, (newType) => {
-  // 切换类型时，重置页码并重新加载数据
   currentPage.value = 1;
   clipboardStore.loadClipboardHistory(1, false, newType);
 });
 
-// 监听 store 的 items 变化
 watch(
   () => clipboardData.value,
   () => {
@@ -81,19 +77,11 @@ watch(
 
 const showAllContent = ref(false);
 
-/**
- * 选择剪贴板项目
- * @param {ClipboardItem} item - 待选择的项目
- * @returns {void}
- */
 const selectItem = (item: ClipboardItem) => {
   showAllContent.value = false;
   selectedItem.value = item;
 };
 
-/**
- * 切换收藏状态
- */
 const toggleFavorite = async (item: ClipboardItem, event?: Event) => {
   const result = await clipboardStore.toggleFavorite(item, event);
   if (!result.ok) {
@@ -106,9 +94,6 @@ const toggleFavorite = async (item: ClipboardItem, event?: Event) => {
   });
 };
 
-/**
- * 复制项目内容到剪贴板
- */
 const copyItem = async (item: ClipboardItem, event?: Event) => {
   const result = await clipboardStore.copyItem(item, event);
   if (result.ok) {
@@ -118,7 +103,6 @@ const copyItem = async (item: ClipboardItem, event?: Event) => {
   }
 };
 
-/** 删除项目 */
 const deleteItem = async (item: ClipboardItem, event?: Event) => {
   const result = await clipboardStore.deleteItem(item, event);
   if (result.ok) {
@@ -128,7 +112,6 @@ const deleteItem = async (item: ClipboardItem, event?: Event) => {
   }
 };
 
-/** 清空非收藏（先确认） */
 const clearExceptFavorites = async () => {
   try {
     await clipboardStore.refreshCounts();
@@ -158,7 +141,6 @@ const clearExceptFavorites = async () => {
   }
 };
 
-/** 清空全部（先确认） */
 const clearAll = async () => {
   try {
     const favCount = clipboardStore.typeCounts.favorite;
@@ -184,7 +166,6 @@ const clearAll = async () => {
   }
 };
 
-// 组件挂载时启动监听，加载历史记录，卸载时停止监听
 onMounted(async () => {
   const loaded = await clipboardStore.loadClipboardHistory(1, false, activeFilter.value);
   if (!loaded.ok) {
@@ -204,8 +185,7 @@ onUnmounted(() => {
 });
 
 onActivated(() => {
-  // 调用时机为首次挂载
-  // 以及每次从缓存中被重新插入时
+  // keep-alive 再次插入时重算可视区与计数（监听在 layout）
   handleScroll();
   clipboardStore.refreshCounts();
 });
@@ -215,7 +195,6 @@ onActivated(() => {
   <div class="main-content">
     <div class="two-column-body">
       <div class="content-container">
-        <!-- 搜索区域 -->
         <div class="search-container">
           <div class="search-box">
             <i-ep-search class="search-icon" />
@@ -251,7 +230,6 @@ onActivated(() => {
           </div>
         </div>
 
-        <!-- 内容列表 -->
         <div class="content-list" ref="contentListRef" @scroll="handleScroll">
           <template v-if="clipboardData.length === 0">
             <div class="empty-state">
@@ -261,13 +239,12 @@ onActivated(() => {
             </div>
           </template>
           <template v-else>
-            <!-- 虚拟滚动占位元素，撑开滚动区域 -->
+            <!-- 撑开真实滚动高度；可见行绝对定位叠在上面 -->
             <div
               class="virtual-scroll-placeholder"
               :style="{ height: `${virtualScroll.totalHeight}px` }"
             ></div>
 
-            <!-- 可见项目容器，使用绝对定位 -->
             <div
               class="virtual-scroll-content"
               :style="{
@@ -298,7 +275,6 @@ onActivated(() => {
                 </div>
               </div>
 
-              <!-- 全部加载完毕提示 -->
               <div
                 v-if="
                   !isLoadingMore && clipboardData.length >= totalItems && clipboardData.length > 0
@@ -311,14 +287,12 @@ onActivated(() => {
           </template>
         </div>
 
-        <!-- 加载更多指示器 -->
         <div v-if="isLoadingMore && currentPage > 1" class="loading-more">
           <el-icon class="is-loading"><i-ep-Loading /></el-icon>
           <span>加载更多...</span>
         </div>
       </div>
 
-      <!-- 详情面板 -->
       <DetailPanel
         :item="selectedItem"
         v-model:showAllContent="showAllContent"

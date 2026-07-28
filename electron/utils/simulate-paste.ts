@@ -132,6 +132,7 @@ function sendCtrlV(): void {
 export async function simulatePaste(): Promise<void> {
   if (process.platform === "win32") {
     releaseModifiers();
+    // 等修饰键抬起与面板隐藏落定，再发 Ctrl+V，否则易变成 Alt/Shift+V
     await delay(30);
     sendCtrlV();
     return;

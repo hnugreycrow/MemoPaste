@@ -5,7 +5,8 @@
     <link rel="icon" type="image/png" href="/icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- 这段标签的作用是给浏览器（Electron 的渲染进程）下发一套「内容安全策略」 -->
-    <meta http-equiv="Content-Security-Policy"
+    <meta
+      http-equiv="Content-Security-Policy"
       content="default-src 'self';
                script-src 'self';
                style-src 'self' 'unsafe-inline';
@@ -13,7 +14,8 @@
                connect-src 'self' https://api.github.com;
                font-src 'self';
                object-src 'none';
-               frame-src 'none';">
+               frame-src 'none';"
+    />
     <title>MemoPaste</title>
   </head>
   <body>

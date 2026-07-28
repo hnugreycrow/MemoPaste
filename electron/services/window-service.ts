@@ -110,6 +110,7 @@ export class WindowService {
       show: false,
       webPreferences: {
         preload: this.preloadPath,
+        // 渲染进程据此区分主窗/面板（透明背景、更新弹窗等），无需等 IPC
         additionalArguments: ["--window-role=main"],
       },
     });

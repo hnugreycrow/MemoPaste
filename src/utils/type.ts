@@ -1,15 +1,13 @@
-/** 窗口控制 API */
 export interface WindowControls {
   minimize: () => void;
   maximize: () => void;
   close: () => void;
   isMaximized: () => Promise<boolean>;
   onMaximizeChange: (callback: (isMaximized: boolean) => void) => () => void;
-  /** 当前窗口角色：主窗口或快捷面板 */
+  /** 主窗 vs 面板：决定透明背景、是否弹更新等 */
   getRole: () => Promise<"main" | "panel">;
 }
 
-/** 剪贴板单项数据 */
 export interface ClipboardItem {
   id: number;
   type: string;
@@ -19,7 +17,6 @@ export interface ClipboardItem {
   is_favorite?: boolean;
 }
 
-/** 剪贴板历史分页结果 */
 export interface ClipboardHistoryResult {
   items: ClipboardItem[];
   total: number;
@@ -27,14 +24,13 @@ export interface ClipboardHistoryResult {
   pageSize: number;
 }
 
-/** 保存剪贴板项结果（新建或同内容置顶） */
+/** 新建或同内容置顶（isNew=false） */
 export interface SaveClipboardResult {
   id: number;
   isNew: boolean;
   is_favorite: boolean;
 }
 
-/** 按类型统计的剪贴板计数 */
 export interface TypeCounts {
   all: number;
   text: number;
@@ -43,14 +39,11 @@ export interface TypeCounts {
   favorite: number;
 }
 
-/** 渲染进程暴露的剪贴板 API */
 export interface ClipboardAPI {
   write: (text: string) => Promise<boolean>;
-  // 监听
   startWatching: () => Promise<void>;
   stopWatching: () => Promise<void>;
   onChanged: (callback: (content: string) => void) => () => void;
-  // 数据操作
   saveItem: (item: ClipboardItem) => Promise<SaveClipboardResult | null>;
   deleteItem: (id: number) => Promise<boolean>;
   clearAll: () => Promise<boolean>;
@@ -63,20 +56,16 @@ export interface ClipboardAPI {
   ) => Promise<ClipboardHistoryResult>;
   /** 写入剪贴板、隐藏面板并模拟粘贴到原窗口 */
   pasteAndHide: (text: string) => Promise<boolean>;
-  // 收藏
   setFavorite: (id: number, isFavorite: boolean) => Promise<boolean>;
-  // 计数
   getCounts: () => Promise<TypeCounts>;
 }
 
-/** 主题模式 */
 export type ThemeMode = "light" | "dark";
 
-/** 允许读写的配置键（与主进程白名单一致） */
+/** 与主进程 config 白名单一致；未知键会被拒绝 */
 export type ConfigKey =
   "theme" | "shortcut" | "minimizeToTray" | "openAtLogin" | "dataRetentionDays" | "version";
 
-/** 应用配置 */
 export interface AppConfig {
   theme: ThemeMode;
   shortcut: string;
@@ -86,35 +75,28 @@ export interface AppConfig {
   version?: string;
 }
 
-/** 渲染进程暴露的配置 API */
 export interface ConfigAPI {
   get: <T>(key: ConfigKey) => Promise<T | undefined>;
   set: <T>(key: ConfigKey, value: T) => Promise<boolean>;
   getAll: () => Promise<AppConfig>;
 }
 
-/** 跨窗口主题同步 API（替代裸露 ipcRenderer） */
+/** 跨窗口主题同步（替代裸露 ipcRenderer） */
 export interface ThemeAPI {
   broadcast: (theme: ThemeMode) => void;
   onChanged: (callback: (theme: ThemeMode) => void) => () => void;
 }
 
-/** 快捷面板键盘导航动作 */
 export type PanelNavAction = "up" | "down" | "enter";
 
-/** 渲染进程暴露的快捷面板 API */
 export interface PanelControls {
-  /** 隐藏快捷面板 */
   hide: () => void;
-  /** 关闭面板并打开主窗口 */
   openMain: () => void;
-  /** 监听面板显示事件，返回取消监听函数 */
   onShown: (callback: () => void) => () => void;
-  /** 监听主进程转发的键盘导航（面板不抢焦点，由全局快捷键转发） */
+  /** 面板不抢焦点，↑↓/Enter 由主进程全局快捷键转发 */
   onNav: (callback: (action: PanelNavAction) => void) => () => void;
 }
 
-/** 渲染进程暴露的自动更新 API */
 export interface UpdateControls {
   checkForUpdates: () => Promise<any>;
   downloadUpdate: () => Promise<boolean | { error: any }>;
@@ -124,36 +106,31 @@ export interface UpdateControls {
   onUpdateStatus: (callback: (status: { status: string; data?: any }) => void) => () => void;
 }
 
-/** 开机自启设置结果 */
 export interface OpenAtLoginResult {
   success: boolean;
   openAtLogin: boolean;
-  /** 是否已写入系统登录项（开发环境为 false） */
+  /** 开发环境不会真正写系统登录项 */
   applied: boolean;
   error?: string;
 }
 
-/** 应用信息 API */
 export interface AppAPI {
   getVersion: () => Promise<string>;
-  /** 设置开机自启（写配置；打包后同步系统登录项） */
+  /** 写配置；打包后才同步系统登录项 */
   setOpenAtLogin: (enabled: boolean) => Promise<OpenAtLoginResult>;
 }
 
-/** 快捷键更新结果 */
 export interface ShortcutUpdateResult {
   success: boolean;
   error?: string;
   shortcut: string;
 }
 
-/** 快捷键 API */
 export interface ShortcutAPI {
   get: () => Promise<string | null>;
   update: (shortcut: string) => Promise<ShortcutUpdateResult>;
 }
 
-/** 打开外部链接 API */
 export interface ShellAPI {
   openExternal: (url: string) => Promise<boolean>;
 }

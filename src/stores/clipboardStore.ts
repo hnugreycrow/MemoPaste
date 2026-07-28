@@ -1,4 +1,3 @@
-// stores/clipboardStore.ts
 import { defineStore } from "pinia";
 import { ClipboardItem, SaveClipboardResult, TypeCounts } from "@/utils/type";
 import { formatSize, getContentType } from "@/utils/utils";
@@ -22,7 +21,7 @@ export const useClipboardStore = defineStore("clipboard", {
   }),
 
   actions: {
-    // 刷新各类型计数（IPC 失败时保留旧值）
+    // IPC 失败时保留旧计数，避免 UI 闪成 0
     async refreshCounts() {
       try {
         this.typeCounts = await window.clipboard.getCounts();
@@ -31,10 +30,6 @@ export const useClipboardStore = defineStore("clipboard", {
       }
     },
 
-    /**
-     * 加载剪贴板历史
-     * @returns 是否加载成功
-     */
     async loadClipboardHistory(
       page = 1,
       append = false,
@@ -79,7 +74,6 @@ export const useClipboardStore = defineStore("clipboard", {
       }
     },
 
-    // 设置搜索关键词，重置分页并重新加载
     setSearchKeyword(keyword: string) {
       const next = (keyword || "").trim();
       if (next === this.searchKeyword) return;
@@ -88,7 +82,6 @@ export const useClipboardStore = defineStore("clipboard", {
       void this.loadClipboardHistory(1, false);
     },
 
-    // 保存单个剪贴板项
     async saveClipboardItem(item: ClipboardItem): Promise<SaveClipboardResult | null> {
       try {
         return await window.clipboard.saveItem(item);
@@ -98,7 +91,7 @@ export const useClipboardStore = defineStore("clipboard", {
       }
     },
 
-    // 添加新剪贴板项（同内容则置顶去重，不新增行）
+    /** 同内容则置顶去重（不新增行），并同步列表/计数 */
     async addClipboardItem(content: string) {
       const type = getContentType(content);
       const size = formatSize(new Blob([content]).size);
@@ -165,7 +158,6 @@ export const useClipboardStore = defineStore("clipboard", {
       }
     },
 
-    /** 删除项目 */
     async deleteItem(itemOrId: ClipboardItem | number, event?: Event): Promise<StoreActionResult> {
       event?.stopPropagation();
       const id = typeof itemOrId === "number" ? itemOrId : itemOrId.id;
@@ -189,7 +181,6 @@ export const useClipboardStore = defineStore("clipboard", {
       }
     },
 
-    /** 清空所有记录 */
     async clearAll(): Promise<StoreActionResult> {
       try {
         const success = await window.clipboard.clearAll();
@@ -206,7 +197,6 @@ export const useClipboardStore = defineStore("clipboard", {
       }
     },
 
-    /** 清空非收藏记录 */
     async clearExceptFavorites(): Promise<StoreActionResult> {
       try {
         await this.refreshCounts();
@@ -223,13 +213,11 @@ export const useClipboardStore = defineStore("clipboard", {
       }
     },
 
-    // 加载更多
     loadMoreData() {
       if (this.isLoadingMore || this.clipboardData.length >= this.totalItems) return;
       void this.loadClipboardHistory(this.currentPage + 1, true);
     },
 
-    /** 切换收藏状态 */
     async toggleFavorite(item: ClipboardItem, event?: Event): Promise<StoreActionResult> {
       event?.stopPropagation();
       const newStatus = !item.is_favorite;
@@ -253,7 +241,6 @@ export const useClipboardStore = defineStore("clipboard", {
       }
     },
 
-    /** 复制到系统剪贴板 */
     async copyItem(item: ClipboardItem, event?: Event): Promise<StoreActionResult> {
       event?.stopPropagation();
 
