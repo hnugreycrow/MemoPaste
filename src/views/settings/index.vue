@@ -27,9 +27,9 @@ const theme = computed<ThemeType>({
 });
 
 onMounted(async () => {
-  minimizeToTray.value = await window.config.get<boolean>("minimizeToTray");
-  openAtLogin.value = await window.config.get<boolean>("openAtLogin");
-  dataRetentionDays.value = await window.config.get<number>("dataRetentionDays");
+  minimizeToTray.value = (await window.config.get<boolean>("minimizeToTray")) ?? false;
+  openAtLogin.value = (await window.config.get<boolean>("openAtLogin")) ?? false;
+  dataRetentionDays.value = (await window.config.get<number>("dataRetentionDays")) ?? 1;
 
   try {
     const version = await window.app.getVersion();
