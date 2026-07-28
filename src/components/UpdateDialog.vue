@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
-import { ArrowRight, Download, Check } from '@element-plus/icons-vue';
-import { APP_ICON_URL } from '@/constants/assets';
+import { ref, onMounted, onUnmounted } from "vue";
+import { ArrowRight, Download, Check } from "@element-plus/icons-vue";
+import { APP_ICON_URL } from "@/constants/assets";
 
 const updateAvailable = ref<boolean>(false);
 const updateInfo = ref<any>(null);
@@ -9,7 +9,7 @@ const updateProgress = ref<number>(0);
 const isDownloading = ref<boolean>(false);
 const updateDownloaded = ref<boolean>(false);
 const showDialog = ref<boolean>(false);
-const currentVersion = ref<string>('1.0.0');
+const currentVersion = ref<string>("1.0.0");
 
 let removeUpdateListener: (() => void) | null = null;
 
@@ -18,28 +18,28 @@ onMounted(async () => {
     const version = await window.app.getVersion();
     if (version) currentVersion.value = version;
   } catch (error) {
-    console.error('获取应用版本失败:', error);
+    console.error("获取应用版本失败:", error);
   }
 
   removeUpdateListener = window.updater.onUpdateStatus((status) => {
-    if (status.status === 'update-available') {
+    if (status.status === "update-available") {
       updateAvailable.value = true;
       updateInfo.value = status.data;
       if (updateInfo.value) {
         updateInfo.value.currentVersion = currentVersion.value;
       }
       showDialog.value = true;
-    } else if (status.status === 'update-not-available') {
+    } else if (status.status === "update-not-available") {
       updateAvailable.value = false;
-    } else if (status.status === 'download-progress') {
+    } else if (status.status === "download-progress") {
       isDownloading.value = true;
       updateProgress.value = Math.round(status.data.percent || 0);
-    } else if (status.status === 'update-downloaded') {
+    } else if (status.status === "update-downloaded") {
       isDownloading.value = false;
       updateDownloaded.value = true;
-    } else if (status.status === 'error') {
+    } else if (status.status === "error") {
       isDownloading.value = false;
-      ElMessage.error('更新失败: ' + (status.data.message?.substring(0, 100) || '未知错误'));
+      ElMessage.error("更新失败: " + (status.data.message?.substring(0, 100) || "未知错误"));
     }
   });
 
@@ -47,7 +47,7 @@ onMounted(async () => {
     try {
       await window.updater.checkForUpdates();
     } catch (error) {
-      console.error('自动检查更新失败:', error);
+      console.error("自动检查更新失败:", error);
     }
   }, 3000);
 });
@@ -62,7 +62,7 @@ const downloadUpdate = async () => {
     await window.updater.downloadUpdate();
   } catch (error) {
     isDownloading.value = false;
-    ElMessage.error('下载更新失败: ' + error);
+    ElMessage.error("下载更新失败: " + error);
   }
 };
 
@@ -70,7 +70,7 @@ const installUpdate = async () => {
   try {
     await window.updater.installUpdate();
   } catch (error) {
-    ElMessage.error('安装更新失败: ' + error);
+    ElMessage.error("安装更新失败: " + error);
   }
 };
 
@@ -103,9 +103,7 @@ const remindLater = () => {
       <div class="version-row">
         <div class="version-cell">
           <span class="v-label">当前版本</span>
-          <span class="v-num"
-            >v{{ updateInfo?.currentVersion || currentVersion }}</span
-          >
+          <span class="v-num">v{{ updateInfo?.currentVersion || currentVersion }}</span>
         </div>
         <el-icon class="v-arrow"><ArrowRight /></el-icon>
         <div class="version-cell">
@@ -139,21 +137,11 @@ const remindLater = () => {
       <!-- 操作按钮 -->
       <div class="actions">
         <template v-if="!isDownloading && !updateDownloaded">
-          <el-button
-            type="primary"
-            size="large"
-            style="width: 100%"
-            @click="downloadUpdate"
-          >
+          <el-button type="primary" size="large" style="width: 100%" @click="downloadUpdate">
             <el-icon><Download /></el-icon>
             立即下载安装
           </el-button>
-          <el-button
-            size="large"
-            style="width: 100%; margin-left: 0"
-            text
-            @click="remindLater"
-          >
+          <el-button size="large" style="width: 100%; margin-left: 0" text @click="remindLater">
             稍后提醒
           </el-button>
         </template>
@@ -165,21 +153,11 @@ const remindLater = () => {
         </template>
 
         <template v-if="updateDownloaded">
-          <el-button
-            type="success"
-            size="large"
-            style="width: 100%"
-            @click="installUpdate"
-          >
+          <el-button type="success" size="large" style="width: 100%" @click="installUpdate">
             <el-icon><Check /></el-icon>
             立即安装并重启
           </el-button>
-          <el-button
-            size="large"
-            style="width: 100%; margin-left: 0"
-            text
-            @click="remindLater"
-          >
+          <el-button size="large" style="width: 100%; margin-left: 0" text @click="remindLater">
             稍后安装
           </el-button>
         </template>
@@ -300,7 +278,7 @@ const remindLater = () => {
   font-size: 13px;
   line-height: 1.7;
   color: var(--text-primary);
-  max-height: 30vh;  // 使用视口高度单位
+  max-height: 30vh; // 使用视口高度单位
   overflow-y: auto;
 
   :deep(ul) {

@@ -22,7 +22,7 @@ if (!gotTheLock) {
   // 如果获取锁失败，说明已有实例在运行，直接退出
   app.quit();
 } else {
-  app.on('second-instance', () => {
+  app.on("second-instance", () => {
     // 当用户尝试打开第二个实例时，聚焦已有窗口
     if (windowService) {
       windowService.showAndFocus();
@@ -88,7 +88,7 @@ function disposeServices() {
     trayService.dispose();
     trayService = null;
   }
-  
+
   if (updateService) {
     updateService.dispose();
     updateService = null;
@@ -98,7 +98,7 @@ function disposeServices() {
     windowService.dispose();
     windowService = null;
   }
-  
+
   // 配置服务不需要特别的清理操作
   configService = null;
 }
@@ -127,12 +127,12 @@ app.on("activate", () => {
 function initializeServices() {
   // 创建配置服务（最先初始化，因为其他服务可能依赖它）
   configService = new ConfigService();
-  
+
   // 清除过期的剪贴板记录
-  const retentionDays = configService.get<number>('dataRetentionDays');
+  const retentionDays = configService.get<number>("dataRetentionDays");
   const clearedCount = clearExpiredClipboardItems(retentionDays);
   console.log(`Cleared ${clearedCount} expired clipboard items on startup`);
-  
+
   // 创建窗口服务
   windowService = new WindowService(
     path.join(__dirname, "preload.mjs"),
@@ -141,32 +141,32 @@ function initializeServices() {
     configService,
     VITE_DEV_SERVER_URL,
   );
-  
+
   // 创建主窗口与不抢焦点的快捷面板（面板默认隐藏）
   const mainWindow = windowService.createWindow({
     startHidden: isLaunchedHiddenAtLogin(),
   });
   windowService.createPanelWindow();
-  
+
   // 创建托盘服务
   trayService = new TrayService(
     windowService,
-    path.join(process.env.VITE_PUBLIC as string, "icon.png")
+    path.join(process.env.VITE_PUBLIC as string, "icon.png"),
   );
   trayService.createTray();
-  
+
   // 创建剪贴板服务
   clipboardService = new ClipboardService(mainWindow, windowService);
-  
+
   // 创建快捷键服务
   shortcutService = new ShortcutService(windowService, configService);
-  
+
   // 注册保存的快捷键
-  const savedShortcut = configService.get<string>('shortcut');
+  const savedShortcut = configService.get<string>("shortcut");
   if (savedShortcut) {
     shortcutService.registerGlobalShortcut(savedShortcut);
   }
-  
+
   // 创建更新服务
   updateService = new UpdateService(mainWindow, configService);
 }
@@ -175,20 +175,37 @@ function initializeServices() {
  * 注册应用程序相关的IPC处理程序（版本、外链；配置/开机自启在 ConfigService）
  */
 function registerAppIpcHandlers() {
-  ipcMain.handle('app-get-version', () => {
+  ipcMain.handle("app-get-version", () => {
     return app.getVersion();
   });
-  
-  ipcMain.handle('open-external-url', async (_event, url: string) => {
+
+  ipcMain.handle("open-external-url", async (_event, url: unknown) => {
+    // 渲染进程不可信：只放行 https + 已知 host，挡 file:/javascript: 等
+    if (typeof url !== "string" || !isAllowedExternalUrl(url)) {
+      console.warn("Rejected open-external-url:", url);
+      return false;
+    }
     try {
-      const { shell } = await import('electron');
+      const { shell } = await import("electron");
       await shell.openExternal(url);
       return true;
     } catch (error) {
-      console.error('Failed to open external URL:', error);
+      console.error("Failed to open external URL:", error);
       return false;
     }
   });
+}
+
+/** 当前产品只从设置页打开仓库链接；扩域时改这里即可 */
+const ALLOWED_EXTERNAL_HOSTS = new Set(["github.com", "www.github.com"]);
+
+function isAllowedExternalUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" && ALLOWED_EXTERNAL_HOSTS.has(parsed.hostname);
+  } catch {
+    return false;
+  }
 }
 
 // 应用就绪后初始化数据库并创建主窗口（Electron应用启动的入口点）

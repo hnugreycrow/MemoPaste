@@ -1,7 +1,7 @@
 // stores/clipboardStore.ts
-import { defineStore } from 'pinia';
-import { ClipboardItem, SaveClipboardResult, TypeCounts } from '@/utils/type';
-import { formatSize, getContentType } from '@/utils/utils';
+import { defineStore } from "pinia";
+import { ClipboardItem, SaveClipboardResult, TypeCounts } from "@/utils/type";
+import { formatSize, getContentType } from "@/utils/utils";
 
 export type StoreActionResult = {
   ok: boolean;
@@ -9,16 +9,16 @@ export type StoreActionResult = {
   deletedCount?: number;
 };
 
-export const useClipboardStore = defineStore('clipboard', {
+export const useClipboardStore = defineStore("clipboard", {
   state: () => ({
     clipboardData: [] as ClipboardItem[],
-    activeFilter: 'all' as string,
+    activeFilter: "all" as string,
     pageSize: 10,
     currentPage: 1,
     totalItems: 0,
     isLoadingMore: false,
     typeCounts: { all: 0, text: 0, url: 0, code: 0, favorite: 0 } as TypeCounts,
-    searchKeyword: '' as string,
+    searchKeyword: "" as string,
   }),
 
   actions: {
@@ -27,7 +27,7 @@ export const useClipboardStore = defineStore('clipboard', {
       try {
         this.typeCounts = await window.clipboard.getCounts();
       } catch (error) {
-        console.error('刷新计数失败:', error);
+        console.error("刷新计数失败:", error);
       }
     },
 
@@ -66,15 +66,13 @@ export const useClipboardStore = defineStore('clipboard', {
           }));
 
           this.clipboardData =
-            append && page > 1
-              ? [...this.clipboardData, ...processedHistory]
-              : processedHistory;
+            append && page > 1 ? [...this.clipboardData, ...processedHistory] : processedHistory;
         } else if (!append) {
           this.clipboardData = [];
         }
         return { ok: true };
       } catch (error) {
-        console.error('加载剪贴板历史出错:', error);
+        console.error("加载剪贴板历史出错:", error);
         return { ok: false };
       } finally {
         this.isLoadingMore = false;
@@ -83,7 +81,7 @@ export const useClipboardStore = defineStore('clipboard', {
 
     // 设置搜索关键词，重置分页并重新加载
     setSearchKeyword(keyword: string) {
-      const next = (keyword || '').trim();
+      const next = (keyword || "").trim();
       if (next === this.searchKeyword) return;
       this.searchKeyword = next;
       this.currentPage = 1;
@@ -91,13 +89,11 @@ export const useClipboardStore = defineStore('clipboard', {
     },
 
     // 保存单个剪贴板项
-    async saveClipboardItem(
-      item: ClipboardItem,
-    ): Promise<SaveClipboardResult | null> {
+    async saveClipboardItem(item: ClipboardItem): Promise<SaveClipboardResult | null> {
       try {
         return await window.clipboard.saveItem(item);
       } catch (error) {
-        console.error('保存剪贴板项目出错:', error);
+        console.error("保存剪贴板项目出错:", error);
         return null;
       }
     },
@@ -124,13 +120,12 @@ export const useClipboardStore = defineStore('clipboard', {
         }
 
         const matchesFilter =
-          this.activeFilter === 'all' ||
+          this.activeFilter === "all" ||
           this.activeFilter === type ||
-          (this.activeFilter === 'favorite' && saved.is_favorite);
+          (this.activeFilter === "favorite" && saved.is_favorite);
 
         const matchesSearch =
-          !this.searchKeyword ||
-          content.toLowerCase().includes(this.searchKeyword.toLowerCase());
+          !this.searchKeyword || content.toLowerCase().includes(this.searchKeyword.toLowerCase());
 
         const shouldShow = matchesFilter && matchesSearch;
 
@@ -161,22 +156,19 @@ export const useClipboardStore = defineStore('clipboard', {
 
         await this.refreshCounts();
         // 无筛选时用服务端总数对齐（去重可能合并了历史重复行）
-        if (this.activeFilter === 'all' && !this.searchKeyword) {
+        if (this.activeFilter === "all" && !this.searchKeyword) {
           this.totalItems = this.typeCounts.all;
         }
       } catch (error) {
-        console.error('添加剪贴板项目失败:', error);
+        console.error("添加剪贴板项目失败:", error);
         await this.loadClipboardHistory();
       }
     },
 
     /** 删除项目 */
-    async deleteItem(
-      itemOrId: ClipboardItem | number,
-      event?: Event,
-    ): Promise<StoreActionResult> {
+    async deleteItem(itemOrId: ClipboardItem | number, event?: Event): Promise<StoreActionResult> {
       event?.stopPropagation();
-      const id = typeof itemOrId === 'number' ? itemOrId : itemOrId.id;
+      const id = typeof itemOrId === "number" ? itemOrId : itemOrId.id;
 
       try {
         const success = await window.clipboard.deleteItem(id);
@@ -192,7 +184,7 @@ export const useClipboardStore = defineStore('clipboard', {
         this.refreshCounts();
         return { ok: true };
       } catch (error) {
-        console.error('删除出错:', error);
+        console.error("删除出错:", error);
         return { ok: false };
       }
     },
@@ -209,7 +201,7 @@ export const useClipboardStore = defineStore('clipboard', {
         this.typeCounts = { all: 0, text: 0, url: 0, code: 0, favorite: 0 };
         return { ok: true };
       } catch (error) {
-        console.error('清空全部失败:', error);
+        console.error("清空全部失败:", error);
         return { ok: false };
       }
     },
@@ -226,7 +218,7 @@ export const useClipboardStore = defineStore('clipboard', {
         await this.refreshCounts();
         return { ok: true, deletedCount };
       } catch (error) {
-        console.error('清空非收藏失败:', error);
+        console.error("清空非收藏失败:", error);
         return { ok: false };
       }
     },
@@ -238,10 +230,7 @@ export const useClipboardStore = defineStore('clipboard', {
     },
 
     /** 切换收藏状态 */
-    async toggleFavorite(
-      item: ClipboardItem,
-      event?: Event,
-    ): Promise<StoreActionResult> {
+    async toggleFavorite(item: ClipboardItem, event?: Event): Promise<StoreActionResult> {
       event?.stopPropagation();
       const newStatus = !item.is_favorite;
 
@@ -259,23 +248,20 @@ export const useClipboardStore = defineStore('clipboard', {
         this.refreshCounts();
         return { ok: true, favorited: newStatus };
       } catch (error) {
-        console.error('设置收藏状态出错:', error);
+        console.error("设置收藏状态出错:", error);
         return { ok: false };
       }
     },
 
     /** 复制到系统剪贴板 */
-    async copyItem(
-      item: ClipboardItem,
-      event?: Event,
-    ): Promise<StoreActionResult> {
+    async copyItem(item: ClipboardItem, event?: Event): Promise<StoreActionResult> {
       event?.stopPropagation();
 
       try {
         await window.clipboard.write(item.content);
         return { ok: true };
       } catch (error) {
-        console.error('复制失败:', error);
+        console.error("复制失败:", error);
         return { ok: false };
       }
     },

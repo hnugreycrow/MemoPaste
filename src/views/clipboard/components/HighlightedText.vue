@@ -1,9 +1,6 @@
 <template>
   <div ref="rootRef" class="highlighted-text">
-    <pre
-      v-if="isCode && chunked"
-      class="hljs code-block"
-    ><code><span
+    <pre v-if="isCode && chunked" class="hljs code-block"><code><span
         v-for="(html, i) in chunkHtml"
         :key="i"
         :data-idx="i"
@@ -11,29 +8,14 @@
         class="hl-chunk"
         v-html="html"
       ></span></code></pre>
-    <pre
-      v-else-if="isCode"
-      class="hljs code-block"
-    ><code v-html="highlightedCode"></code></pre>
+    <pre v-else-if="isCode" class="hljs code-block"><code v-html="highlightedCode"></code></pre>
     <div v-else class="plain-text" v-html="highlightedText"></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import {
-  computed,
-  nextTick,
-  onMounted,
-  onUnmounted,
-  ref,
-  shallowRef,
-  watch,
-} from "vue";
-import {
-  hljs,
-  acquireHljsTheme,
-  releaseHljsTheme,
-} from "@/utils/hljsSetup";
+import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
+import { hljs, acquireHljsTheme, releaseHljsTheme } from "@/utils/hljsSetup";
 
 const props = defineProps<{
   content: string;
@@ -76,9 +58,7 @@ const highlightedText = computed(() => {
   const escaped = escapeHtml(txt);
   const term = props.search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const re = new RegExp(term, "gi");
-  return escaped
-    .replace(re, (m) => `<mark>${m}</mark>`)
-    .replace(/\n/g, "<br/>");
+  return escaped.replace(re, (m) => `<mark>${m}</mark>`).replace(/\n/g, "<br/>");
 });
 
 // ===== 长内容：按视口分块高亮 =====
@@ -94,9 +74,7 @@ const chunkEls = new Map<number, HTMLElement>();
 const highlighted = new Set<number>();
 let observer: IntersectionObserver | null = null;
 
-const chunked = computed(
-  () => isCode.value && (props.content?.length ?? 0) > CHUNK_THRESHOLD,
-);
+const chunked = computed(() => isCode.value && (props.content?.length ?? 0) > CHUNK_THRESHOLD);
 
 function splitChunks(text: string): string[] {
   const lines = text.split("\n");

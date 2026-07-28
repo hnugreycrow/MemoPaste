@@ -55,7 +55,12 @@ export interface ClipboardAPI {
   deleteItem: (id: number) => Promise<boolean>;
   clearAll: () => Promise<boolean>;
   clearExceptFavorites: () => Promise<number>;
-  getHistory: (page: number, pageSize: number, type: string, keyword?: string) => Promise<ClipboardHistoryResult>;
+  getHistory: (
+    page: number,
+    pageSize: number,
+    type: string,
+    keyword?: string,
+  ) => Promise<ClipboardHistoryResult>;
   /** 写入剪贴板、隐藏面板并模拟粘贴到原窗口 */
   pasteAndHide: (text: string) => Promise<boolean>;
   // 收藏
@@ -64,11 +69,34 @@ export interface ClipboardAPI {
   getCounts: () => Promise<TypeCounts>;
 }
 
+/** 主题模式 */
+export type ThemeMode = "light" | "dark";
+
+/** 允许读写的配置键（与主进程白名单一致） */
+export type ConfigKey =
+  "theme" | "shortcut" | "minimizeToTray" | "openAtLogin" | "dataRetentionDays" | "version";
+
+/** 应用配置 */
+export interface AppConfig {
+  theme: ThemeMode;
+  shortcut: string;
+  minimizeToTray: boolean;
+  openAtLogin: boolean;
+  dataRetentionDays: number;
+  version?: string;
+}
+
 /** 渲染进程暴露的配置 API */
 export interface ConfigAPI {
-  get: <T>(key: string) => Promise<T>;
-  set: <T>(key: string, value: T) => Promise<boolean>;
-  getAll: () => Promise<any>;
+  get: <T>(key: ConfigKey) => Promise<T | undefined>;
+  set: <T>(key: ConfigKey, value: T) => Promise<boolean>;
+  getAll: () => Promise<AppConfig>;
+}
+
+/** 跨窗口主题同步 API（替代裸露 ipcRenderer） */
+export interface ThemeAPI {
+  broadcast: (theme: ThemeMode) => void;
+  onChanged: (callback: (theme: ThemeMode) => void) => () => void;
 }
 
 /** 快捷面板键盘导航动作 */

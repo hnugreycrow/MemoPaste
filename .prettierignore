@@ -1,0 +1,9 @@
+node_modules
+dist
+dist-electron
+release
+database
+*.min.js
+auto-imports.d.ts
+components.d.ts
+package-lock.json

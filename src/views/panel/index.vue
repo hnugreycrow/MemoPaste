@@ -16,8 +16,7 @@ defineOptions({
 });
 
 const clipboardStore = useClipboardStore();
-const { clipboardData, isLoadingMore, activeFilter, totalItems } =
-  storeToRefs(clipboardStore);
+const { clipboardData, isLoadingMore, activeFilter, totalItems } = storeToRefs(clipboardStore);
 
 const focusedIndex = ref(0);
 const listRef = ref<HTMLElement | null>(null);
@@ -158,12 +157,7 @@ onUnmounted(() => {
         <span class="panel-title">MemoPaste</span>
       </div>
       <div class="header-actions">
-        <button
-          type="button"
-          class="icon-btn"
-          title="打开主窗口"
-          @click="openMain"
-        >
+        <button type="button" class="icon-btn" title="打开主窗口" @click="openMain">
           <el-icon><i-ep-Monitor /></el-icon>
         </button>
         <button type="button" class="icon-btn" title="关闭" @click="hidePanel">
@@ -413,11 +407,7 @@ onUnmounted(() => {
     &:hover,
     &.focused {
       border-color: color-mix(in srgb, var(--accent-quaternary) 50%, transparent);
-      background: color-mix(
-        in srgb,
-        var(--accent-quaternary) 10%,
-        var(--favorite-bg)
-      );
+      background: color-mix(in srgb, var(--accent-quaternary) 10%, var(--favorite-bg));
     }
   }
 }

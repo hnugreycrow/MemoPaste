@@ -8,10 +8,7 @@
       <div v-else class="detail-header-meta" />
       <div class="detail-header-actions">
         <template v-if="item">
-          <el-tooltip
-            :content="item.is_favorite ? '取消收藏' : '收藏'"
-            placement="bottom"
-          >
+          <el-tooltip :content="item.is_favorite ? '取消收藏' : '收藏'" placement="bottom">
             <el-button
               class="header-action-btn"
               :class="{ 'is-favorite': item.is_favorite }"
@@ -44,19 +41,9 @@
             </el-button>
           </el-tooltip>
           <div class="detail-text-body">
-            <HighlightedText
-              :content="displayContent"
-              :type="props.item?.type"
-            />
-            <div
-              v-if="item.content.length > MAX_CONTENT_LENGTH"
-              class="expand-button"
-            >
-              <el-button
-                link
-                type="primary"
-                @click="showAllContent = !showAllContent"
-              >
+            <HighlightedText :content="displayContent" :type="props.item?.type" />
+            <div v-if="item.content.length > MAX_CONTENT_LENGTH" class="expand-button">
+              <el-button link type="primary" @click="showAllContent = !showAllContent">
                 {{ showAllContent ? "收起" : "展开" }}
               </el-button>
             </div>
@@ -115,10 +102,7 @@
           </div>
         </div>
         <div class="zoom-text">
-          <HighlightedText
-            :content="item?.content || ''"
-            :type="props.item?.type"
-          />
+          <HighlightedText :content="item?.content || ''" :type="props.item?.type" />
         </div>
       </div>
       <template #footer>
@@ -140,7 +124,7 @@ import HighlightedText from "./HighlightedText.vue";
 import { ClipboardItem } from "@/utils/type";
 import { formatTime, getTypeLabel } from "@/utils/utils";
 
-interface Item extends ClipboardItem {}
+type Item = ClipboardItem;
 
 const props = defineProps<{
   item: Item | null;

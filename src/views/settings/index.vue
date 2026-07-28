@@ -100,9 +100,7 @@ const viewChangelog = () => {
 };
 
 const openGithub = () => {
-  window.shell.openExternal(
-    "https://github.com/hnugreycrow/MemoPaste",
-  );
+  window.shell.openExternal("https://github.com/hnugreycrow/MemoPaste");
 };
 
 onUnmounted(() => {
@@ -179,10 +177,7 @@ onUnmounted(() => {
               <span class="setting-label">关闭时最小化到托盘</span>
               <span class="setting-desc">点击关闭时隐藏到托盘</span>
             </div>
-            <el-switch
-              v-model="minimizeToTray"
-              @change="handleMinimizeToTrayChange"
-            />
+            <el-switch v-model="minimizeToTray" @change="handleMinimizeToTrayChange" />
           </div>
 
           <div class="setting-row">
@@ -190,10 +185,7 @@ onUnmounted(() => {
               <span class="setting-label">开机自启</span>
               <span class="setting-desc">电脑开机后自动启动</span>
             </div>
-            <el-switch
-              v-model="openAtLogin"
-              @change="handleOpenAtLoginChange"
-            />
+            <el-switch v-model="openAtLogin" @change="handleOpenAtLoginChange" />
           </div>
 
           <div class="setting-row retention-row">
@@ -232,8 +224,8 @@ onUnmounted(() => {
             <div class="setting-meta">
               <span class="setting-label">唤起快捷面板</span>
               <span class="setting-desc">
-                全局快捷键打开浮层；需包含 Ctrl / Alt / Win
-                之一，可叠加 Shift；普通键限字母、数字、F1–F12
+                全局快捷键打开浮层；需包含 Ctrl / Alt / Win 之一，可叠加
+                Shift；普通键限字母、数字、F1–F12
               </span>
             </div>
             <ShortcutRecorder v-model:shortcut="shortcut" />
@@ -260,8 +252,7 @@ onUnmounted(() => {
             <div class="about-intro-text">
               <div class="about-name">MemoPaste</div>
               <p class="about-desc">
-                剪贴板管理工具，帮助您管理和组织剪贴板内容。基于 Electron +
-                Vue + Vite 构建。
+                剪贴板管理工具，帮助您管理和组织剪贴板内容。基于 Electron + Vue + Vite 构建。
               </p>
             </div>
           </div>
@@ -271,11 +262,7 @@ onUnmounted(() => {
               <span class="setting-label">当前版本</span>
               <span class="setting-desc">MemoPaste v{{ appVersion }}</span>
             </div>
-            <el-button
-              :loading="isLoading"
-              class="action-btn"
-              @click="checkForUpdates"
-            >
+            <el-button :loading="isLoading" class="action-btn" @click="checkForUpdates">
               检查更新
             </el-button>
           </div>
@@ -285,9 +272,7 @@ onUnmounted(() => {
               <span class="setting-label">更新日志</span>
               <span class="setting-desc">查看版本更新历史</span>
             </div>
-            <el-button class="action-btn" @click="viewChangelog">
-              查看日志
-            </el-button>
+            <el-button class="action-btn" @click="viewChangelog"> 查看日志 </el-button>
           </div>
 
           <div class="setting-row">

@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build && electron-builder",
     "preview": "vite preview",
-    "sqlite3-rebuild": "electron-rebuild -f -w better-sqlite3"
+    "sqlite3-rebuild": "electron-rebuild -f -w better-sqlite3",
+    "lint": "eslint .",
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
@@ -25,14 +27,22 @@
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@iconify-json/ep": "^1.2.3",
     "@vitejs/plugin-vue": "^5.0.4",
+    "@vue/eslint-config-typescript": "^14.9.0",
     "electron": "^30.0.1",
     "electron-builder": "^24.13.3",
     "electron-rebuild": "^3.2.9",
+    "eslint": "^10.8.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-vue": "^10.10.0",
+    "globals": "^17.8.0",
+    "prettier": "^3.9.6",
     "sass": "^1.102.0",
     "sass-embedded": "^1.90.0",
     "typescript": "^5.2.2",
+    "typescript-eslint": "^8.65.0",
     "unplugin-auto-import": "^20.0.0",
     "unplugin-icons": "^22.2.0",
     "unplugin-vue-components": "^29.0.0",

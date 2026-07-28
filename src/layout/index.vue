@@ -11,10 +11,11 @@ const router = useRouter();
 
 // 自动找出所有 meta.keepAlive = true 的路由
 const cacheRoutes = computed<string[]>(() =>
-  router.getRoutes()
-    .filter(r => r.meta?.keepAlive)
-    .map(r => r.name) 
-    .filter((name): name is string => typeof name === "string")
+  router
+    .getRoutes()
+    .filter((r) => r.meta?.keepAlive)
+    .map((r) => r.name)
+    .filter((name): name is string => typeof name === "string"),
 );
 
 let clipboardWatcherCleanup: (() => void) | null = null; // 剪贴板监听清理函数
@@ -74,7 +75,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   stopClipboardWatcher();
-})
+});
 </script>
 
 <template>

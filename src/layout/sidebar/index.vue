@@ -38,8 +38,7 @@ const goSettings = () => {
 };
 
 const toggleTheme = () => {
-  const nextTheme: ThemeType =
-    themeService.currentTheme.value === "dark" ? "light" : "dark";
+  const nextTheme: ThemeType = themeService.currentTheme.value === "dark" ? "light" : "dark";
   themeService.setTheme(nextTheme);
 };
 </script>
@@ -83,9 +82,7 @@ const toggleTheme = () => {
         type="button"
         class="util-item"
         :aria-label="
-          themeService.currentTheme.value === 'dark'
-            ? '切换到浅色主题'
-            : '切换到深色主题'
+          themeService.currentTheme.value === 'dark' ? '切换到浅色主题' : '切换到深色主题'
         "
         @click="toggleTheme"
       >

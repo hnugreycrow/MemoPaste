@@ -78,9 +78,7 @@ function ensureApi(): HookApi | null {
     const callNextHookEx = user32.func(
       "intptr_t __stdcall CallNextHookEx(uintptr_t hhk, int nCode, uintptr_t wParam, uintptr_t lParam)",
     );
-    const unhookWindowsHookEx = user32.func(
-      "int __stdcall UnhookWindowsHookEx(uintptr_t hhk)",
-    );
+    const unhookWindowsHookEx = user32.func("int __stdcall UnhookWindowsHookEx(uintptr_t hhk)");
 
     api = {
       koffi,
@@ -127,28 +125,31 @@ export function installOutsideClickHook(opts: OutsideClickHookOptions): boolean 
   }
 
   try {
-    registeredCb = a.koffi.register((nCode: number, wParam: number | bigint, lParam: number | bigint) => {
-      try {
-        if (nCode >= 0) {
-          const msg = Number(wParam);
-          if (msg === WM_LBUTTONDOWN || msg === WM_NCLBUTTONDOWN) {
-            if (Date.now() >= graceUntil && options) {
-              const info = a.koffi.decode(lParam, a.MSLLHOOKSTRUCT) as {
-                pt: { x: number; y: number };
-              };
-              const { x, y } = info.pt;
-              if (!options.isPointInside(x, y)) {
-                scheduleOutsideClick();
+    registeredCb = a.koffi.register(
+      (nCode: number, wParam: number | bigint, lParam: number | bigint) => {
+        try {
+          if (nCode >= 0) {
+            const msg = Number(wParam);
+            if (msg === WM_LBUTTONDOWN || msg === WM_NCLBUTTONDOWN) {
+              if (Date.now() >= graceUntil && options) {
+                const info = a.koffi.decode(lParam, a.MSLLHOOKSTRUCT) as {
+                  pt: { x: number; y: number };
+                };
+                const { x, y } = info.pt;
+                if (!options.isPointInside(x, y)) {
+                  scheduleOutsideClick();
+                }
               }
             }
           }
+        } catch (error) {
+          console.error("outside-click hook callback error:", error);
         }
-      } catch (error) {
-        console.error("outside-click hook callback error:", error);
-      }
-      // hhk 参数可忽略，传 0 即可
-      return a.callNextHookEx(0, nCode, wParam, lParam);
-    }, a.HookProcPtr);
+        // hhk 参数可忽略，传 0 即可
+        return a.callNextHookEx(0, nCode, wParam, lParam);
+      },
+      a.HookProcPtr,
+    );
 
     const handle = a.setWindowsHookEx(WH_MOUSE_LL, registeredCb, null, 0);
     if (!handle) {

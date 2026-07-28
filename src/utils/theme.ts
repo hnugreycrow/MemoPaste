@@ -1,69 +1,61 @@
-import { ref } from 'vue';
+import { ref } from "vue";
+import type { ThemeMode } from "./type";
 
-// 主题类型
-export type ThemeType = 'light' | 'dark';
+export type ThemeType = ThemeMode;
 
-// 创建一个响应式的主题状态
-const currentTheme = ref<ThemeType>('dark');
+const currentTheme = ref<ThemeType>("dark");
 
+/** 避免 initTheme 被多次调用时重复挂上 IPC 监听 */
 let themeListenerBound = false;
 
-/** 监听其他窗口发来的主题变更（主窗口 ↔ 面板） */
+/**
+ * 主窗口与快捷面板是两个 BrowserWindow，改主题后需经主进程广播，
+ * 否则另一窗口的 DOM class 不会跟着变。
+ */
 function bindThemeSyncListener(): void {
   if (themeListenerBound) return;
   themeListenerBound = true;
 
-  window.ipcRenderer.on('theme-changed', (_event, theme: ThemeType) => {
-    if (theme !== 'light' && theme !== 'dark') return;
+  window.theme.onChanged((theme: ThemeType) => {
+    if (theme !== "light" && theme !== "dark") return;
     if (theme === currentTheme.value) return;
     currentTheme.value = theme;
     applyTheme(theme);
   });
 }
 
-// 获取存储的主题设置
 const initTheme = async (): Promise<void> => {
   bindThemeSyncListener();
 
   try {
-    // 使用通用配置方法获取主题
-    const savedTheme = await window.config.get<ThemeType>('theme');
-    if (savedTheme) {
-      currentTheme.value = savedTheme;
-    } else {
-      // 默认使用深色主题
-      currentTheme.value = 'dark';
-    }
+    const savedTheme = await window.config.get<ThemeType>("theme");
+    currentTheme.value = savedTheme ?? "dark";
     applyTheme(currentTheme.value);
   } catch (error) {
-    console.error('获取主题设置失败:', error);
-    // 出错时使用默认主题
-    currentTheme.value = 'dark';
-    applyTheme('dark');
+    console.error("获取主题设置失败:", error);
+    currentTheme.value = "dark";
+    applyTheme("dark");
   }
 };
 
-// 设置主题
 const setTheme = (theme: ThemeType): void => {
   currentTheme.value = theme;
-  // 使用通用配置方法保存主题
-  window.config.set('theme', theme).catch((error: any) => {
-    console.error('保存主题设置失败:', error);
+  window.config.set("theme", theme).catch((error: unknown) => {
+    console.error("保存主题设置失败:", error);
   });
   applyTheme(theme);
-  // 通知其他 BrowserWindow 同步主题
-  window.ipcRenderer.send('theme-changed', theme);
+  // 先改本窗 DOM，再广播；对端只 apply，避免循环写 config
+  window.theme.broadcast(theme);
 };
 
-// 应用主题到 DOM（:root.dark / :root.light）
+/** 主题样式挂在 :root.dark / :root.light（见 themes.css） */
 const applyTheme = (theme: ThemeType): void => {
-  document.documentElement.classList.remove('dark', 'light');
+  document.documentElement.classList.remove("dark", "light");
   document.documentElement.classList.add(theme);
 };
 
-// 导出主题服务
 export const themeService = {
   currentTheme,
   initTheme,
-  setTheme
+  setTheme,
 };

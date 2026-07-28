@@ -51,11 +51,12 @@ body,
   height: 100%;
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei",
-    sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 #app {
@@ -112,10 +113,7 @@ html.is-panel #app {
   --el-button-bg-color: var(--accent-primary);
   --el-button-text-color: var(--accent-on-primary, var(--text-inverse));
   --el-button-border-color: var(--accent-primary);
-  --el-button-hover-bg-color: var(
-    --accent-primary-hover,
-    var(--bg-active)
-  );
+  --el-button-hover-bg-color: var(--accent-primary-hover, var(--bg-active));
   --el-button-hover-border-color: var(--accent-primary-hover, var(--bg-active));
   --el-button-hover-text-color: var(--accent-on-primary, var(--text-inverse));
 }
@@ -130,7 +128,7 @@ html.is-panel #app {
 }
 
 .el-dropdown-menu__item {
-  --el-dropdown-menuItem-hover-fill: var(--bg-hover)
+  --el-dropdown-menuItem-hover-fill: var(--bg-hover);
 }
 
 button {

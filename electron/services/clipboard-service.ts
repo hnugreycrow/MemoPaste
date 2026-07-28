@@ -135,10 +135,7 @@ export class ClipboardService {
           const currentContent = clipboard.readText();
           console.log("Available formats:", clipboard.availableFormats());
 
-          if (
-            currentContent !== this.lastClipboardContent &&
-            currentContent.trim() !== ""
-          ) {
+          if (currentContent !== this.lastClipboardContent && currentContent.trim() !== "") {
             this.lastClipboardContent = currentContent;
             console.log("Clipboard content changed, notifying renderer");
             // 主窗口负责入库，面板窗口仅刷新列表

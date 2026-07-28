@@ -9,24 +9,14 @@
  */
 
 export type ShortcutValidationResult =
-  | { success: true; shortcut: string }
-  | { success: false; error: string };
+  { success: true; shortcut: string } | { success: false; error: string };
 
-const MODIFIER_ORDER = [
-  "CommandOrControl",
-  "Alt",
-  "Shift",
-  "Super",
-] as const;
+const MODIFIER_ORDER = ["CommandOrControl", "Alt", "Shift", "Super"] as const;
 
 type CanonicalModifier = (typeof MODIFIER_ORDER)[number];
 
 /** 除 Shift 外的强修饰键：至少需要其中一个 */
-const STRONG_MODIFIERS = new Set<CanonicalModifier>([
-  "CommandOrControl",
-  "Alt",
-  "Super",
-]);
+const STRONG_MODIFIERS = new Set<CanonicalModifier>(["CommandOrControl", "Alt", "Super"]);
 
 const MODIFIER_ALIASES: Record<string, CanonicalModifier> = {
   commandorcontrol: "CommandOrControl",

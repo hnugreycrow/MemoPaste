@@ -1,135 +1,128 @@
-import Store from 'electron-store';
-import { app, ipcMain } from 'electron';
-import {
-  applyOpenAtLogin,
-  syncOpenAtLoginFromSystem,
-} from '../utils/login-item';
+import Store from "electron-store";
+import { app, ipcMain } from "electron";
+import type { AppConfig, ConfigKey } from "../../src/utils/type";
+import { applyOpenAtLogin, syncOpenAtLoginFromSystem } from "../utils/login-item";
 
-// 定义配置类型
-interface ConfigSchema {
-  theme: 'light' | 'dark';
-  shortcut: string;
-  minimizeToTray: boolean;
-  openAtLogin: boolean;
-  dataRetentionDays: number; // 数据保存天数
-  version?: string;
-  // 可以在这里添加更多配置项
-  [key: string]: any; // 允许任意键值对
+/** 渲染进程可读写的配置键；未列入的 key 一律拒绝，避免任意落盘 */
+const CONFIG_KEYS = new Set<ConfigKey>([
+  "theme",
+  "shortcut",
+  "minimizeToTray",
+  "openAtLogin",
+  "dataRetentionDays",
+  "version",
+]);
+
+function isConfigKey(key: unknown): key is ConfigKey {
+  return typeof key === "string" && CONFIG_KEYS.has(key as ConfigKey);
 }
 
-/**
- * 配置服务类
- * 负责处理所有与配置相关的操作，包括：
- * - 读取配置
- * - 保存配置
- * - 配置 / 开机自启 IPC
- */
-export class ConfigService {
-  private store: Store<ConfigSchema>;
+/** 已知键再校验值类型，防止脏数据写进 electron-store */
+function validateConfigValue(key: ConfigKey, value: unknown): boolean {
+  switch (key) {
+    case "theme":
+      return value === "light" || value === "dark";
+    case "shortcut":
+    case "version":
+      return typeof value === "string";
+    case "minimizeToTray":
+    case "openAtLogin":
+      return typeof value === "boolean";
+    case "dataRetentionDays":
+      return typeof value === "number" && Number.isInteger(value) && value > 0;
+    default:
+      return false;
+  }
+}
 
-  /**
-   * 构造函数
-   */
+/** 本地配置与开机自启（electron-store + 登录项 IPC） */
+export class ConfigService {
+  private store: Store<AppConfig>;
+
   constructor() {
-    // 创建配置存储实例
-    this.store = new Store<ConfigSchema>({
-      // 默认配置
+    this.store = new Store<AppConfig>({
       defaults: {
-        theme: 'dark',
-        shortcut: 'Alt+Shift+C',
+        theme: "dark",
+        shortcut: "Alt+Shift+C",
         minimizeToTray: false,
         openAtLogin: false,
-        dataRetentionDays: 1, // 默认保存1天
-        version: '1.0.0'
+        dataRetentionDays: 1,
+        version: "1.0.0",
       },
-      // 配置文件名
-      name: 'config',
+      name: "config",
     });
   }
 
-  /**
-   * 设置整个配置对象
-   * @param config 配置对象
-   */
-  public setConfig(config: Partial<ConfigSchema>): void {
+  public setConfig(config: Partial<AppConfig>): void {
     this.store.set(config);
   }
-  
-  /**
-   * 通用的获取配置项方法
-   * @param key 配置键名
-   * @returns 配置值
-   */
-  public get<T>(key: string): T {
+
+  public get<T>(key: ConfigKey): T {
     return this.store.get(key) as T;
   }
-  
-  /**
-   * 通用的设置配置项方法
-   * @param key 配置键名
-   * @param value 配置值
-   */
-  public set<T>(key: string, value: T): void {
+
+  public set<T>(key: ConfigKey, value: T): void {
     this.store.set(key, value);
   }
 
-
-  /**
-   * 获取快捷键配置
-   * @returns 当前快捷键
-   */
   public getShortcut(): string {
-    return this.store.get('shortcut');
+    return this.store.get("shortcut");
   }
 
-  /**
-   * 设置快捷键配置
-   * @param shortcut 快捷键
-   */
   public setShortcut(shortcut: string): void {
-    this.store.set('shortcut', shortcut);
+    this.store.set("shortcut", shortcut);
   }
 
-  /**
-   * 获取所有配置
-   * @returns 所有配置
-   */
-  public getAll(): ConfigSchema {
+  public getAll(): AppConfig {
     return this.store.store;
   }
 
-  /** 以系统登录项为准回写 openAtLogin */
+  /**
+   * 系统登录项可能被用户在系统设置里改掉；
+   * 启动时以系统为准回写，避免 UI 与真实状态不一致。
+   */
   public syncOpenAtLoginFromSystem(): void {
     syncOpenAtLoginFromSystem(
-      () => !!this.get<boolean>('openAtLogin'),
-      (enabled) => this.set('openAtLogin', enabled),
+      () => !!this.get<boolean>("openAtLogin"),
+      (enabled) => this.set("openAtLogin", enabled),
     );
   }
 
-  /** 注册配置与开机自启相关 IPC */
   public registerIpcHandlers(): void {
-    ipcMain.handle('config-get', (_event, key: string) => {
+    ipcMain.handle("config-get", (_event, key: unknown) => {
+      if (!isConfigKey(key)) {
+        console.warn("Rejected config-get for unknown key:", key);
+        return undefined;
+      }
       return this.get(key);
     });
 
-    ipcMain.handle('config-set', (_event, key: string, value: unknown) => {
-      this.set(key, value);
+    ipcMain.handle("config-set", (_event, key: unknown, value: unknown) => {
+      if (!isConfigKey(key)) {
+        console.warn("Rejected config-set for unknown key:", key);
+        return false;
+      }
+      if (!validateConfigValue(key, value)) {
+        console.warn("Rejected config-set for invalid value:", key, value);
+        return false;
+      }
+      this.set(key, value as AppConfig[ConfigKey]);
       return true;
     });
 
-    ipcMain.handle('config-get-all', () => {
+    ipcMain.handle("config-get-all", () => {
       return this.getAll();
     });
 
-    // 开机自启：写配置 + 打包后同步系统登录项
-    ipcMain.handle('open-at-login-set', (_event, enabled: boolean) => {
+    // 写配置；真正改系统登录项仅在打包后生效（开发态 applied=false）
+    ipcMain.handle("open-at-login-set", (_event, enabled: boolean) => {
       const value = !!enabled;
-      this.set('openAtLogin', value);
+      this.set("openAtLogin", value);
       try {
         applyOpenAtLogin(value);
         return { success: true, openAtLogin: value, applied: app.isPackaged };
       } catch (error) {
-        console.error('Failed to set open at login:', error);
+        console.error("Failed to set open at login:", error);
         return {
           success: false,
           openAtLogin: value,

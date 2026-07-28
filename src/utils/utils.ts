@@ -2,10 +2,10 @@ export type ContentType = "text" | "url" | "code";
 
 /** 整段内容是 URL（不含弱匹配 / 邮箱） */
 const URL_WHOLE =
-  /^(https?:\/\/|www\.)[a-z0-9]+([\-.]{1}[a-z0-9]+)*\.[a-z]{2,}(:[0-9]{1,5})?(\/[^\s]*)?(\?[^\s]*)?$/i;
+  /^(https?:\/\/|www\.)[a-z0-9]+([-.]{1}[a-z0-9]+)*\.[a-z]{2,}(:[0-9]{1,5})?(\/[^\s]*)?(\?[^\s]*)?$/i;
 
 /** 完整 HTML/XML 片段 */
-const HTML_COMPLETE = /^\s*<[\w\-]+[^>]*>[\s\S]*<\/[\w\-]+>\s*$/;
+const HTML_COMPLETE = /^\s*<[\w-]+[^>]*>[\s\S]*<\/[\w-]+>\s*$/;
 
 /** 行首常见代码语句 */
 const CODE_LINE_START =

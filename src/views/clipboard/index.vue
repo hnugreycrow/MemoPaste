@@ -25,22 +25,19 @@ const searchPlaceholder = computed(() =>
   isFavoritesView.value ? "搜索收藏..." : "搜索剪贴板内容...",
 );
 
-const emptyTitle = computed(() =>
-  isFavoritesView.value ? "还没有收藏" : "暂无记录",
-);
+const emptyTitle = computed(() => (isFavoritesView.value ? "还没有收藏" : "暂无记录"));
 
 const emptyDesc = computed(() =>
-  isFavoritesView.value
-    ? "在历史里点星标，重要内容会留在这里"
-    : "开始复制内容，它们会出现在这里",
+  isFavoritesView.value ? "在历史里点星标，重要内容会留在这里" : "开始复制内容，它们会出现在这里",
 );
 
 // 搜索功能（输入下推到 store，由后端 SQL LIKE 处理）
 const { searchQuery } = useSearch();
 
 // 虚拟滚动
-const { contentListRef, virtualScroll, visibleItems, handleScroll } =
-  useVirtualScroll(() => clipboardData.value);
+const { contentListRef, virtualScroll, visibleItems, handleScroll } = useVirtualScroll(
+  () => clipboardData.value,
+);
 
 const selectedItem = ref<ClipboardItem | null>(null);
 
@@ -189,11 +186,7 @@ const clearAll = async () => {
 
 // 组件挂载时启动监听，加载历史记录，卸载时停止监听
 onMounted(async () => {
-  const loaded = await clipboardStore.loadClipboardHistory(
-    1,
-    false,
-    activeFilter.value,
-  );
+  const loaded = await clipboardStore.loadClipboardHistory(1, false, activeFilter.value);
   if (!loaded.ok) {
     ElMessage({ message: "加载历史记录失败", type: "error", plain: true });
   }
@@ -254,9 +247,7 @@ onActivated(() => {
         <div v-else class="favorites-banner" role="status">
           <i-ep-Star class="favorites-banner-icon" />
           <div class="favorites-banner-text">
-            <span class="favorites-banner-desc"
-              >已收藏的内容不会随保留天数自动清理</span
-            >
+            <span class="favorites-banner-desc">已收藏的内容不会随保留天数自动清理</span>
           </div>
         </div>
 
@@ -280,9 +271,7 @@ onActivated(() => {
             <div
               class="virtual-scroll-content"
               :style="{
-                transform: `translateY(${
-                  virtualScroll.startIndex * virtualScroll.itemHeight
-                }px)`,
+                transform: `translateY(${virtualScroll.startIndex * virtualScroll.itemHeight}px)`,
               }"
             >
               <div
@@ -312,9 +301,7 @@ onActivated(() => {
               <!-- 全部加载完毕提示 -->
               <div
                 v-if="
-                  !isLoadingMore &&
-                  clipboardData.length >= totalItems &&
-                  clipboardData.length > 0
+                  !isLoadingMore && clipboardData.length >= totalItems && clipboardData.length > 0
                 "
                 class="load-complete"
               >

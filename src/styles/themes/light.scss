@@ -79,17 +79,9 @@
 html.light {
   .nav-sidebar {
     background:
-      radial-gradient(
-        ellipse 120% 60% at 50% 100%,
-        rgba(139, 109, 232, 0.08),
-        transparent 55%
-      ),
+      radial-gradient(ellipse 120% 60% at 50% 100%, rgba(139, 109, 232, 0.08), transparent 55%),
       linear-gradient(180deg, #eef8f4 0%, #eaf4f0 45%, #e8f2f6 100%);
-    border-right-color: color-mix(
-      in srgb,
-      var(--border-light) 80%,
-      var(--accent-primary)
-    );
+    border-right-color: color-mix(in srgb, var(--border-light) 80%, var(--accent-primary));
   }
 
   .brand-logo {
@@ -104,8 +96,7 @@ html.light {
     &.active {
       background: color-mix(in srgb, var(--accent-primary) 25%, white);
       color: var(--accent-primary);
-      box-shadow: inset 0 0 0 1px
-        color-mix(in srgb, var(--accent-primary) 28%, transparent);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-primary) 28%, transparent);
     }
   }
 
@@ -119,8 +110,7 @@ html.light {
     &.active {
       background: var(--bg-active);
       box-shadow:
-        inset 0 0 0 1px
-          color-mix(in srgb, var(--accent-primary) 28%, transparent),
+        inset 0 0 0 1px color-mix(in srgb, var(--accent-primary) 28%, transparent),
         var(--shadow-soft);
     }
   }
@@ -145,18 +135,10 @@ html.light {
   }
 
   ::-webkit-scrollbar-thumb {
-    background: color-mix(
-      in srgb,
-      var(--accent-primary) 25%,
-      var(--border-light)
-    );
+    background: color-mix(in srgb, var(--accent-primary) 25%, var(--border-light));
 
     &:hover {
-      background: color-mix(
-        in srgb,
-        var(--accent-primary) 40%,
-        var(--border-medium)
-      );
+      background: color-mix(in srgb, var(--accent-primary) 40%, var(--border-medium));
     }
   }
 }

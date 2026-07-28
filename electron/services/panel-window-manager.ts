@@ -1,9 +1,6 @@
 import { BrowserWindow, globalShortcut, screen } from "electron";
 import path from "node:path";
-import {
-  installOutsideClickHook,
-  uninstallOutsideClickHook,
-} from "../utils/outside-click-hook";
+import { installOutsideClickHook, uninstallOutsideClickHook } from "../utils/outside-click-hook";
 import { isAppQuitting } from "./app-quit-state";
 
 const PANEL_WIDTH = 360;
@@ -91,11 +88,7 @@ export class PanelWindowManager {
 
   /** 向面板发送导航指令（面板 focusable:false，需全局快捷键转发） */
   private sendNav(action: "up" | "down" | "enter"): void {
-    if (
-      !this.panelWin ||
-      this.panelWin.isDestroyed() ||
-      !this.panelWin.isVisible()
-    ) {
+    if (!this.panelWin || this.panelWin.isDestroyed() || !this.panelWin.isVisible()) {
       return;
     }
     this.panelWin.webContents.send("panel-nav", action);
@@ -176,11 +169,7 @@ export class PanelWindowManager {
   public hide(): void {
     uninstallOutsideClickHook();
     this.unregisterShortcuts();
-    if (
-      this.panelWin &&
-      !this.panelWin.isDestroyed() &&
-      this.panelWin.isVisible()
-    ) {
+    if (this.panelWin && !this.panelWin.isDestroyed() && this.panelWin.isVisible()) {
       this.panelWin.hide();
     }
   }

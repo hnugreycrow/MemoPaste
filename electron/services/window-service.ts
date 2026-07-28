@@ -34,10 +34,8 @@ export class WindowService {
     this.rendererPath = rendererPath;
     this.devServerUrl = devServerUrl;
     this.configService = configService;
-    this.panel = new PanelWindowManager(
-      preloadPath,
-      publicPath,
-      (win, hashPath) => this.loadRenderer(win, hashPath),
+    this.panel = new PanelWindowManager(preloadPath, publicPath, (win, hashPath) =>
+      this.loadRenderer(win, hashPath),
     );
   }
 
@@ -66,14 +64,8 @@ export class WindowService {
     const absoluteMaxHeight = 900;
     const screenRatioCap = 0.9;
 
-    const maxWidth = Math.min(
-      Math.floor(screenWidth * screenRatioCap),
-      absoluteMaxWidth,
-    );
-    const maxHeight = Math.min(
-      Math.floor(screenHeight * screenRatioCap),
-      absoluteMaxHeight,
-    );
+    const maxWidth = Math.min(Math.floor(screenWidth * screenRatioCap), absoluteMaxWidth);
+    const maxHeight = Math.min(Math.floor(screenHeight * screenRatioCap), absoluteMaxHeight);
 
     const finalWidth = Math.max(minWidth, Math.min(baseWidth, maxWidth));
     const finalHeight = Math.max(minHeight, Math.min(baseHeight, maxHeight));
@@ -92,9 +84,7 @@ export class WindowService {
   /** 加载渲染页；hashPath 用于区分主窗口与面板路由（hash history） */
   private loadRenderer(win: BrowserWindow, hashPath?: string): void {
     if (this.devServerUrl) {
-      const url = hashPath
-        ? `${this.devServerUrl}#${hashPath}`
-        : this.devServerUrl;
+      const url = hashPath ? `${this.devServerUrl}#${hashPath}` : this.devServerUrl;
       win.loadURL(url);
     } else {
       const options = hashPath ? { hash: hashPath } : undefined;

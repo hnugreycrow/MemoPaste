@@ -1,10 +1,7 @@
 import { globalShortcut, ipcMain } from "electron";
 import { WindowService } from "./window-service";
 import { ConfigService } from "./config-service";
-import {
-  normalizeShortcut,
-  validateShortcut,
-} from "@shared/shortcut";
+import { normalizeShortcut, validateShortcut } from "@shared/shortcut";
 
 export type ShortcutUpdateResult = {
   success: boolean;
@@ -28,29 +25,19 @@ export class ShortcutService {
 
   private registerIpcHandlers(): void {
     ipcMain.handle("shortcut-get", () => {
-      return (
-        this.currentShortcut ??
-        this.configService.get<string>("shortcut") ??
-        null
-      );
+      return this.currentShortcut ?? this.configService.get<string>("shortcut") ?? null;
     });
 
-    ipcMain.handle(
-      "shortcut-update",
-      (_event, newShortcut: string): ShortcutUpdateResult => {
-        return this.updateShortcut(newShortcut);
-      },
-    );
+    ipcMain.handle("shortcut-update", (_event, newShortcut: string): ShortcutUpdateResult => {
+      return this.updateShortcut(newShortcut);
+    });
   }
 
   /**
    * 更新用户全局快捷键：校验 → 注销旧键 → 注册新键 → 失败回滚
    */
   public updateShortcut(rawShortcut: string): ShortcutUpdateResult {
-    const oldShortcut =
-      this.currentShortcut ??
-      this.configService.get<string>("shortcut") ??
-      null;
+    const oldShortcut = this.currentShortcut ?? this.configService.get<string>("shortcut") ?? null;
 
     const validated = validateShortcut(rawShortcut);
     if (!validated.success) {

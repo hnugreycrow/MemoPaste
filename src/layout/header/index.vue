@@ -47,28 +47,17 @@ onUnmounted(() => {
   <div class="titlebar">
     <div class="titlebar-drag" />
     <div class="titlebar-controls">
-      <el-button
-        class="titlebar-btn minimize-btn"
-        aria-label="最小化窗口"
-        @click="handleMinimize"
-      >
+      <el-button class="titlebar-btn minimize-btn" aria-label="最小化窗口" @click="handleMinimize">
         <template #icon><i-ep-Minus /></template>
       </el-button>
 
       <el-button class="titlebar-btn maximize-btn" @click="handleMaximize">
         <template #icon>
-          <component
-            style="font-size: 13px"
-            :is="isMaximized ? RestoreIcon : MaximizeIcon"
-          />
+          <component style="font-size: 13px" :is="isMaximized ? RestoreIcon : MaximizeIcon" />
         </template>
       </el-button>
 
-      <el-button
-        class="titlebar-btn close-btn"
-        aria-label="关闭窗口"
-        @click="handleClose"
-      >
+      <el-button class="titlebar-btn close-btn" aria-label="关闭窗口" @click="handleClose">
         <template #icon><i-ep-Close /></template>
       </el-button>
     </div>

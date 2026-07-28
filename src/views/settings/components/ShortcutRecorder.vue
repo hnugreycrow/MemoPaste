@@ -48,11 +48,7 @@ onMounted(async () => {
       @keyup="onKeyUp"
     >
       <template v-if="displayKeyParts.length">
-        <kbd
-          v-for="(key, index) in displayKeyParts"
-          :key="`${key}-${index}`"
-          class="keycap"
-        >
+        <kbd v-for="(key, index) in displayKeyParts" :key="`${key}-${index}`" class="keycap">
           {{ key }}
         </kbd>
       </template>
@@ -103,14 +99,12 @@ onMounted(async () => {
   &.recording {
     border-style: solid;
     border-color: var(--accent-primary);
-    box-shadow: 0 0 0 3px
-      color-mix(in srgb, var(--accent-primary) 18%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 18%, transparent);
   }
 
   &.invalid {
     border-color: var(--el-color-danger, #f56c6c);
-    box-shadow: 0 0 0 3px
-      color-mix(in srgb, var(--el-color-danger, #f56c6c) 18%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--el-color-danger, #f56c6c) 18%, transparent);
   }
 
   &:focus-visible {

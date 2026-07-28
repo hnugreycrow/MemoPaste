@@ -1,5 +1,5 @@
-import { Tray, Menu, nativeImage, app } from 'electron';
-import { WindowService } from './window-service';
+import { Tray, Menu, nativeImage, app } from "electron";
+import { WindowService } from "./window-service";
 
 /**
  * 托盘服务类
@@ -37,7 +37,7 @@ export class TrayService {
     this.updateContextMenu();
 
     // 点击托盘图标时显示/隐藏窗口
-    this.tray.on('click', () => {
+    this.tray.on("click", () => {
       this.windowService.toggleWindow();
     });
 
@@ -53,26 +53,26 @@ export class TrayService {
     // 托盘菜单：快捷面板与主窗口分离入口
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: '打开快捷面板',
+        label: "打开快捷面板",
         click: () => {
           this.windowService.showPanel();
         },
       },
       {
-        label: '显示主窗口',
+        label: "显示主窗口",
         click: () => {
           this.windowService.showWindow();
         },
       },
       {
-        label: '隐藏主窗口',
+        label: "隐藏主窗口",
         click: () => {
           this.windowService.hideWindow();
         },
       },
-      { type: 'separator' },
+      { type: "separator" },
       {
-        label: '退出',
+        label: "退出",
         click: () => {
           // before-quit 会置 appIsQuitting，避免被「关闭到托盘」拦截
           app.quit();

@@ -20,10 +20,7 @@ export function useVirtualScroll(items: () => any[]) {
 
   // 计算可见项目
   const visibleItems = computed(() => {
-    return items().slice(
-      virtualScroll.value.startIndex,
-      virtualScroll.value.endIndex + 1
-    );
+    return items().slice(virtualScroll.value.startIndex, virtualScroll.value.endIndex + 1);
   });
 
   // 处理滚动
@@ -34,23 +31,18 @@ export function useVirtualScroll(items: () => any[]) {
     virtualScroll.value.containerHeight = clientHeight;
 
     // 计算可见数量
-    const visibleCount =
-      Math.ceil(clientHeight / virtualScroll.value.itemHeight) + 4;
+    const visibleCount = Math.ceil(clientHeight / virtualScroll.value.itemHeight) + 4;
     virtualScroll.value.visibleCount = visibleCount;
 
     // 计算索引范围
     const startIndex = Math.floor(scrollTop / virtualScroll.value.itemHeight);
     virtualScroll.value.startIndex = Math.max(0, startIndex - 1);
 
-    const endIndex = Math.min(
-      items().length - 1,
-      virtualScroll.value.startIndex + visibleCount
-    );
+    const endIndex = Math.min(items().length - 1, virtualScroll.value.startIndex + visibleCount);
     virtualScroll.value.endIndex = endIndex;
 
     // 更新总高度
-    virtualScroll.value.totalHeight =
-      items().length * virtualScroll.value.itemHeight;
+    virtualScroll.value.totalHeight = items().length * virtualScroll.value.itemHeight;
 
     // 3. 关键修改：基于索引判断是否需要加载更多
     const buffer = 3;
@@ -68,7 +60,7 @@ export function useVirtualScroll(items: () => any[]) {
     () => {
       handleScroll();
     },
-    { deep: true }
+    { deep: true },
   );
 
   return {
