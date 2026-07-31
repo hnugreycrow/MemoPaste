@@ -18,11 +18,6 @@
               <i-ep-Star />
             </el-button>
           </el-tooltip>
-          <el-tooltip content="放大查看" placement="bottom">
-            <el-button class="header-action-btn" text @click="openZoomView">
-              <i-ep-Full-Screen />
-            </el-button>
-          </el-tooltip>
           <el-tooltip content="删除" placement="bottom">
             <el-button class="header-action-btn" text @click="deleteItem(item)">
               <i-ep-Delete />
@@ -35,7 +30,7 @@
     <template v-if="item">
       <div class="detail-content">
         <div class="detail-text" :class="{ 'is-image': isImage }">
-          <el-tooltip content="复制内容" placement="left">
+          <el-tooltip :content="isImage ? '复制图片' : '复制内容'" placement="left">
             <el-button class="copy-overlay-btn" @click="copyItem(item)">
               <i-ep-Document-Copy />
             </el-button>
@@ -43,13 +38,18 @@
           <div class="detail-text-body">
             <template v-if="isImage">
               <div class="detail-image-wrap">
-                <img
+                <el-image
                   v-if="imageSrc"
                   class="detail-image"
                   :src="imageSrc"
+                  :preview-src-list="[imageSrc]"
+                  fit="contain"
                   alt="剪贴板图片"
-                  draggable="false"
-                />
+                >
+                  <template #error>
+                    <div class="detail-image-fallback">图片文件不可用</div>
+                  </template>
+                </el-image>
                 <div v-else class="detail-image-fallback">图片文件不可用</div>
               </div>
             </template>
@@ -92,64 +92,11 @@
       <div class="empty-title">暂无选中项</div>
       <div class="empty-desc">选择一个剪贴板项目查看详情</div>
     </div>
-
-    <el-dialog
-      v-model="zoomVisible"
-      :title="isImage ? '图片预览' : '详情内容'"
-      width="85%"
-      :close-on-click-modal="true"
-      :close-on-press-escape="true"
-      class="zoom-dialog"
-      destroy-on-close
-    >
-      <div class="zoom-content">
-        <div class="zoom-meta">
-          <div class="zoom-meta-item">
-            <span class="zoom-meta-label">类型</span>
-            <span class="zoom-meta-value">{{ typeLabel }}</span>
-          </div>
-          <div class="zoom-meta-item">
-            <span class="zoom-meta-label">创建时间</span>
-            <span class="zoom-meta-value">{{ formattedTime }}</span>
-          </div>
-          <div v-if="!isImage" class="zoom-meta-item">
-            <span class="zoom-meta-label">字符数</span>
-            <span class="zoom-meta-value">{{ charCount }}</span>
-          </div>
-          <div v-else class="zoom-meta-item">
-            <span class="zoom-meta-label">大小</span>
-            <span class="zoom-meta-value">{{ item?.size }}</span>
-          </div>
-        </div>
-        <div class="zoom-text" :class="{ 'is-image': isImage }">
-          <template v-if="isImage">
-            <img
-              v-if="imageSrc"
-              class="zoom-image"
-              :src="imageSrc"
-              alt="剪贴板图片"
-              draggable="false"
-            />
-            <div v-else class="detail-image-fallback">图片文件不可用</div>
-          </template>
-          <HighlightedText v-else :content="item?.content || ''" :type="props.item?.type" />
-        </div>
-      </div>
-      <template #footer>
-        <div class="zoom-footer">
-          <el-button type="primary" @click="copyItem(item!)">
-            <i-ep-Document-Copy class="btn-icon" />
-            <span>{{ isImage ? "复制图片" : "复制内容" }}</span>
-          </el-button>
-          <el-button @click="closeZoomView">关闭</el-button>
-        </div>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import HighlightedText from "./HighlightedText.vue";
 import { ClipboardItem } from "@/utils/type";
 import { formatTime, getTypeLabel, clipimgUrl } from "@/utils/utils";
@@ -206,14 +153,6 @@ const deleteItem = (item: Item) => {
 
 const toggleFavorite = (item: Item) => {
   emit("favorite", item);
-};
-
-const zoomVisible = ref(false);
-const openZoomView = () => {
-  zoomVisible.value = true;
-};
-const closeZoomView = () => {
-  zoomVisible.value = false;
 };
 </script>
 
@@ -345,13 +284,23 @@ const closeZoomView = () => {
 }
 
 .detail-image {
-  max-width: 100%;
+  width: 100%;
+  height: 100%;
   max-height: 100%;
-  object-fit: contain;
   border-radius: 6px;
+
+  :deep(.el-image__inner) {
+    cursor: zoom-in;
+  }
 }
 
 .detail-image-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 120px;
   color: var(--text-tertiary);
   font-size: 13px;
 }
@@ -434,78 +383,5 @@ const closeZoomView = () => {
   justify-content: center;
   align-items: center;
   margin-top: 10px;
-}
-
-:deep(.zoom-dialog .el-dialog__body) {
-  padding: 0;
-  max-height: 70vh;
-  overflow: hidden;
-}
-
-.zoom-content {
-  display: flex;
-  flex-direction: column;
-  max-height: 70vh;
-  border: 1px solid var(--border-light);
-}
-
-.zoom-meta {
-  display: flex;
-  gap: 24px;
-  padding: 16px 20px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-light);
-  flex-shrink: 0;
-}
-
-.zoom-meta-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-}
-
-.zoom-meta-label {
-  color: var(--text-secondary);
-}
-
-.zoom-meta-value {
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.zoom-text {
-  flex: 1;
-  padding: 20px;
-  overflow-y: auto;
-  background: var(--bg-tertiary);
-  font-size: 14px;
-  line-height: 1.7;
-  word-break: break-all;
-  white-space: pre-wrap;
-  color: var(--text-primary);
-  min-height: 200px;
-  max-height: calc(70vh - 60px);
-
-  &.is-image {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    word-break: normal;
-    white-space: normal;
-  }
-}
-
-.zoom-image {
-  max-width: 100%;
-  max-height: calc(70vh - 100px);
-  object-fit: contain;
-  border-radius: 6px;
-}
-
-.zoom-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
 }
 </style>
