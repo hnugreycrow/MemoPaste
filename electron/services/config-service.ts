@@ -42,7 +42,7 @@ export class ConfigService {
   constructor() {
     this.store = new Store<AppConfig>({
       defaults: {
-        theme: "dark",
+        theme: "light",
         shortcut: "Alt+Shift+C",
         minimizeToTray: false,
         openAtLogin: false,
