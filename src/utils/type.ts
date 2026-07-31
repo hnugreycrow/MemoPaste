@@ -15,6 +15,9 @@ export interface ClipboardItem {
   timestamp: Date;
   size: string;
   is_favorite?: boolean;
+  content_hash?: string | null;
+  file_path?: string | null;
+  thumb_path?: string | null;
 }
 
 export interface ClipboardHistoryResult {
@@ -36,14 +39,17 @@ export interface TypeCounts {
   text: number;
   url: number;
   code: number;
+  image: number;
   favorite: number;
 }
 
 export interface ClipboardAPI {
-  write: (text: string) => Promise<boolean>;
+  /** 按历史 id 写回系统剪贴板（文本或图片） */
+  write: (id: number) => Promise<boolean>;
   startWatching: () => Promise<void>;
   stopWatching: () => Promise<void>;
-  onChanged: (callback: (content: string) => void) => () => void;
+  /** 主进程入库后通知刷新（无内容载荷） */
+  onChanged: (callback: () => void) => () => void;
   saveItem: (item: ClipboardItem) => Promise<SaveClipboardResult | null>;
   deleteItem: (id: number) => Promise<boolean>;
   clearAll: () => Promise<boolean>;
@@ -54,8 +60,8 @@ export interface ClipboardAPI {
     type: string,
     keyword?: string,
   ) => Promise<ClipboardHistoryResult>;
-  /** 写入剪贴板、隐藏面板并模拟粘贴到原窗口 */
-  pasteAndHide: (text: string) => Promise<boolean>;
+  /** 按 id 写入剪贴板、隐藏面板并模拟粘贴到原窗口 */
+  pasteAndHide: (id: number) => Promise<boolean>;
   setFavorite: (id: number, isFavorite: boolean) => Promise<boolean>;
   getCounts: () => Promise<TypeCounts>;
 }

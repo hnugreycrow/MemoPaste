@@ -1,12 +1,20 @@
 import { defineStore } from "pinia";
 import { ClipboardItem, SaveClipboardResult, TypeCounts } from "@/utils/type";
-import { formatSize, getContentType } from "@/utils/utils";
 
 export type StoreActionResult = {
   ok: boolean;
   favorited?: boolean;
   deletedCount?: number;
 };
+
+const emptyCounts = (): TypeCounts => ({
+  all: 0,
+  text: 0,
+  url: 0,
+  code: 0,
+  image: 0,
+  favorite: 0,
+});
 
 export const useClipboardStore = defineStore("clipboard", {
   state: () => ({
@@ -16,7 +24,7 @@ export const useClipboardStore = defineStore("clipboard", {
     currentPage: 1,
     totalItems: 0,
     isLoadingMore: false,
-    typeCounts: { all: 0, text: 0, url: 0, code: 0, favorite: 0 } as TypeCounts,
+    typeCounts: emptyCounts(),
     searchKeyword: "" as string,
   }),
 
@@ -82,79 +90,21 @@ export const useClipboardStore = defineStore("clipboard", {
       void this.loadClipboardHistory(1, false);
     },
 
+    /** 主进程入库后：刷新列表与计数 */
+    async refreshAfterClipboardChange() {
+      await this.loadClipboardHistory(1, false);
+      await this.refreshCounts();
+      if (this.activeFilter === "all" && !this.searchKeyword) {
+        this.totalItems = this.typeCounts.all;
+      }
+    },
+
     async saveClipboardItem(item: ClipboardItem): Promise<SaveClipboardResult | null> {
       try {
         return await window.clipboard.saveItem(item);
       } catch (error) {
         console.error("保存剪贴板项目出错:", error);
         return null;
-      }
-    },
-
-    /** 同内容则置顶去重（不新增行），并同步列表/计数 */
-    async addClipboardItem(content: string) {
-      const type = getContentType(content);
-      const size = formatSize(new Blob([content]).size);
-      const timestamp = new Date();
-
-      const draft: ClipboardItem = {
-        id: Date.now(),
-        type,
-        content,
-        timestamp,
-        size,
-      };
-
-      try {
-        const saved = await this.saveClipboardItem(draft);
-        if (!saved) {
-          await this.loadClipboardHistory();
-          return;
-        }
-
-        const matchesFilter =
-          this.activeFilter === "all" ||
-          this.activeFilter === type ||
-          (this.activeFilter === "favorite" && saved.is_favorite);
-
-        const matchesSearch =
-          !this.searchKeyword || content.toLowerCase().includes(this.searchKeyword.toLowerCase());
-
-        const shouldShow = matchesFilter && matchesSearch;
-
-        // 去掉列表中同 id / 同 content 的旧行，避免重复展示
-        const hadInList = this.clipboardData.some(
-          (item) => item.id === saved.id || item.content === content,
-        );
-        this.clipboardData = this.clipboardData.filter(
-          (item) => item.id !== saved.id && item.content !== content,
-        );
-
-        if (shouldShow) {
-          this.clipboardData.unshift({
-            id: saved.id,
-            type,
-            content,
-            timestamp,
-            size,
-            is_favorite: saved.is_favorite,
-          });
-        }
-
-        if (saved.isNew && shouldShow) {
-          this.totalItems += 1;
-        } else if (!saved.isNew && hadInList && !shouldShow) {
-          this.totalItems = Math.max(0, this.totalItems - 1);
-        }
-
-        await this.refreshCounts();
-        // 无筛选时用服务端总数对齐（去重可能合并了历史重复行）
-        if (this.activeFilter === "all" && !this.searchKeyword) {
-          this.totalItems = this.typeCounts.all;
-        }
-      } catch (error) {
-        console.error("添加剪贴板项目失败:", error);
-        await this.loadClipboardHistory();
       }
     },
 
@@ -189,7 +139,7 @@ export const useClipboardStore = defineStore("clipboard", {
         }
         this.clipboardData = [];
         this.totalItems = 0;
-        this.typeCounts = { all: 0, text: 0, url: 0, code: 0, favorite: 0 };
+        this.typeCounts = emptyCounts();
         return { ok: true };
       } catch (error) {
         console.error("清空全部失败:", error);
@@ -245,8 +195,8 @@ export const useClipboardStore = defineStore("clipboard", {
       event?.stopPropagation();
 
       try {
-        await window.clipboard.write(item.content);
-        return { ok: true };
+        const ok = await window.clipboard.write(item.id);
+        return { ok };
       } catch (error) {
         console.error("复制失败:", error);
         return { ok: false };

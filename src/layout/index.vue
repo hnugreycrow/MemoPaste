@@ -32,10 +32,8 @@ const startClipboardWatcher = () => {
   window.clipboard
     .startWatching()
     .then(() => {
-      clipboardWatcherCleanup = window.clipboard.onChanged(async (content) => {
-        if (content && content.trim() !== "") {
-          await clipboardStore.addClipboardItem(content);
-        }
+      clipboardWatcherCleanup = window.clipboard.onChanged(async () => {
+        await clipboardStore.refreshAfterClipboardChange();
       });
     })
     .catch((error) => {

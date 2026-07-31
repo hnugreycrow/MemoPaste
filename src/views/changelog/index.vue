@@ -57,11 +57,7 @@ onMounted(() => {
             <h3>{{ release.version }}</h3>
             <el-tag v-if="index === 0" type="success" size="small">最新</el-tag>
           </div>
-          <div
-            class="release-body"
-            v-html="renderBody(release.body)"
-            @click="onReleaseBodyClick"
-          />
+          <div class="release-body" v-html="renderBody(release.body)" @click="onReleaseBodyClick" />
         </el-card>
       </el-timeline-item>
     </el-timeline>

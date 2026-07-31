@@ -34,26 +34,42 @@
 
     <template v-if="item">
       <div class="detail-content">
-        <div class="detail-text">
+        <div class="detail-text" :class="{ 'is-image': isImage }">
           <el-tooltip content="复制内容" placement="left">
             <el-button class="copy-overlay-btn" @click="copyItem(item)">
               <i-ep-Document-Copy />
             </el-button>
           </el-tooltip>
           <div class="detail-text-body">
-            <HighlightedText :content="displayContent" :type="props.item?.type" />
-            <div v-if="item.content.length > MAX_CONTENT_LENGTH" class="expand-button">
-              <el-button link type="primary" @click="showAllContent = !showAllContent">
-                {{ showAllContent ? "收起" : "展开" }}
-              </el-button>
-            </div>
+            <template v-if="isImage">
+              <div class="detail-image-wrap">
+                <img
+                  v-if="imageSrc"
+                  class="detail-image"
+                  :src="imageSrc"
+                  alt="剪贴板图片"
+                  draggable="false"
+                />
+                <div v-else class="detail-image-fallback">图片文件不可用</div>
+              </div>
+            </template>
+            <template v-else>
+              <HighlightedText :content="displayContent" :type="props.item?.type" />
+              <div v-if="item.content.length > MAX_CONTENT_LENGTH" class="expand-button">
+                <el-button link type="primary" @click="showAllContent = !showAllContent">
+                  {{ showAllContent ? "收起" : "展开" }}
+                </el-button>
+              </div>
+            </template>
           </div>
         </div>
 
         <div class="detail-meta-strip">
           <span>大小 {{ item.size }}</span>
-          <span class="meta-sep">·</span>
-          <span>字符 {{ charCount }}</span>
+          <template v-if="!isImage">
+            <span class="meta-sep">·</span>
+            <span>字符 {{ charCount }}</span>
+          </template>
           <span class="meta-sep">·</span>
           <span>ID {{ item.id }}</span>
         </div>
@@ -62,7 +78,7 @@
       <div class="detail-actions">
         <el-button type="primary" class="action-copy" @click="copyItem(item)">
           <i-ep-Document-Copy class="btn-icon" />
-          <span>复制内容</span>
+          <span>{{ isImage ? "复制图片" : "复制内容" }}</span>
         </el-button>
         <el-button class="action-delete" @click="deleteItem(item)">
           <i-ep-Delete class="btn-icon" />
@@ -79,7 +95,7 @@
 
     <el-dialog
       v-model="zoomVisible"
-      title="详情内容"
+      :title="isImage ? '图片预览' : '详情内容'"
       width="85%"
       :close-on-click-modal="true"
       :close-on-press-escape="true"
@@ -96,20 +112,34 @@
             <span class="zoom-meta-label">创建时间</span>
             <span class="zoom-meta-value">{{ formattedTime }}</span>
           </div>
-          <div class="zoom-meta-item">
+          <div v-if="!isImage" class="zoom-meta-item">
             <span class="zoom-meta-label">字符数</span>
             <span class="zoom-meta-value">{{ charCount }}</span>
           </div>
+          <div v-else class="zoom-meta-item">
+            <span class="zoom-meta-label">大小</span>
+            <span class="zoom-meta-value">{{ item?.size }}</span>
+          </div>
         </div>
-        <div class="zoom-text">
-          <HighlightedText :content="item?.content || ''" :type="props.item?.type" />
+        <div class="zoom-text" :class="{ 'is-image': isImage }">
+          <template v-if="isImage">
+            <img
+              v-if="imageSrc"
+              class="zoom-image"
+              :src="imageSrc"
+              alt="剪贴板图片"
+              draggable="false"
+            />
+            <div v-else class="detail-image-fallback">图片文件不可用</div>
+          </template>
+          <HighlightedText v-else :content="item?.content || ''" :type="props.item?.type" />
         </div>
       </div>
       <template #footer>
         <div class="zoom-footer">
           <el-button type="primary" @click="copyItem(item!)">
             <i-ep-Document-Copy class="btn-icon" />
-            <span>复制内容</span>
+            <span>{{ isImage ? "复制图片" : "复制内容" }}</span>
           </el-button>
           <el-button @click="closeZoomView">关闭</el-button>
         </div>
@@ -122,7 +152,7 @@
 import { computed, ref } from "vue";
 import HighlightedText from "./HighlightedText.vue";
 import { ClipboardItem } from "@/utils/type";
-import { formatTime, getTypeLabel } from "@/utils/utils";
+import { formatTime, getTypeLabel, clipimgUrl } from "@/utils/utils";
 
 type Item = ClipboardItem;
 
@@ -138,6 +168,13 @@ const emit = defineEmits<{
 }>();
 
 const showAllContent = defineModel<boolean>("showAllContent");
+
+const isImage = computed(() => props.item?.type === "image");
+
+const imageSrc = computed(() => {
+  if (!props.item || props.item.type !== "image") return "";
+  return clipimgUrl(props.item.file_path || props.item.thumb_path);
+});
 
 const formattedTime = computed(() => {
   return props.item ? formatTime(props.item.timestamp) : "";
@@ -285,6 +322,11 @@ const closeZoomView = () => {
   white-space: pre-wrap;
   color: var(--text-primary);
   border: 1px solid var(--border-light);
+
+  &.is-image {
+    white-space: normal;
+    word-break: normal;
+  }
 }
 
 .detail-text-body {
@@ -292,6 +334,26 @@ const closeZoomView = () => {
   min-height: 0;
   padding-top: 28px;
   overflow: auto;
+}
+
+.detail-image-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  height: 100%;
+}
+
+.detail-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.detail-image-fallback {
+  color: var(--text-tertiary);
+  font-size: 13px;
 }
 
 .copy-overlay-btn {
@@ -424,6 +486,21 @@ const closeZoomView = () => {
   color: var(--text-primary);
   min-height: 200px;
   max-height: calc(70vh - 60px);
+
+  &.is-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    word-break: normal;
+    white-space: normal;
+  }
+}
+
+.zoom-image {
+  max-width: 100%;
+  max-height: calc(70vh - 100px);
+  object-fit: contain;
+  border-radius: 6px;
 }
 
 .zoom-footer {

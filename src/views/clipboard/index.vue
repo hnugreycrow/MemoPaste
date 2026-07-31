@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onUnmounted, watch, onActivated } from "vue";
 import DetailPanel from "./components/DetailPanel.vue";
 import FilterChips from "./components/FilterChips.vue";
 import { ClipboardItem } from "@/utils/type";
-import { truncateText, formatRelativeTime, getTypeLabel } from "@/utils/utils";
+import { truncateText, formatRelativeTime, getTypeLabel, clipimgUrl } from "@/utils/utils";
 import { useSearch } from "./composables/useSearch";
 import { useVirtualScroll } from "./composables/useVirtualScroll";
 import { useClipboardStore } from "@/stores/clipboardStore";
@@ -28,7 +28,7 @@ const searchPlaceholder = computed(() =>
 const emptyTitle = computed(() => (isFavoritesView.value ? "还没有收藏" : "暂无记录"));
 
 const emptyDesc = computed(() =>
-  isFavoritesView.value ? "在历史里点星标，重要内容会留在这里" : "开始复制内容，它们会出现在这里",
+  isFavoritesView.value ? "在历史里点星标，重要内容会留在这里" : "复制文本或截图，它们会出现在这里",
 );
 
 // 搜索下推到 store，由主进程 SQL LIKE 处理（非前端过滤）
@@ -273,6 +273,14 @@ onActivated(() => {
                     <i-ep-Star v-if="item.is_favorite" class="favorite-star" />
                   </div>
                 </div>
+                <div v-if="item.type === 'image' && item.thumb_path" class="item-thumb-wrap">
+                  <img
+                    class="item-thumb"
+                    :src="clipimgUrl(item.thumb_path)"
+                    alt=""
+                    draggable="false"
+                  />
+                </div>
               </div>
 
               <div
@@ -475,6 +483,23 @@ onActivated(() => {
   padding: 3px 8px;
   border-radius: 6px;
   letter-spacing: 0.02em;
+}
+
+.item-thumb-wrap {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+}
+
+.item-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .item-content {

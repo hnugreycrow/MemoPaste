@@ -62,13 +62,13 @@ contextBridge.exposeInMainWorld("theme", {
 } as ThemeAPI);
 
 contextBridge.exposeInMainWorld("clipboard", {
-  write: (text: string) => ipcRenderer.invoke("clipboard-write", text),
-  /** 写入剪贴板、隐藏面板并模拟粘贴到当前输入焦点 */
-  pasteAndHide: (text: string) => ipcRenderer.invoke("clipboard-paste-and-hide", text),
+  write: (id: number) => ipcRenderer.invoke("clipboard-write", id),
+  /** 按 id 写入剪贴板、隐藏面板并模拟粘贴到当前输入焦点 */
+  pasteAndHide: (id: number) => ipcRenderer.invoke("clipboard-paste-and-hide", id),
   startWatching: () => ipcRenderer.invoke("clipboard-watch-start"),
   stopWatching: () => ipcRenderer.invoke("clipboard-watch-stop"),
-  onChanged: (callback: (content: string) => void) => {
-    const wrappedCallback = (_: unknown, content: string) => callback(content);
+  onChanged: (callback: () => void) => {
+    const wrappedCallback = () => callback();
     ipcRenderer.on("clipboard-changed", wrappedCallback);
     return () => ipcRenderer.removeListener("clipboard-changed", wrappedCallback);
   },

@@ -7,7 +7,7 @@ const clipboardStore = useClipboardStore();
 const { activeFilter, typeCounts } = storeToRefs(clipboardStore);
 
 interface FilterOption {
-  key: "all" | "text" | "url" | "code" | "favorite";
+  key: "all" | "text" | "url" | "code" | "image" | "favorite";
   label: string;
 }
 
@@ -16,6 +16,7 @@ const filters: FilterOption[] = [
   { key: "text", label: "文本" },
   { key: "url", label: "链接" },
   { key: "code", label: "代码" },
+  { key: "image", label: "图片" },
 ];
 
 const itemsWithCount = computed(() =>

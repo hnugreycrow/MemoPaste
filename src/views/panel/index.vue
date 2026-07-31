@@ -8,7 +8,7 @@ import { ref, onMounted, onUnmounted, computed, nextTick } from "vue";
 import { storeToRefs } from "pinia";
 import { useClipboardStore } from "@/stores/clipboardStore";
 import type { ClipboardItem, PanelNavAction } from "@/utils/type";
-import { truncateText, formatRelativeTime, getTypeLabel } from "@/utils/utils";
+import { truncateText, formatRelativeTime, getTypeLabel, clipimgUrl } from "@/utils/utils";
 import { APP_ICON_URL } from "@/constants/assets";
 
 defineOptions({
@@ -60,7 +60,7 @@ const openMain = () => {
 /** 选中项：隐藏面板并粘贴到原输入框 */
 const pasteItem = async (item: ClipboardItem) => {
   try {
-    await window.clipboard.pasteAndHide(item.content);
+    await window.clipboard.pasteAndHide(item.id);
   } catch (error) {
     console.error("粘贴失败:", error);
   }
@@ -181,7 +181,7 @@ onUnmounted(() => {
       <div v-if="!hasItems" class="empty">
         <el-icon class="empty-icon"><i-ep-DocumentCopy /></el-icon>
         <p>暂无记录</p>
-        <span class="empty-hint">复制内容后会出现在这里</span>
+        <span class="empty-hint">复制文本或截图后会出现在这里</span>
       </div>
 
       <div
@@ -201,14 +201,30 @@ onUnmounted(() => {
               <i-ep-Document v-if="item.type === 'text'" />
               <i-ep-Link v-else-if="item.type === 'url'" />
               <i-ep-Cpu v-else-if="item.type === 'code'" />
+              <i-ep-Picture v-else-if="item.type === 'image'" />
               <i-ep-Document v-else />
             </el-icon>
             {{ getTypeLabel(item.type) }}
           </span>
           <span class="card-time">{{ formatRelativeTime(item.timestamp) }}</span>
         </div>
-        <div class="card-body">
-          {{ truncateText(item.content, 120) }}
+        <div class="card-body" :class="{ 'is-image': item.type === 'image' }">
+          <template v-if="item.type === 'image'">
+            <span class="card-image-label">{{ item.content }}</span>
+            <div class="card-thumb-wrap">
+              <img
+                v-if="item.thumb_path"
+                class="card-thumb"
+                :src="clipimgUrl(item.thumb_path)"
+                alt=""
+                draggable="false"
+              />
+              <div v-else class="card-thumb-fallback">图片</div>
+            </div>
+          </template>
+          <template v-else>
+            {{ truncateText(item.content, 120) }}
+          </template>
         </div>
         <div class="card-actions">
           <button
@@ -449,6 +465,49 @@ onUnmounted(() => {
   height: 3.9em;
   overflow: hidden;
   padding-right: 28px;
+
+  &.is-image {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    white-space: normal;
+    height: auto;
+    min-height: 3.9em;
+  }
+}
+
+.card-thumb-wrap {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+}
+
+.card-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.card-thumb-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.card-image-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .card-actions {

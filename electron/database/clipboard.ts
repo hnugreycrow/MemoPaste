@@ -2,6 +2,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import fs from "node:fs";
 import { app } from "electron";
+import { deleteImageFiles } from "../services/image-storage";
 
 // better-sqlite3 是 CJS native addon；打包后的 ESM 主进程用 createRequire 更稳
 const require = createRequire(import.meta.url);
@@ -15,6 +16,9 @@ export type ClipboardRow = {
   timestamp: string;
   size: string | null;
   is_favorite: number;
+  content_hash: string | null;
+  file_path: string | null;
+  thumb_path: string | null;
 };
 
 /** 写入用入参（与渲染进程 ClipboardItem 字段对齐） */
@@ -24,6 +28,9 @@ export type ClipboardItemInput = {
   timestamp: Date | string;
   size?: string;
   is_favorite?: boolean;
+  content_hash?: string | null;
+  file_path?: string | null;
+  thumb_path?: string | null;
 };
 
 /** better-sqlite3 未自带完整 d.ts 时的最小类型 */
@@ -37,6 +44,7 @@ type SqliteDatabase = {
   prepare: (sql: string) => SqliteStatement;
   close: () => void;
   transaction: <T>(fn: () => T) => () => T;
+  exec: (sql: string) => void;
 };
 
 let db: SqliteDatabase | null = null;
@@ -72,6 +80,34 @@ function resetIdSequence(): void {
   }
 }
 
+function tableHasColumn(database: SqliteDatabase, column: string): boolean {
+  const cols = database.prepare(`PRAGMA table_info(clipboard_items)`).all() as Array<{
+    name: string;
+  }>;
+  return cols.some((c) => c.name === column);
+}
+
+function migrateClipboardSchema(database: SqliteDatabase): void {
+  if (!tableHasColumn(database, "content_hash")) {
+    database.exec(`ALTER TABLE clipboard_items ADD COLUMN content_hash TEXT`);
+  }
+  if (!tableHasColumn(database, "file_path")) {
+    database.exec(`ALTER TABLE clipboard_items ADD COLUMN file_path TEXT`);
+  }
+  if (!tableHasColumn(database, "thumb_path")) {
+    database.exec(`ALTER TABLE clipboard_items ADD COLUMN thumb_path TEXT`);
+  }
+}
+
+function rowImagePaths(row: {
+  file_path?: string | null;
+  thumb_path?: string | null;
+}): void {
+  if (row.file_path || row.thumb_path) {
+    deleteImageFiles(row.file_path, row.thumb_path);
+  }
+}
+
 export function initDatabase(_isDevelopment = false) {
   try {
     console.log("Initializing SQLite database");
@@ -103,10 +139,14 @@ export function initDatabase(_isDevelopment = false) {
         type TEXT NOT NULL,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
         size VARCHAR(10),
-        is_favorite BOOLEAN DEFAULT 0
+        is_favorite BOOLEAN DEFAULT 0,
+        content_hash TEXT,
+        file_path TEXT,
+        thumb_path TEXT
       );
     `;
     db.prepare(createClipboardItemQuery).run();
+    migrateClipboardSchema(db);
 
     return true;
   } catch (error) {
@@ -134,7 +174,7 @@ export type SaveClipboardResult = {
   is_favorite: boolean;
 };
 
-/** 按 content 精确去重：已存在则更新时间置顶，并合并收藏标记 */
+/** 文本按 content 去重；图片按 content_hash 去重。已存在则更新时间置顶，并合并收藏标记 */
 export function saveClipboardItem(
   item: ClipboardItemInput,
 ): SaveClipboardResult | null {
@@ -145,14 +185,28 @@ export function saveClipboardItem(
         ? item.timestamp.toISOString()
         : item.timestamp;
 
+    const contentHash = item.content_hash ?? null;
+    const filePath = item.file_path ?? null;
+    const thumbPath = item.thumb_path ?? null;
+
     return database.transaction(() => {
-      const duplicates = database
-        .prepare(
-          `SELECT id, is_favorite FROM clipboard_items
-           WHERE content = ?
-           ORDER BY timestamp DESC, id DESC`,
-        )
-        .all(item.content) as Array<{ id: number; is_favorite: number }>;
+      type DupRow = { id: number; is_favorite: number };
+      const duplicates: DupRow[] =
+        item.type === "image" && contentHash
+          ? (database
+              .prepare(
+                `SELECT id, is_favorite FROM clipboard_items
+                 WHERE content_hash = ?
+                 ORDER BY timestamp DESC, id DESC`,
+              )
+              .all(contentHash) as DupRow[])
+          : (database
+              .prepare(
+                `SELECT id, is_favorite FROM clipboard_items
+                 WHERE content = ? AND (type IS NULL OR type != 'image')
+                 ORDER BY timestamp DESC, id DESC`,
+              )
+              .all(item.content) as DupRow[]);
 
       if (duplicates.length > 0) {
         const keep = duplicates[0];
@@ -162,7 +216,8 @@ export function saveClipboardItem(
         database
           .prepare(
             `UPDATE clipboard_items
-             SET type = ?, timestamp = ?, size = ?, is_favorite = ?
+             SET type = ?, timestamp = ?, size = ?, is_favorite = ?,
+                 content = ?, content_hash = ?, file_path = ?, thumb_path = ?
              WHERE id = ?`,
           )
           .run(
@@ -170,6 +225,10 @@ export function saveClipboardItem(
             timestamp,
             item.size ?? null,
             isFavorite,
+            item.content,
+            contentHash,
+            filePath,
+            thumbPath,
             keep.id,
           );
 
@@ -194,8 +253,9 @@ export function saveClipboardItem(
       const isFavorite = item.is_favorite ? 1 : 0;
       const result = database
         .prepare(
-          `INSERT INTO clipboard_items (content, type, timestamp, size, is_favorite)
-           VALUES (?, ?, ?, ?, ?)`,
+          `INSERT INTO clipboard_items
+           (content, type, timestamp, size, is_favorite, content_hash, file_path, thumb_path)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           item.content,
@@ -203,6 +263,9 @@ export function saveClipboardItem(
           timestamp,
           item.size ?? null,
           isFavorite,
+          contentHash,
+          filePath,
+          thumbPath,
         );
 
       return {
@@ -217,10 +280,34 @@ export function saveClipboardItem(
   }
 }
 
+export function getClipboardItemById(id: number | string): ClipboardRow | null {
+  try {
+    const row = requireDb()
+      .prepare(`SELECT * FROM clipboard_items WHERE id = ?`)
+      .get(id) as ClipboardRow | undefined;
+    return row ?? null;
+  } catch (error) {
+    console.error("Failed to get clipboard item:", error);
+    return null;
+  }
+}
+
 export function deleteClipboardItem(id: number | string) {
   try {
-    requireDb().prepare(`DELETE FROM clipboard_items WHERE id = ?`).run(id);
-    return true;
+    const database = requireDb();
+    return database.transaction(() => {
+      const row = database
+        .prepare(
+          `SELECT file_path, thumb_path FROM clipboard_items WHERE id = ?`,
+        )
+        .get(id) as { file_path: string | null; thumb_path: string | null } | undefined;
+
+      database.prepare(`DELETE FROM clipboard_items WHERE id = ?`).run(id);
+      if (row) {
+        rowImagePaths(row);
+      }
+      return true;
+    })();
   } catch (error) {
     console.error("Failed to delete clipboard item:", error);
     return false;
@@ -231,8 +318,19 @@ export function clearClipboardHistory() {
   try {
     const database = requireDb();
     database.transaction(() => {
+      const rows = database
+        .prepare(
+          `SELECT file_path, thumb_path FROM clipboard_items
+           WHERE file_path IS NOT NULL OR thumb_path IS NOT NULL`,
+        )
+        .all() as Array<{ file_path: string | null; thumb_path: string | null }>;
+
       database.prepare(`DELETE FROM clipboard_items`).run();
       resetIdSequence();
+
+      for (const row of rows) {
+        rowImagePaths(row);
+      }
     })();
     return true;
   } catch (err) {
@@ -246,11 +344,22 @@ export function clearClipboardExceptFavorites() {
     const database = requireDb();
     let deletedCount = 0;
     database.transaction(() => {
+      const rows = database
+        .prepare(
+          `SELECT file_path, thumb_path FROM clipboard_items
+           WHERE is_favorite = 0 AND (file_path IS NOT NULL OR thumb_path IS NOT NULL)`,
+        )
+        .all() as Array<{ file_path: string | null; thumb_path: string | null }>;
+
       const result = database
         .prepare(`DELETE FROM clipboard_items WHERE is_favorite = 0`)
         .run();
       deletedCount = result.changes;
       resetIdSequence();
+
+      for (const row of rows) {
+        rowImagePaths(row);
+      }
     })();
     console.log(`已清除 ${deletedCount} 条非收藏记录`);
     return deletedCount;
@@ -270,18 +379,36 @@ export function clearExpiredClipboardItems(retentionDays: number) {
 
     console.log(`清除 ${expiredTimestamp} 之前的非收藏记录`);
 
-    const deleteQuery = `
-      DELETE FROM clipboard_items 
-      WHERE timestamp < ? AND is_favorite = 0
-    `;
-    const result = database.prepare(deleteQuery).run(expiredTimestamp);
+    return database.transaction(() => {
+      const rows = database
+        .prepare(
+          `SELECT file_path, thumb_path FROM clipboard_items
+           WHERE timestamp < ? AND is_favorite = 0
+             AND (file_path IS NOT NULL OR thumb_path IS NOT NULL)`,
+        )
+        .all(expiredTimestamp) as Array<{
+        file_path: string | null;
+        thumb_path: string | null;
+      }>;
 
-    if (result.changes > 0) {
-      resetIdSequence();
-    }
+      const result = database
+        .prepare(
+          `DELETE FROM clipboard_items
+           WHERE timestamp < ? AND is_favorite = 0`,
+        )
+        .run(expiredTimestamp);
 
-    console.log(`已清除 ${result.changes} 条过期记录`);
-    return result.changes;
+      if (result.changes > 0) {
+        resetIdSequence();
+      }
+
+      for (const row of rows) {
+        rowImagePaths(row);
+      }
+
+      console.log(`已清除 ${result.changes} 条过期记录`);
+      return result.changes;
+    })();
   } catch (error) {
     console.error("Failed to clear expired clipboard items:", error);
     return 0;
@@ -373,16 +500,21 @@ export function setFavoriteStatus(id: number | string, isFavorite: boolean) {
 }
 
 export function getClipboardCounts() {
-  const counts = { all: 0, text: 0, url: 0, code: 0, favorite: 0 };
+  const counts = { all: 0, text: 0, url: 0, code: 0, image: 0, favorite: 0 };
   try {
     const database = requireDb();
     const typeRows = database
       .prepare(`SELECT type, COUNT(*) as c FROM clipboard_items GROUP BY type`)
       .all() as Array<{ type: string; c: number }>;
-    for (const row of typeRows) {
-      counts.all += row.c;
-      if (row.type === "text" || row.type === "url" || row.type === "code") {
-        counts[row.type] = row.c;
+    for (const typeRow of typeRows) {
+      counts.all += typeRow.c;
+      if (
+        typeRow.type === "text" ||
+        typeRow.type === "url" ||
+        typeRow.type === "code" ||
+        typeRow.type === "image"
+      ) {
+        counts[typeRow.type] = typeRow.c;
       }
     }
     const favRow = database

@@ -12,6 +12,13 @@ import {
   setAppIsQuitting,
 } from "./services";
 import { isLaunchedHiddenAtLogin } from "./utils/login-item";
+import {
+  registerClipimgSchemePrivileged,
+  registerClipimgProtocolHandler,
+} from "./clipimg-protocol";
+
+// 自定义图片协议须在 ready 前注册特权
+registerClipimgSchemePrivileged();
 
 /** 禁止多开：第二个进程拿不到锁则退出 */
 const gotTheLock = app.requestSingleInstanceLock();
@@ -175,6 +182,7 @@ app.whenReady().then(() => {
     console.error("Failed to initialize database:", error);
   }
 
+  registerClipimgProtocolHandler();
   initializeServices();
 
   configService?.registerIpcHandlers();
