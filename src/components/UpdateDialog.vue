@@ -42,14 +42,6 @@ onMounted(async () => {
       ElMessage.error("更新失败: " + (status.data.message?.substring(0, 100) || "未知错误"));
     }
   });
-
-  setTimeout(async () => {
-    try {
-      await window.updater.checkForUpdates();
-    } catch (error) {
-      console.error("自动检查更新失败:", error);
-    }
-  }, 3000);
 });
 
 onUnmounted(() => {

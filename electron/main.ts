@@ -137,6 +137,7 @@ function initializeServices() {
   }
 
   updateService = new UpdateService(mainWindow, configService);
+  updateService.scheduleAutoCheck();
 }
 
 /** 版本与外链 IPC；配置/开机自启在 ConfigService */

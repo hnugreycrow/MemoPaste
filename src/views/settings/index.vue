@@ -14,6 +14,7 @@ defineOptions({
 const shortcut = ref("Alt+Shift+C");
 const minimizeToTray = ref<boolean>(false);
 const openAtLogin = ref<boolean>(false);
+const autoCheckUpdate = ref<boolean>(true);
 const dataRetentionDays = ref<number>(1);
 const isLoading = ref<boolean>(false);
 const appVersion = ref("–");
@@ -29,6 +30,7 @@ const theme = computed<ThemeType>({
 onMounted(async () => {
   minimizeToTray.value = (await window.config.get<boolean>("minimizeToTray")) ?? false;
   openAtLogin.value = (await window.config.get<boolean>("openAtLogin")) ?? false;
+  autoCheckUpdate.value = (await window.config.get<boolean>("autoCheckUpdate")) ?? true;
   dataRetentionDays.value = (await window.config.get<number>("dataRetentionDays")) ?? 1;
 
   try {
@@ -67,6 +69,10 @@ const handleDataRetentionChange = (value: number) => {
   dataRetentionDays.value = value;
   window.config.set("dataRetentionDays", value);
   ElMessage.success(`数据保存时间已设置为 ${value} 天`);
+};
+
+const handleAutoCheckUpdateChange = (value: boolean) => {
+  window.config.set("autoCheckUpdate", value);
 };
 
 const setTheme = (value: ThemeType) => {
@@ -265,6 +271,14 @@ onUnmounted(() => {
             <el-button :loading="isLoading" class="action-btn" @click="checkForUpdates">
               检查更新
             </el-button>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-meta">
+              <span class="setting-label">启动时自动检查更新</span>
+              <span class="setting-desc">有新版本时弹窗提醒，每 24 小时最多检查一次</span>
+            </div>
+            <el-switch v-model="autoCheckUpdate" @change="handleAutoCheckUpdateChange" />
           </div>
 
           <div class="setting-row">

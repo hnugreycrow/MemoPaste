@@ -70,7 +70,13 @@ export type ThemeMode = "light" | "dark";
 
 /** 与主进程 config 白名单一致；未知键会被拒绝 */
 export type ConfigKey =
-  "theme" | "shortcut" | "minimizeToTray" | "openAtLogin" | "dataRetentionDays" | "version";
+  | "theme"
+  | "shortcut"
+  | "minimizeToTray"
+  | "openAtLogin"
+  | "dataRetentionDays"
+  | "version"
+  | "autoCheckUpdate";
 
 export interface AppConfig {
   theme: ThemeMode;
@@ -79,6 +85,10 @@ export interface AppConfig {
   openAtLogin: boolean;
   dataRetentionDays: number;
   version?: string;
+  /** 启动时是否自动检查更新 */
+  autoCheckUpdate: boolean;
+  /** 上次自动检查时间戳（仅主进程读写，不在渲染白名单） */
+  lastUpdateCheckAt?: number;
 }
 
 export interface ConfigAPI {
@@ -107,8 +117,6 @@ export interface UpdateControls {
   checkForUpdates: () => Promise<any>;
   downloadUpdate: () => Promise<boolean | { error: any }>;
   installUpdate: () => Promise<boolean>;
-  setAutoUpdate: (enabled: boolean) => Promise<boolean>;
-  getAutoUpdate: () => Promise<boolean>;
   onUpdateStatus: (callback: (status: { status: string; data?: any }) => void) => () => void;
 }
 

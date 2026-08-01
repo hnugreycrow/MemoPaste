@@ -109,8 +109,6 @@ contextBridge.exposeInMainWorld("updater", {
   checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
   downloadUpdate: () => ipcRenderer.invoke("download-update"),
   installUpdate: () => ipcRenderer.invoke("install-update"),
-  setAutoUpdate: (enabled: boolean) => ipcRenderer.invoke("set-auto-update", enabled),
-  getAutoUpdate: () => ipcRenderer.invoke("get-auto-update"),
   onUpdateStatus: (callback: (status: { status: string; data?: unknown }) => void) => {
     const wrappedCallback = (_event: unknown, status: { status: string; data?: unknown }) =>
       callback(status);

@@ -11,6 +11,7 @@ const CONFIG_KEYS = new Set<ConfigKey>([
   "openAtLogin",
   "dataRetentionDays",
   "version",
+  "autoCheckUpdate",
 ]);
 
 function isConfigKey(key: unknown): key is ConfigKey {
@@ -27,6 +28,7 @@ function validateConfigValue(key: ConfigKey, value: unknown): boolean {
       return typeof value === "string";
     case "minimizeToTray":
     case "openAtLogin":
+    case "autoCheckUpdate":
       return typeof value === "boolean";
     case "dataRetentionDays":
       return typeof value === "number" && Number.isInteger(value) && value > 0;
@@ -48,6 +50,7 @@ export class ConfigService {
         openAtLogin: false,
         dataRetentionDays: 1,
         version: "1.0.0",
+        autoCheckUpdate: true,
       },
       name: "config",
     });
@@ -57,11 +60,12 @@ export class ConfigService {
     this.store.set(config);
   }
 
-  public get<T>(key: ConfigKey): T {
+  /** 主进程可读写全部 AppConfig 键（含 lastUpdateCheckAt）；渲染进程经 IPC 白名单限制 */
+  public get<T>(key: keyof AppConfig): T {
     return this.store.get(key) as T;
   }
 
-  public set<T>(key: ConfigKey, value: T): void {
+  public set<T>(key: keyof AppConfig, value: T): void {
     this.store.set(key, value);
   }
 
