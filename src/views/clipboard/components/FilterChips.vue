@@ -52,7 +52,7 @@ const selectFilter = (key: FilterOption["key"]) => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   padding: 0 12px 10px;
   background: var(--list-bg);
   border-bottom: 1px solid var(--border-light);
