@@ -3,7 +3,7 @@ import path from "node:path";
 import { installOutsideClickHook, uninstallOutsideClickHook } from "../utils/outside-click-hook";
 import { isAppQuitting } from "./app-quit-state";
 
-const PANEL_WIDTH = 360;
+const PANEL_WIDTH = 350;
 const PANEL_HEIGHT = 480;
 
 export type RendererLoader = (win: BrowserWindow, hashPath?: string) => void;

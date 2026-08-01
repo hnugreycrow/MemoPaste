@@ -88,6 +88,9 @@ const toggleFavorite = async (item: ClipboardItem, event: Event) => {
   await clipboardStore.toggleFavorite(item, event);
 };
 
+/** 内容形如「图片 1920×1080」，列表右侧只展示尺寸 */
+const imageSizeLabel = (content: string) => content.replace(/^图片\s*/, "") || content;
+
 const clearHistory = async () => {
   try {
     await clipboardStore.refreshCounts();
@@ -210,7 +213,6 @@ onUnmounted(() => {
         </div>
         <div class="card-body" :class="{ 'is-image': item.type === 'image' }">
           <template v-if="item.type === 'image'">
-            <span class="card-image-label">{{ item.content }}</span>
             <div class="card-thumb-wrap">
               <img
                 v-if="item.thumb_path"
@@ -220,6 +222,10 @@ onUnmounted(() => {
                 draggable="false"
               />
               <div v-else class="card-thumb-fallback">图片</div>
+            </div>
+            <div class="card-image-meta">
+              <span class="card-image-title">图片</span>
+              <span class="card-image-size">{{ imageSizeLabel(item.content) }}</span>
             </div>
           </template>
           <template v-else>
@@ -234,7 +240,10 @@ onUnmounted(() => {
             title="收藏"
             @click="toggleFavorite(item, $event)"
           >
-            <el-icon><i-ep-Star /></el-icon>
+            <el-icon>
+              <i-ep-StarFilled v-if="item.is_favorite" />
+              <i-ep-Star v-else />
+            </el-icon>
           </button>
         </div>
       </div>
@@ -282,8 +291,8 @@ onUnmounted(() => {
 }
 
 .panel-logo {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: 8px;
   object-fit: cover;
   flex-shrink: 0;
@@ -291,7 +300,7 @@ onUnmounted(() => {
 }
 
 .panel-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: 0.02em;
@@ -328,7 +337,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px 10px;
+  padding: 0px 14px 10px;
 }
 
 .toolbar-title {
@@ -403,6 +412,7 @@ onUnmounted(() => {
   position: relative;
   display: block;
   width: 100%;
+  flex-shrink: 0; /* overflow 非 visible 时 flex 项 min-height 会变成 0，防止卡片被压扁 */
   text-align: left;
   padding: 10px 12px 12px;
   border-radius: 12px;
@@ -410,19 +420,22 @@ onUnmounted(() => {
   background: var(--bg-tertiary);
   color: var(--text-primary);
   cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.15s ease;
 
   &:hover,
   &.focused {
-    border-color: color-mix(in srgb, var(--accent-primary) 55%, transparent);
-    background: color-mix(in srgb, var(--accent-primary) 8%, var(--bg-tertiary));
+    border-color: color-mix(in srgb, var(--accent-primary) 40%, var(--border-light));
+     background: color-mix(in srgb, var(--accent-primary) 8%, var(--bg-tertiary));
   }
 
+  /* 左侧琥珀条用伪元素，避免 inset shadow 在圆角处溢成月牙 */
   &.favorite {
-    background: var(--favorite-bg);
+    background: var(--bg-tertiary);
+    border-left: 2px solid var(--favorite-border);
 
     &:hover,
     &.focused {
-      border-color: color-mix(in srgb, var(--accent-quaternary) 50%, transparent);
       background: color-mix(in srgb, var(--accent-quaternary) 10%, var(--favorite-bg));
     }
   }
@@ -433,16 +446,16 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
 }
 
 .type-badge {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
-  padding: 2px 7px 2px 5px;
+  padding: 4px 7px 4px 5px;
   border-radius: 5px;
 }
 
@@ -451,13 +464,13 @@ onUnmounted(() => {
 }
 
 .card-time {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
 }
 
 .card-body {
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.45;
   color: var(--text-primary);
   white-space: pre-wrap;
@@ -469,7 +482,7 @@ onUnmounted(() => {
   &.is-image {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     white-space: normal;
     height: auto;
     min-height: 3.9em;
@@ -478,8 +491,8 @@ onUnmounted(() => {
 
 .card-thumb-wrap {
   flex-shrink: 0;
-  width: 48px;
-  height: 48px;
+  width: 180px;
+  height: 100px;
   border-radius: 8px;
   overflow: hidden;
   background: var(--bg-primary);
@@ -503,11 +516,24 @@ onUnmounted(() => {
   color: var(--text-tertiary);
 }
 
-.card-image-label {
+.card-image-meta {
   flex: 1;
   min-width: 0;
-  font-size: 12px;
-  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.card-image-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.card-image-size {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
 }
 
 .card-actions {
@@ -520,33 +546,38 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   border: none;
   border-radius: 7px;
   background: transparent;
   color: var(--text-tertiary);
   cursor: pointer;
+  font-size: 24px;
   transition:
     color 0.15s ease,
-    background-color 0.15s ease;
+    background-color 0.15s ease,
+    transform 0.15s ease;
 
   &:hover {
     background: var(--bg-hover);
-    color: var(--accent-quaternary);
+    color: var(--favorite-border);
   }
 
   &.active {
-    color: var(--accent-quaternary);
+    color: var(--favorite-border);
+    transform: scale(1.06);
   }
 }
 
 .panel-footer {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 8px 14px 12px;
-  font-size: 11px;
+  padding: 12px 14px 12px;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--text-tertiary);
   border-top: 1px solid color-mix(in srgb, var(--border-light) 70%, transparent);
   background: color-mix(in srgb, var(--bg-primary) 35%, transparent);
