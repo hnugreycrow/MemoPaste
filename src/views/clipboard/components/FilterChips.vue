@@ -7,15 +7,13 @@ const clipboardStore = useClipboardStore();
 const { activeFilter, typeCounts } = storeToRefs(clipboardStore);
 
 interface FilterOption {
-  key: "all" | "text" | "url" | "code" | "image" | "favorite";
+  key: "all" | "image";
   label: string;
 }
 
+/** 只区分「全部 / 图片」；链接、代码等仍以徽章展示，不单独做筛选 */
 const filters: FilterOption[] = [
   { key: "all", label: "全部" },
-  { key: "text", label: "文本" },
-  { key: "url", label: "链接" },
-  { key: "code", label: "代码" },
   { key: "image", label: "图片" },
 ];
 
@@ -27,45 +25,63 @@ const selectFilter = (key: FilterOption["key"]) => {
   if (activeFilter.value === key) return;
   clipboardStore.activeFilter = key;
 };
+
+// 若仍停在已移除的筛选（文本/链接/代码），回退到全部
+if (["text", "url", "code"].includes(activeFilter.value)) {
+  clipboardStore.activeFilter = "all";
+}
 </script>
 
 <template>
-  <div class="filter-chips" role="tablist" aria-label="分类筛选">
-    <button
-      v-for="item in itemsWithCount"
-      :key="item.key"
-      type="button"
-      role="tab"
-      class="filter-chip"
-      :class="{ active: activeFilter === item.key }"
-      :aria-selected="activeFilter === item.key"
-      @click="selectFilter(item.key)"
-    >
-      <span class="filter-label">{{ item.label }}</span>
-      <span class="filter-count">{{ item.count }}</span>
-    </button>
+  <div class="filter-bar">
+    <div class="filter-segment" role="tablist" aria-label="分类筛选">
+      <button
+        v-for="item in itemsWithCount"
+        :key="item.key"
+        type="button"
+        role="tab"
+        class="filter-segment-item"
+        :class="{ active: activeFilter === item.key }"
+        :aria-selected="activeFilter === item.key"
+        @click="selectFilter(item.key)"
+      >
+        <span class="filter-label">{{ item.label }}</span>
+        <span class="filter-count">{{ item.count }}</span>
+      </button>
+    </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
-.filter-chips {
+.filter-bar {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
-  padding: 0 12px 10px;
+  padding: 0 14px 12px;
   background: var(--list-bg);
   border-bottom: 1px solid var(--border-light);
 }
 
-.filter-chip {
+.filter-segment {
+  display: flex;
+  width: 100%;
+  align-items: stretch;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  border: 1px solid color-mix(in srgb, var(--border-light) 80%, transparent);
+}
+
+.filter-segment-item {
   display: inline-flex;
+  flex: 1;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  height: 28px;
-  padding: 0 10px;
+  height: 30px;
+  padding: 0px 14px;
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: 8px;
   background: transparent;
   color: var(--text-secondary);
   font-size: 12px;
@@ -75,16 +91,12 @@ const selectFilter = (key: FilterOption["key"]) => {
     color 0.15s ease,
     border-color 0.15s ease;
 
-  &:hover {
-    background: var(--bg-hover);
+  &:hover:not(.active) {
     color: var(--text-primary);
   }
 
   &.active {
-    background: var(--bg-active);
-    border-color: var(--border-medium);
-    color: var(--accent-primary);
-    font-weight: 500;
+    font-weight: 600;
   }
 }
 
@@ -95,7 +107,7 @@ const selectFilter = (key: FilterOption["key"]) => {
   font-weight: 500;
 }
 
-.filter-chip.active .filter-count {
+.filter-segment-item.active .filter-count {
   color: var(--accent-primary);
 }
 </style>

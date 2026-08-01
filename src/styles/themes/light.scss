@@ -117,8 +117,8 @@ html.light {
     }
   }
 
-  .filter-chip {
-    border-radius: var(--radius-pill);
+  .filter-segment-item {
+    border-radius: var(--radius-sm);
 
     &.active {
       background: color-mix(in srgb, var(--accent-primary) 12%, white);
