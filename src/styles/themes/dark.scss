@@ -141,7 +141,7 @@ html.dark {
     background: color-mix(in srgb, var(--bg-tertiary) 88%, #000);
   }
 
-  .el-button--primary {
+  .el-button--primary:not(.is-link):not(.is-plain):not(.is-disabled) {
     border-radius: var(--radius-md);
     box-shadow: 0 4px 16px rgba(125, 219, 184, 0.22);
   }

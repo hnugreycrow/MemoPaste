@@ -79,6 +79,7 @@ contextBridge.exposeInMainWorld("clipboard", {
   clearExceptFavorites: () => ipcRenderer.invoke("clipboard-clear-except-favorites"),
   getHistory: (page: number, pageSize: number, type: string, keyword: string = "") =>
     ipcRenderer.invoke("clipboard-get-history", page, pageSize, type, keyword),
+  getItem: (id: number) => ipcRenderer.invoke("clipboard-get-item", id),
   setFavorite: (id: number, isFavorite: boolean) =>
     ipcRenderer.invoke("clipboard-set-favorite", id, isFavorite),
   getCounts: () => ipcRenderer.invoke("clipboard-get-counts"),

@@ -163,9 +163,25 @@ export const useClipboardStore = defineStore("clipboard", {
       }
     },
 
-    loadMoreData() {
+    async loadMoreData() {
       if (this.isLoadingMore || this.clipboardData.length >= this.totalItems) return;
       void this.loadClipboardHistory(this.currentPage + 1, true);
+    },
+
+    /** 详情用全文；列表项 content 可能只是预览 */
+    async fetchItemById(id: number): Promise<ClipboardItem | null> {
+      try {
+        const item = await window.clipboard.getItem(id);
+        if (!item) return null;
+        return {
+          ...item,
+          timestamp: new Date(item.timestamp),
+          is_favorite: !!item.is_favorite,
+        };
+      } catch (error) {
+        console.error("按 id 加载剪贴板项失败:", error);
+        return null;
+      }
     },
 
     async toggleFavorite(item: ClipboardItem, event?: Event): Promise<StoreActionResult> {

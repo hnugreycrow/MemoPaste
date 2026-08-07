@@ -39,9 +39,11 @@ const { contentListRef, virtualScroll, visibleItems, handleScroll } = useVirtual
 );
 
 const selectedItem = ref<ClipboardItem | null>(null);
+/** 避免快速切换或列表刷新时，过期的 getItem 覆盖当前选中 */
+let selectionRequestId = 0;
 
 /** 列表变化时：对齐到最新对象；选中项已不存在则默认首条 */
-const ensureSelection = () => {
+const ensureSelection = async () => {
   const items = clipboardData.value;
   if (items.length === 0) {
     selectedItem.value = null;
@@ -52,14 +54,22 @@ const ensureSelection = () => {
     // 去重置顶会换新对象（timestamp 等已变），不能只判断 id 还在就跳过
     const latest = items.find((item) => item.id === selectedItem.value?.id);
     if (latest) {
-      if (latest !== selectedItem.value) {
-        selectedItem.value = latest;
+      const current = selectedItem.value;
+      // 列表追加翻页时数组会换新引用；已有全文且未置顶则跳过，避免详情闪烁
+      if (
+        current &&
+        String(current.timestamp) === String(latest.timestamp) &&
+        current.content.length > latest.content.length
+      ) {
+        return;
       }
+      // 列表只有预览，须重新拉全文，避免详情被截断覆盖
+      await loadFullSelection(latest.id, latest);
       return;
     }
   }
 
-  selectItem(items[0]);
+  await selectItem(items[0]);
 };
 
 watch(activeFilter, (newType) => {
@@ -70,16 +80,28 @@ watch(activeFilter, (newType) => {
 watch(
   () => clipboardData.value,
   () => {
-    ensureSelection();
+    void ensureSelection();
   },
-  { deep: true },
 );
 
 const showAllContent = ref(false);
 
-const selectItem = (item: ClipboardItem) => {
+const loadFullSelection = async (id: number, preview?: ClipboardItem) => {
+  const requestId = ++selectionRequestId;
+  if (preview) {
+    showAllContent.value = false;
+    selectedItem.value = preview;
+  }
+  const full = await clipboardStore.fetchItemById(id);
+  if (requestId !== selectionRequestId) return;
+  if (full) {
+    selectedItem.value = full;
+  }
+};
+
+const selectItem = async (item: ClipboardItem) => {
   showAllContent.value = false;
-  selectedItem.value = item;
+  await loadFullSelection(item.id, item);
 };
 
 const toggleFavorite = async (item: ClipboardItem, event?: Event) => {

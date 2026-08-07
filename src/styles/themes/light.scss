@@ -131,7 +131,7 @@ html.light {
     border-radius: var(--radius-md);
   }
 
-  .el-button--primary {
+  .el-button--primary:not(.is-link):not(.is-plain):not(.is-disabled) {
     border-radius: var(--radius-md);
     box-shadow: 0 4px 14px rgba(139, 109, 232, 0.28);
   }

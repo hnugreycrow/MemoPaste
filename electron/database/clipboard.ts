@@ -97,6 +97,14 @@ function migrateClipboardSchema(database: SqliteDatabase): void {
   if (!tableHasColumn(database, "thumb_path")) {
     database.exec(`ALTER TABLE clipboard_items ADD COLUMN thumb_path TEXT`);
   }
+
+  // 列表/筛选常用路径；IF NOT EXISTS 可重复执行
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS idx_clipboard_ts_id ON clipboard_items(timestamp DESC, id DESC);
+    CREATE INDEX IF NOT EXISTS idx_clipboard_type ON clipboard_items(type);
+    CREATE INDEX IF NOT EXISTS idx_clipboard_favorite ON clipboard_items(is_favorite);
+    CREATE INDEX IF NOT EXISTS idx_clipboard_hash ON clipboard_items(content_hash);
+  `);
 }
 
 function rowImagePaths(row: {
@@ -422,6 +430,9 @@ function escapeLike(s: string): string {
   return s.replace(/[\\%_]/g, (c) => "\\" + c);
 }
 
+/** 列表/面板只需预览；全文按 id 另取，避免 IPC 拖大段 content */
+const LIST_CONTENT_PREVIEW_LEN = 200;
+
 export function getClipboardHistory(
   page = 1,
   pageSize = 50,
@@ -452,7 +463,11 @@ export function getClipboardHistory(
       whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
     const selectQuery = `
-      SELECT * FROM clipboard_items
+      SELECT id,
+             substr(content, 1, ${LIST_CONTENT_PREVIEW_LEN}) AS content,
+             type, timestamp, size, is_favorite,
+             content_hash, file_path, thumb_path
+      FROM clipboard_items
       ${whereSql}
       ORDER BY timestamp DESC, id DESC LIMIT ? OFFSET ?
     `;

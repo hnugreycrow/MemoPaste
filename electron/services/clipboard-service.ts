@@ -200,6 +200,16 @@ export class ClipboardService {
       },
     );
 
+    /** 详情用全文；列表 get-history 只带预览 */
+    ipcMain.handle("clipboard-get-item", (_, id: number) => {
+      const row = getClipboardItemById(id);
+      if (!row) return null;
+      return {
+        ...row,
+        is_favorite: !!row.is_favorite,
+      };
+    });
+
     ipcMain.handle("clipboard-set-favorite", (_, id, isFavorite) => {
       return setFavoriteStatus(id, isFavorite);
     });

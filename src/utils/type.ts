@@ -11,6 +11,7 @@ export interface WindowControls {
 export interface ClipboardItem {
   id: number;
   type: string;
+  /** 列表可能为预览截断；详情经 getItem 取全文 */
   content: string;
   timestamp: Date;
   size: string;
@@ -60,6 +61,8 @@ export interface ClipboardAPI {
     type: string,
     keyword?: string,
   ) => Promise<ClipboardHistoryResult>;
+  /** 按 id 取全文（列表 getHistory 只含预览） */
+  getItem: (id: number) => Promise<ClipboardItem | null>;
   /** 按 id 写入剪贴板、隐藏面板并模拟粘贴到原窗口 */
   pasteAndHide: (id: number) => Promise<boolean>;
   setFavorite: (id: number, isFavorite: boolean) => Promise<boolean>;
