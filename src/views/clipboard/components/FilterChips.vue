@@ -69,7 +69,6 @@ if (["text", "url", "code"].includes(activeFilter.value)) {
   padding: 3px;
   border-radius: 10px;
   background: var(--bg-secondary);
-  border: 1px solid color-mix(in srgb, var(--border-light) 80%, transparent);
 }
 
 .filter-segment-item {

@@ -1,7 +1,7 @@
 :root {
   /* ===== 全局通用变量（所有主题共享） ===== */
   /* 布局尺寸 */
-  --nav-width: 220px;
+  --nav-width: 200px;
   --header-height: 40px;
   --list-max-width: 640px;
 

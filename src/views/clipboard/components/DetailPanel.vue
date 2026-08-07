@@ -169,7 +169,6 @@ const toggleFavorite = (item: Item) => {
   min-width: 0;
   height: 100%;
   background: var(--detail-bg);
-  border-left: 1px solid var(--border-light);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -260,7 +259,6 @@ const toggleFavorite = (item: Item) => {
   word-break: break-all;
   white-space: pre-wrap;
   color: var(--text-primary);
-  border: 1px solid var(--border-light);
 
   &.is-image {
     white-space: normal;
@@ -338,7 +336,7 @@ const toggleFavorite = (item: Item) => {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 5px;
   padding: 12px 16px 14px;
   border-top: 1px solid var(--border-light);
   background: var(--detail-bg);
