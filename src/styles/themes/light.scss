@@ -121,7 +121,7 @@ html.light {
     border-radius: var(--radius-sm);
 
     &.active {
-      background: color-mix(in srgb, var(--accent-primary) 12%, white);
+      background: color-mix(in srgb, var(--accent-primary) 18%, white);
       border-color: color-mix(in srgb, var(--accent-primary) 30%, transparent);
       color: var(--accent-primary);
     }
