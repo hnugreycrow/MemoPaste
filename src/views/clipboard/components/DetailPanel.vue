@@ -43,6 +43,7 @@
                   class="detail-image"
                   :src="imageSrc"
                   :preview-src-list="[imageSrc]"
+                  :scale="0.7"
                   fit="contain"
                   alt="剪贴板图片"
                 >
