@@ -6,6 +6,7 @@ import { ClipboardItem } from "@/utils/type";
 import { truncateText, formatRelativeTime, getTypeLabel, clipimgUrl } from "@/utils/utils";
 import { useSearch } from "./composables/useSearch";
 import { useVirtualScroll } from "./composables/useVirtualScroll";
+import { useColumnResize } from "./composables/useColumnResize";
 import { useClipboardStore } from "@/stores/clipboardStore";
 import { storeToRefs } from "pinia";
 
@@ -39,6 +40,16 @@ const { contentListRef, virtualScroll, visibleItems, handleScroll } = useVirtual
 );
 
 const selectedItem = ref<ClipboardItem | null>(null);
+const {
+  columnsRef,
+  listWidth,
+  minWidth,
+  maxWidth,
+  isResizing,
+  startResize,
+  moveResize,
+  finishResize,
+} = useColumnResize();
 /** 避免快速切换或列表刷新时，过期的 getItem 覆盖当前选中 */
 let selectionRequestId = 0;
 
@@ -215,8 +226,8 @@ onActivated(() => {
 
 <template>
   <div class="main-content">
-    <div class="two-column-body">
-      <div class="content-container">
+    <div ref="columnsRef" class="two-column-body" :class="{ 'is-resizing': isResizing }">
+      <div id="clipboard-list" class="content-container" :style="{ flexBasis: `${listWidth}px` }">
         <div class="search-container">
           <div class="search-box">
             <i-ep-search class="search-icon" />
@@ -323,6 +334,22 @@ onActivated(() => {
         </div>
       </div>
 
+      <div
+        class="column-resizer"
+        role="separator"
+        aria-label="调整列表和预览宽度"
+        aria-orientation="vertical"
+        aria-controls="clipboard-list"
+        :aria-valuemin="Math.round(minWidth)"
+        :aria-valuemax="Math.round(maxWidth)"
+        :aria-valuenow="Math.round(listWidth)"
+        title="拖动调整列表和预览宽度"
+        @pointerdown="startResize"
+        @pointermove="moveResize"
+        @pointerup="finishResize"
+        @pointercancel="finishResize"
+        @lostpointercapture="finishResize"
+      />
       <DetailPanel
         :item="selectedItem"
         v-model:showAllContent="showAllContent"
@@ -356,6 +383,32 @@ onActivated(() => {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+
+.column-resizer {
+  flex: 0 0 3px;
+  cursor: col-resize;
+  touch-action: none;
+  background: var(--border-light);
+  -webkit-app-region: no-drag;
+
+  &:hover {
+    background: var(--accent-primary);
+    outline: none;
+  }
+}
+
+.is-resizing {
+  cursor: col-resize;
+  user-select: none;
+
+  > .column-resizer {
+    background: var(--accent-primary);
+  }
+
+  > :not(.column-resizer) {
+    pointer-events: none;
+  }
 }
 
 /* 搜索区域 */
@@ -432,12 +485,10 @@ onActivated(() => {
 .content-container {
   display: flex;
   flex-direction: column;
-  flex: 0 1 44%;
-  min-width: 320px;
-  max-width: var(--list-max-width, 640px);
+  flex: 0 0 auto;
+  min-width: 0;
   overflow: hidden;
   height: 100%;
-  border-right: 1px solid var(--border-light);
 }
 
 /* 内容列表 */

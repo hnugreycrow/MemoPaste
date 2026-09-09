@@ -80,7 +80,8 @@ export type ConfigKey =
   | "dataRetentionDays"
   | "version"
   | "autoCheckUpdate"
-  | "sidebarCollapsed";
+  | "sidebarCollapsed"
+  | "clipboardListRatio";
 
 export interface AppConfig {
   theme: ThemeMode;
@@ -92,6 +93,7 @@ export interface AppConfig {
   /** 启动时是否自动检查更新 */
   autoCheckUpdate: boolean;
   sidebarCollapsed: boolean;
+  clipboardListRatio: number;
   /** 上次自动检查时间戳（仅主进程读写，不在渲染白名单） */
   lastUpdateCheckAt?: number;
 }
