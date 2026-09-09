@@ -57,7 +57,7 @@ export class ConfigService {
         version: "1.0.0",
         autoCheckUpdate: true,
         sidebarCollapsed: false,
-        clipboardListRatio: 0.44,
+        clipboardListRatio: 0.40,
       },
       name: "config",
     });
