@@ -30,11 +30,6 @@
     <template v-if="item">
       <div class="detail-content">
         <div class="detail-text" :class="{ 'is-image': isImage }">
-          <el-tooltip :content="isImage ? '复制图片' : '复制内容'" placement="left">
-            <el-button class="copy-overlay-btn" @click="copyItem(item)">
-              <i-ep-Document-Copy />
-            </el-button>
-          </el-tooltip>
           <div class="detail-text-body">
             <template v-if="isImage">
               <div class="detail-image-wrap">
@@ -80,10 +75,6 @@
         <el-button type="primary" class="action-copy" @click="copyItem(item)">
           <i-ep-Document-Copy class="btn-icon" />
           <span>{{ isImage ? "复制图片" : "复制内容" }}</span>
-        </el-button>
-        <el-button class="action-delete" @click="deleteItem(item)">
-          <i-ep-Delete class="btn-icon" />
-          <span>删除</span>
         </el-button>
       </div>
     </template>
@@ -304,19 +295,6 @@ const toggleFavorite = (item: Item) => {
   font-size: 13px;
 }
 
-.copy-overlay-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 2;
-  width: 32px;
-  height: 32px;
-  min-height: 32px;
-  padding: 0;
-  opacity: 1;
-  pointer-events: auto;
-}
-
 .detail-meta-strip {
   flex-shrink: 0;
   display: flex;
@@ -347,9 +325,6 @@ const toggleFavorite = (item: Item) => {
   flex: 1;
 }
 
-.action-delete {
-  flex-shrink: 0;
-}
 
 .btn-icon {
   margin-right: 6px;
