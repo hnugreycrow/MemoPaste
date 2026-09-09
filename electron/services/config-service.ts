@@ -12,6 +12,7 @@ const CONFIG_KEYS = new Set<ConfigKey>([
   "dataRetentionDays",
   "version",
   "autoCheckUpdate",
+  "sidebarCollapsed",
 ]);
 
 function isConfigKey(key: unknown): key is ConfigKey {
@@ -29,6 +30,7 @@ function validateConfigValue(key: ConfigKey, value: unknown): boolean {
     case "minimizeToTray":
     case "openAtLogin":
     case "autoCheckUpdate":
+    case "sidebarCollapsed":
       return typeof value === "boolean";
     case "dataRetentionDays":
       return typeof value === "number" && Number.isInteger(value) && value > 0;
@@ -51,6 +53,7 @@ export class ConfigService {
         dataRetentionDays: 1,
         version: "1.0.0",
         autoCheckUpdate: true,
+        sidebarCollapsed: false,
       },
       name: "config",
     });
