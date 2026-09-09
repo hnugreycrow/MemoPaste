@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useClipboardStore } from "@/stores/clipboardStore";
@@ -10,9 +10,28 @@ const route = useRoute();
 const router = useRouter();
 const clipboardStore = useClipboardStore();
 const { activeFilter, typeCounts } = storeToRefs(clipboardStore);
+const isCollapsed = ref(false);
+let hasToggled = false;
+const collapseLabel = computed(() => (isCollapsed.value ? "展开侧边栏" : "收起侧边栏"));
+
+const toggleSidebar = () => {
+  hasToggled = true;
+  isCollapsed.value = !isCollapsed.value;
+  window.config.set("sidebarCollapsed", isCollapsed.value).catch((error: unknown) => {
+    console.error("保存侧边栏状态失败:", error);
+  });
+};
 
 onMounted(() => {
   clipboardStore.refreshCounts();
+  window.config
+    .get<boolean>("sidebarCollapsed")
+    .then((collapsed) => {
+      if (!hasToggled) isCollapsed.value = collapsed === true;
+    })
+    .catch((error: unknown) => {
+      console.error("读取侧边栏状态失败:", error);
+    });
 });
 
 const activeModule = computed(() => {
@@ -44,7 +63,7 @@ const toggleTheme = () => {
 </script>
 
 <template>
-  <aside class="nav-sidebar">
+  <aside class="nav-sidebar" :class="{ 'is-collapsed': isCollapsed }">
     <div class="brand">
       <img :src="APP_ICON_URL" class="brand-logo" alt="MemoPaste" />
       <div class="brand-text">
@@ -58,6 +77,8 @@ const toggleTheme = () => {
         type="button"
         class="nav-item"
         :class="{ active: activeModule === 'clipboard' }"
+        aria-label="剪贴板"
+        :title="isCollapsed ? `剪贴板（${typeCounts.all}）` : undefined"
         @click="goClipboard('all')"
       >
         <i-ep-DocumentCopy class="nav-icon" />
@@ -69,6 +90,8 @@ const toggleTheme = () => {
         type="button"
         class="nav-item"
         :class="{ active: activeModule === 'favorite' }"
+        aria-label="收藏"
+        :title="isCollapsed ? `收藏（${typeCounts.favorite}）` : undefined"
         @click="goClipboard('favorite')"
       >
         <i-ep-Star class="nav-icon" />
@@ -81,6 +104,7 @@ const toggleTheme = () => {
       <button
         type="button"
         class="util-item"
+        :title="isCollapsed ? `${themeLabel}，点击切换` : undefined"
         :aria-label="
           themeService.currentTheme.value === 'dark' ? '切换到浅色主题' : '切换到深色主题'
         "
@@ -99,12 +123,27 @@ const toggleTheme = () => {
         class="util-item"
         :class="{ active: activeModule === 'settings' }"
         aria-label="设置"
+        :title="isCollapsed ? '设置' : undefined"
         @click="goSettings"
       >
         <span class="util-icon-wrap" aria-hidden="true">
           <i-ep-Setting />
         </span>
         <span class="util-label">设置</span>
+      </button>
+      <button
+        type="button"
+        class="util-item"
+        :aria-label="collapseLabel"
+        :aria-expanded="!isCollapsed"
+        :title="collapseLabel"
+        @click="toggleSidebar"
+      >
+        <span class="util-icon-wrap" aria-hidden="true">
+          <i-ep-Expand v-if="isCollapsed" />
+          <i-ep-Fold v-else />
+        </span>
+        <span class="util-label">{{ collapseLabel }}</span>
       </button>
     </div>
   </aside>
@@ -123,13 +162,61 @@ const toggleTheme = () => {
   box-sizing: border-box;
   overflow: hidden;
   -webkit-app-region: drag;
+  transition:
+    width 0.2s ease,
+    padding 0.2s ease;
+
+  &.is-collapsed {
+    width: 64px;
+    padding-inline: 8px;
+
+    .brand {
+      padding-inline: 3.5px;
+    }
+
+    .brand-logo {
+      transform: scale(0.8);
+      margin-right: -10px;
+    }
+
+    .brand-text {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .nav-label,
+    .nav-count,
+    .util-label,
+    .util-meta {
+      display: none;
+    }
+
+    .nav-item,
+    .util-item {
+      justify-content: center;
+      gap: 0;
+      padding-inline: 0;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-sidebar,
+  .nav-sidebar .brand,
+  .nav-sidebar .brand-logo,
+  .nav-sidebar .brand-text {
+    transition: none;
+  }
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 10px;
+  height: 70px;
+  flex-shrink: 0;
   padding: 4px 6px 16px;
+  transition: padding 0.2s ease;
   -webkit-app-region: no-drag;
 }
 
@@ -139,10 +226,19 @@ const toggleTheme = () => {
   border-radius: 10px;
   object-fit: cover;
   flex-shrink: 0;
+  transform-origin: left center;
+  transition:
+    transform 0.2s ease,
+    margin-right 0.2s ease;
 }
 
 .brand-text {
   min-width: 0;
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
 }
 
 .brand-name {
@@ -189,6 +285,11 @@ const toggleTheme = () => {
     color: var(--text-primary);
   }
 
+  &:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: -2px;
+  }
+
   &.active {
     background: var(--bg-active);
     color: var(--accent-primary);
@@ -206,6 +307,7 @@ const toggleTheme = () => {
   min-width: 0;
   font-size: 13px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .nav-count {
