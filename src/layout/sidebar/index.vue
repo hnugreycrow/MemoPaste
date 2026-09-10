@@ -285,11 +285,6 @@ const toggleTheme = () => {
     color: var(--text-primary);
   }
 
-  &:focus-visible {
-    outline: 2px solid var(--accent-primary);
-    outline-offset: -2px;
-  }
-
   &.active {
     background: var(--bg-active);
     color: var(--accent-primary);
