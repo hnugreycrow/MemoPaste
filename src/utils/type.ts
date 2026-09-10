@@ -120,11 +120,19 @@ export interface PanelControls {
   onNav: (callback: (action: PanelNavAction) => void) => () => void;
 }
 
+export interface UpdateStatus {
+  status: string;
+  source: "auto" | "manual" | "download" | "install";
+  checkedAt: number;
+  data?: any;
+}
+
 export interface UpdateControls {
+  getUpdateStatus: () => Promise<UpdateStatus>;
   checkForUpdates: () => Promise<any>;
   downloadUpdate: () => Promise<boolean | { error: any }>;
   installUpdate: () => Promise<boolean>;
-  onUpdateStatus: (callback: (status: { status: string; data?: any }) => void) => () => void;
+  onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void;
 }
 
 export interface OpenAtLoginResult {

@@ -1,6 +1,7 @@
 import { autoUpdater } from "electron-updater";
 import { BrowserWindow, ipcMain } from "electron";
 import { ConfigService } from "./config-service";
+import type { UpdateStatus } from "../../src/utils/type";
 
 const AUTO_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
@@ -9,6 +10,10 @@ export class UpdateService {
   private mainWindow: BrowserWindow;
   private configService: ConfigService;
   private checking = false;
+  private downloading = false;
+  private source: UpdateStatus["source"] = "auto";
+  private operationError: { message: string } | null = null;
+  private latestCheck: UpdateStatus = { status: "idle", source: "auto", checkedAt: 0 };
   private autoCheckTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(mainWindow: BrowserWindow, configService: ConfigService) {
@@ -36,10 +41,7 @@ export class UpdateService {
     });
 
     autoUpdater.on("error", (err) => {
-      this.sendStatusToWindow("error", {
-        name: err?.name || "Error",
-        message: err?.message || String(err),
-      });
+      this.reportError(err);
     });
 
     autoUpdater.on("download-progress", (progressObj) => {
@@ -52,6 +54,7 @@ export class UpdateService {
   }
 
   private registerIpcHandlers() {
+    ipcMain.handle("get-update-status", () => this.latestCheck);
     ipcMain.handle("check-for-updates", async () => {
       try {
         return await this.checkForUpdates();
@@ -66,31 +69,55 @@ export class UpdateService {
     });
 
     ipcMain.handle("download-update", async () => {
+      if (this.checking || this.downloading)
+        return { error: { message: "更新操作正在进行，请稍后重试" } };
+      this.downloading = true;
+      this.source = "download";
+      this.operationError = null;
       try {
         await autoUpdater.downloadUpdate();
-        return true;
+        return this.operationError ? { error: this.operationError } : true;
       } catch (error) {
+        this.reportError(error);
         console.error("下载更新失败:", error);
         return {
           error: {
             message: error instanceof Error ? error.message : String(error),
           },
         };
+      } finally {
+        this.downloading = false;
       }
     });
 
     ipcMain.handle("install-update", () => {
+      this.source = "install";
+      this.operationError = null;
       // isSilent=false：走正常安装 UI；isForceRunAfter=true：装完强制重启进新版本
-      autoUpdater.quitAndInstall(false, true);
+      try {
+        autoUpdater.quitAndInstall(false, true);
+      } catch (error) {
+        this.reportError(error);
+      }
       return true;
     });
   }
 
+  private reportError(error: unknown) {
+    if (this.operationError) return;
+    this.operationError = {
+      message: error instanceof Error ? error.message || "未知错误" : String(error || "未知错误"),
+    };
+    this.sendStatusToWindow("error", this.operationError);
+  }
+
   private sendStatusToWindow(status: string, data?: unknown) {
+    const event: UpdateStatus = { status, data, source: this.source, checkedAt: Date.now() };
+    if (this.source === "auto" || this.source === "manual") this.latestCheck = event;
     if (this.mainWindow.isDestroyed() || this.mainWindow.webContents.isDestroyed()) {
       return;
     }
-    this.mainWindow.webContents.send("update-status", { status, data });
+    this.mainWindow.webContents.send("update-status", event);
   }
 
   /** 窗口就绪后安排一次自动检查（已显示则短延迟，避免抢启动） */
@@ -118,7 +145,7 @@ export class UpdateService {
     if (Date.now() - lastCheckAt < AUTO_CHECK_INTERVAL_MS) return;
 
     try {
-      const result = await this.checkForUpdates();
+      const result = await this.checkForUpdates("auto");
       // null 表示已有检查在进行，不写入时间戳以免误跳过下次自动检查
       if (result !== null) {
         this.configService.set("lastUpdateCheckAt", Date.now());
@@ -128,13 +155,22 @@ export class UpdateService {
     }
   }
 
-  public async checkForUpdates() {
-    if (this.checking) {
+  public async checkForUpdates(source: "auto" | "manual" = "manual") {
+    if (this.checking || this.downloading) {
       return null;
     }
     this.checking = true;
+    this.source = source;
+    this.operationError = null;
     try {
-      return await autoUpdater.checkForUpdates();
+      const result = await autoUpdater.checkForUpdates();
+      // Some updater failures are delivered through an event as well as rejection.
+      const failure = this.operationError as { message: string } | null;
+      if (failure) throw new Error(failure.message);
+      return result;
+    } catch (error) {
+      this.reportError(error);
+      throw error;
     } finally {
       this.checking = false;
     }
@@ -146,6 +182,7 @@ export class UpdateService {
       this.autoCheckTimer = null;
     }
     ipcMain.removeHandler("check-for-updates");
+    ipcMain.removeHandler("get-update-status");
     ipcMain.removeHandler("download-update");
     ipcMain.removeHandler("install-update");
     autoUpdater.removeAllListeners();

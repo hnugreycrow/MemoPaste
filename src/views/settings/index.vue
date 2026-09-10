@@ -4,6 +4,7 @@ import { themeService } from "../../utils/theme";
 import type { ThemeType } from "../../utils/theme";
 import { useRouter } from "vue-router";
 import { APP_ICON_URL } from "@/constants/assets";
+import type { UpdateStatus } from "@/utils/type";
 import ShortcutRecorder from "./components/ShortcutRecorder.vue";
 
 defineOptions({
@@ -17,6 +18,25 @@ const openAtLogin = ref<boolean>(false);
 const autoCheckUpdate = ref<boolean>(true);
 const dataRetentionDays = ref<number>(1);
 const isLoading = ref<boolean>(false);
+const updateStatus = ref<UpdateStatus | null>(null);
+const checkBusy = computed(
+  () => isLoading.value || updateStatus.value?.status === "checking-for-update",
+);
+const updateError = computed(() => String(updateStatus.value?.data?.message || "未知错误"));
+const updateLabel = computed(() => {
+  switch (updateStatus.value?.status) {
+    case "checking-for-update":
+      return "正在检查更新…";
+    case "error":
+      return updateStatus.value.source === "auto" ? "自动检查更新失败" : "检查更新失败";
+    case "update-available":
+      return "有新版本可用";
+    case "update-not-available":
+      return "当前已是最新版本";
+    default:
+      return "";
+  }
+});
 const appVersion = ref("–");
 const router = useRouter();
 
@@ -79,24 +99,35 @@ const setTheme = (value: ThemeType) => {
   theme.value = value;
 };
 
-/** 检查更新时的状态监听清理函数 */
+/** 先订阅再读取快照，避免设置页打开时遗漏状态变化。 */
 let removeListener: (() => void) | null = null;
+onMounted(() => {
+  let receivedEvent = false;
+  removeListener = window.updater.onUpdateStatus((status) => {
+    if (status.source !== "auto" && status.source !== "manual") return;
+    receivedEvent = true;
+    updateStatus.value = status;
+  });
+  void window.updater
+    .getUpdateStatus()
+    .then((status) => {
+      if (removeListener && !receivedEvent) updateStatus.value = status;
+    })
+    .catch((error) => console.error("读取更新状态失败:", error));
+});
 
 const checkForUpdates = async () => {
+  if (checkBusy.value) return;
   try {
     isLoading.value = true;
-
-    removeListener = window.updater.onUpdateStatus((status) => {
-      if (status.status === "update-not-available") {
-        ElMessage.info("当前已是最新版本");
-      }
-    });
-
-    await window.updater.checkForUpdates();
+    const result = await window.updater.checkForUpdates();
+    if (result?.error) throw new Error(result.error.message || "未知错误");
+    if (result === null) ElMessage.info("暂无检查结果，请稍后重试");
+    else if (updateStatus.value?.status === "update-not-available")
+      ElMessage.info("当前已是最新版本");
   } catch (error) {
-    ElMessage.error("检查更新失败: " + error);
+    ElMessage.error("检查更新失败: " + (error instanceof Error ? error.message : String(error)));
   } finally {
-    removeListener?.();
     isLoading.value = false;
   }
 };
@@ -268,15 +299,34 @@ onUnmounted(() => {
               <span class="setting-label">当前版本</span>
               <span class="setting-desc">MemoPaste v{{ appVersion }}</span>
             </div>
-            <el-button :loading="isLoading" class="action-btn" @click="checkForUpdates">
+            <el-button :loading="checkBusy" class="action-btn" @click="checkForUpdates">
               检查更新
             </el-button>
+          </div>
+
+          <div v-if="updateLabel" class="setting-row" aria-live="polite">
+            <div class="setting-meta update-status">
+              <span class="setting-label">{{ updateLabel }}</span>
+              <span v-if="updateStatus?.checkedAt" class="setting-desc">
+                {{ new Date(updateStatus.checkedAt).toLocaleString() }}
+              </span>
+              <template v-if="updateStatus?.status === 'error'">
+                <details v-if="updateError.length > 120">
+                  <summary>查看失败原因</summary>
+                  <p class="setting-desc update-error">{{ updateError }}</p>
+                </details>
+                <span v-else class="setting-desc update-error">{{ updateError }}</span>
+                <span class="setting-desc">可点击“检查更新”重试</span>
+              </template>
+            </div>
           </div>
 
           <div class="setting-row">
             <div class="setting-meta">
               <span class="setting-label">启动时自动检查更新</span>
-              <span class="setting-desc">有新版本时弹窗提醒，每 24 小时最多检查一次</span>
+              <span class="setting-desc"
+                >有新版本时弹窗提醒，检查失败仅在此处显示；每 24 小时最多检查一次</span
+              >
             </div>
             <el-switch v-model="autoCheckUpdate" @change="handleAutoCheckUpdateChange" />
           </div>
@@ -628,5 +678,19 @@ onUnmounted(() => {
   .segment {
     flex: 1;
   }
+}
+</style>
+
+<style scoped>
+.update-status {
+  min-width: 0;
+}
+.update-error {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.update-status summary {
+  cursor: pointer;
+  font-size: 13px;
 }
 </style>
