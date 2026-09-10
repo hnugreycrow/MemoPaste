@@ -54,29 +54,21 @@ const {
 /** 避免快速切换或列表刷新时，过期的 getItem 覆盖当前选中 */
 let selectionRequestId = 0;
 
-/** 列表变化时：对齐到最新对象；选中项已不存在则默认首条 */
+/** 同一条记录保留全文对象和展开状态，后台更新只同步元数据。 */
 const ensureSelection = async () => {
   const items = clipboardData.value;
   if (items.length === 0) {
+    ++selectionRequestId;
     selectedItem.value = null;
     return;
   }
 
   if (selectedItem.value) {
-    // 去重置顶会换新对象（timestamp 等已变），不能只判断 id 还在就跳过
     const latest = items.find((item) => item.id === selectedItem.value?.id);
     if (latest) {
       const current = selectedItem.value;
-      // 列表追加翻页时数组会换新引用；已有全文且未置顶则跳过，避免详情闪烁
-      if (
-        current &&
-        String(current.timestamp) === String(latest.timestamp) &&
-        current.content.length > latest.content.length
-      ) {
-        return;
-      }
-      // 列表只有预览，须重新拉全文，避免详情被截断覆盖
-      await loadFullSelection(latest.id, latest);
+      current.timestamp = latest.timestamp;
+      current.is_favorite = latest.is_favorite;
       return;
     }
   }
@@ -90,7 +82,7 @@ watch(activeFilter, (newType) => {
 });
 
 watch(
-  () => clipboardData.value,
+  () => clipboardData.value.map((item) => item.id),
   () => {
     void ensureSelection();
   },

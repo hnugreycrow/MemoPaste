@@ -1,4 +1,4 @@
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, nextTick } from "vue";
 import { useClipboardStore } from "@/stores/clipboardStore";
 import type { ClipboardRow } from "@/utils/dateGroups";
 
@@ -40,7 +40,45 @@ export function useVirtualScroll(rows: () => ClipboardRow[]) {
   }));
   const visibleItems = computed(() => rows().slice(startIndex.value, endIndex.value));
   let lastPrefetchKey = "";
+  // 在 DOM 更新前记住可见记录及其像素位置，日期分组高度也计入偏移。
+  let restoring = false;
+  watch(rows, async (nextRows, previousRows) => {
+    const el = contentListRef.value;
+    if (!el || !previousRows.length) return;
+    const top = el.scrollTop;
+    const nextOffsets = new Map<string, number>();
+    const nextTimestamps = new Map(
+      nextRows.flatMap((row) =>
+        row.kind === "item" ? [[row.key, Number(row.item.timestamp)] as const] : [],
+      ),
+    );
+    let offset = 0;
+    for (const row of nextRows) {
+      nextOffsets.set(row.key, offset);
+      offset += row.height;
+    }
+    let previousOffset = 0;
+    let target = top;
+    for (const row of previousRows) {
+      if (
+        row.kind === "item" &&
+        previousOffset + row.height > top &&
+        nextOffsets.has(row.key) &&
+        nextTimestamps.get(row.key) === Number(row.item.timestamp)
+      ) {
+        target = nextOffsets.get(row.key)! + top - previousOffset;
+        break;
+      }
+      previousOffset += row.height;
+    }
+    restoring = true;
+    await nextTick();
+    el.scrollTop = Math.max(0, target);
+    restoring = false;
+    handleScroll();
+  });
   const handleScroll = (event?: Event) => {
+    if (restoring) return;
     if (event?.type === "scroll") lastPrefetchKey = "";
     const el = contentListRef.value;
     if (!el) return;

@@ -4,7 +4,7 @@
  * - 点击条目：写入剪贴板并模拟粘贴到当前输入焦点
  * - 面板不抢焦点；Esc 由主进程全局快捷键关闭
  */
-import { ref, onMounted, onUnmounted, computed, nextTick } from "vue";
+import { ref, onMounted, onUnmounted, computed, nextTick, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { useClipboardStore } from "@/stores/clipboardStore";
 import type { ClipboardItem, PanelNavAction } from "@/utils/type";
@@ -29,6 +29,27 @@ let removeNavListener: (() => void) | null = null;
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 const hasItems = computed(() => clipboardData.value.length > 0);
+
+watch(
+  () => clipboardData.value.map((item) => item.id),
+  async (ids, previousIds) => {
+    const focusedId = previousIds[focusedIndex.value];
+    const nextIndex = ids.indexOf(focusedId);
+    focusedIndex.value = nextIndex >= 0 ? nextIndex : 0;
+    const list = listRef.value;
+    if (!list) return;
+    const top = list.getBoundingClientRect().top;
+    const anchor = Array.from(list.querySelectorAll<HTMLElement>(".clip-card")).find(
+      (card) => card.getBoundingClientRect().bottom > top && ids.includes(Number(card.dataset.id)),
+    );
+    if (!anchor) return;
+    const id = anchor.dataset.id;
+    const offset = anchor.getBoundingClientRect().top;
+    await nextTick();
+    const updated = list.querySelector<HTMLElement>(`.clip-card[data-id="${id}"]`);
+    if (updated) list.scrollTop += updated.getBoundingClientRect().top - offset;
+  },
+);
 
 /** 打开/刷新后滚回顶部，避免沿用上次滚动位置 */
 const resetScrollToTop = async () => {
@@ -143,7 +164,7 @@ onMounted(async () => {
   removeClipboardListener = window.clipboard.onChanged(() => {
     if (refreshTimer) clearTimeout(refreshTimer);
     refreshTimer = setTimeout(() => {
-      refreshList();
+      void clipboardStore.refreshAfterClipboardChange();
     }, 180);
   });
 });
@@ -200,6 +221,7 @@ onUnmounted(() => {
           class="clip-card"
           :class="{ focused: row.index === focusedIndex, favorite: row.item.is_favorite }"
           :data-index="row.index"
+          :data-id="row.item.id"
           role="button"
           tabindex="0"
           @click="pasteItem(row.item)"
@@ -387,6 +409,7 @@ onUnmounted(() => {
 }
 
 .panel-list {
+  overflow-anchor: none;
   flex: 1;
   overflow-y: auto;
   padding: 0 10px 8px;
