@@ -4,11 +4,12 @@
  * - 点击条目：写入剪贴板并模拟粘贴到当前输入焦点
  * - 面板不抢焦点；Esc 由主进程全局快捷键关闭
  */
-import { ref, onMounted, onUnmounted, computed, nextTick } from "vue";
+import { ref, onMounted, onUnmounted, computed, nextTick, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { useClipboardStore } from "@/stores/clipboardStore";
 import type { ClipboardItem, PanelNavAction } from "@/utils/type";
-import { truncateText, formatRelativeTime, getTypeLabel, clipimgUrl } from "@/utils/utils";
+import { truncateText, formatTimeOfDay, formatTime, getTypeLabel, clipimgUrl } from "@/utils/utils";
+import { useDateGroups } from "@/composables/useDateGroups";
 import { APP_ICON_URL } from "@/constants/assets";
 
 defineOptions({
@@ -18,6 +19,8 @@ defineOptions({
 const clipboardStore = useClipboardStore();
 const { clipboardData, isLoadingMore, activeFilter, totalItems } = storeToRefs(clipboardStore);
 
+const { rows, refreshDate } = useDateGroups(() => clipboardData.value);
+
 const focusedIndex = ref(0);
 const listRef = ref<HTMLElement | null>(null);
 let removeShownListener: (() => void) | null = null;
@@ -26,6 +29,27 @@ let removeNavListener: (() => void) | null = null;
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 const hasItems = computed(() => clipboardData.value.length > 0);
+
+watch(
+  () => clipboardData.value.map((item) => item.id),
+  async (ids, previousIds) => {
+    const focusedId = previousIds[focusedIndex.value];
+    const nextIndex = ids.indexOf(focusedId);
+    focusedIndex.value = nextIndex >= 0 ? nextIndex : 0;
+    const list = listRef.value;
+    if (!list) return;
+    const top = list.getBoundingClientRect().top;
+    const anchor = Array.from(list.querySelectorAll<HTMLElement>(".clip-card")).find(
+      (card) => card.getBoundingClientRect().bottom > top && ids.includes(Number(card.dataset.id)),
+    );
+    if (!anchor) return;
+    const id = anchor.dataset.id;
+    const offset = anchor.getBoundingClientRect().top;
+    await nextTick();
+    const updated = list.querySelector<HTMLElement>(`.clip-card[data-id="${id}"]`);
+    if (updated) list.scrollTop += updated.getBoundingClientRect().top - offset;
+  },
+);
 
 /** 打开/刷新后滚回顶部，避免沿用上次滚动位置 */
 const resetScrollToTop = async () => {
@@ -44,6 +68,7 @@ const scrollFocusedIntoView = async () => {
 };
 
 const refreshList = async () => {
+  refreshDate();
   await clipboardStore.loadClipboardHistory(1, false, activeFilter.value);
   focusedIndex.value = 0;
   await resetScrollToTop();
@@ -139,7 +164,7 @@ onMounted(async () => {
   removeClipboardListener = window.clipboard.onChanged(() => {
     if (refreshTimer) clearTimeout(refreshTimer);
     refreshTimer = setTimeout(() => {
-      refreshList();
+      void clipboardStore.refreshAfterClipboardChange();
     }, 180);
   });
 });
@@ -187,66 +212,73 @@ onUnmounted(() => {
         <span class="empty-hint">复制文本或截图后会出现在这里</span>
       </div>
 
-      <div
-        v-for="(item, index) in clipboardData"
-        :key="item.id"
-        class="clip-card"
-        :class="{ focused: index === focusedIndex, favorite: item.is_favorite }"
-        :data-index="index"
-        role="button"
-        tabindex="0"
-        @click="pasteItem(item)"
-        @mouseenter="focusedIndex = index"
-      >
-        <div class="card-top">
-          <span class="type-badge" :class="`type-${item.type}`">
-            <el-icon class="type-icon">
-              <i-ep-Document v-if="item.type === 'text'" />
-              <i-ep-Link v-else-if="item.type === 'url'" />
-              <i-ep-Cpu v-else-if="item.type === 'code'" />
-              <i-ep-Picture v-else-if="item.type === 'image'" />
-              <i-ep-Document v-else />
-            </el-icon>
-            {{ getTypeLabel(item.type) }}
-          </span>
-          <span class="card-time">{{ formatRelativeTime(item.timestamp) }}</span>
+      <template v-for="row in rows" :key="row.key">
+        <div v-if="row.kind === 'header'" class="date-group-title" role="heading" aria-level="3">
+          {{ row.label }}
         </div>
-        <div class="card-body" :class="{ 'is-image': item.type === 'image' }">
-          <template v-if="item.type === 'image'">
-            <div class="card-thumb-wrap">
-              <img
-                v-if="item.thumb_path"
-                class="card-thumb"
-                :src="clipimgUrl(item.thumb_path)"
-                alt=""
-                draggable="false"
-              />
-              <div v-else class="card-thumb-fallback">图片</div>
-            </div>
-            <div class="card-image-meta">
-              <span class="card-image-title">图片</span>
-              <span class="card-image-size">{{ imageSizeLabel(item.content) }}</span>
-            </div>
-          </template>
-          <template v-else>
-            {{ truncateText(item.content, 120) }}
-          </template>
+        <div
+          v-else
+          class="clip-card"
+          :class="{ focused: row.index === focusedIndex, favorite: row.item.is_favorite }"
+          :data-index="row.index"
+          :data-id="row.item.id"
+          role="button"
+          tabindex="0"
+          @click="pasteItem(row.item)"
+          @mouseenter="focusedIndex = row.index"
+        >
+          <div class="card-top">
+            <span class="type-badge" :class="`type-${row.item.type}`">
+              <el-icon class="type-icon">
+                <i-ep-Document v-if="row.item.type === 'text'" />
+                <i-ep-Link v-else-if="row.item.type === 'url'" />
+                <i-ep-Cpu v-else-if="row.item.type === 'code'" />
+                <i-ep-Picture v-else-if="row.item.type === 'image'" />
+                <i-ep-Document v-else />
+              </el-icon>
+              {{ getTypeLabel(row.item.type) }}
+            </span>
+            <span class="card-time" :title="formatTime(row.item.timestamp)">{{
+              formatTimeOfDay(row.item.timestamp)
+            }}</span>
+          </div>
+          <div class="card-body" :class="{ 'is-image': row.item.type === 'image' }">
+            <template v-if="row.item.type === 'image'">
+              <div class="card-thumb-wrap">
+                <img
+                  v-if="row.item.thumb_path"
+                  class="card-thumb"
+                  :src="clipimgUrl(row.item.thumb_path)"
+                  alt=""
+                  draggable="false"
+                />
+                <div v-else class="card-thumb-fallback">图片</div>
+              </div>
+              <div class="card-image-meta">
+                <span class="card-image-title">图片</span>
+                <span class="card-image-size">{{ imageSizeLabel(row.item.content) }}</span>
+              </div>
+            </template>
+            <template v-else>
+              {{ truncateText(row.item.content, 120) }}
+            </template>
+          </div>
+          <div class="card-actions">
+            <button
+              type="button"
+              class="pin-btn"
+              :class="{ active: row.item.is_favorite }"
+              title="收藏"
+              @click="toggleFavorite(row.item, $event)"
+            >
+              <el-icon>
+                <i-ep-StarFilled v-if="row.item.is_favorite" />
+                <i-ep-Star v-else />
+              </el-icon>
+            </button>
+          </div>
         </div>
-        <div class="card-actions">
-          <button
-            type="button"
-            class="pin-btn"
-            :class="{ active: item.is_favorite }"
-            title="收藏"
-            @click="toggleFavorite(item, $event)"
-          >
-            <el-icon>
-              <i-ep-StarFilled v-if="item.is_favorite" />
-              <i-ep-Star v-else />
-            </el-icon>
-          </button>
-        </div>
-      </div>
+      </template>
     </div>
 
     <footer class="panel-footer">
@@ -377,12 +409,28 @@ onUnmounted(() => {
 }
 
 .panel-list {
+  overflow-anchor: none;
   flex: 1;
   overflow-y: auto;
   padding: 0 10px 8px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
+}
+
+.date-group-title {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-secondary);
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
 .empty {
@@ -409,6 +457,7 @@ onUnmounted(() => {
 }
 
 .clip-card {
+  margin-bottom: 8px;
   position: relative;
   display: block;
   width: 100%;
@@ -426,7 +475,7 @@ onUnmounted(() => {
   &:hover,
   &.focused {
     border-color: color-mix(in srgb, var(--accent-primary) 40%, var(--border-light));
-     background: color-mix(in srgb, var(--accent-primary) 8%, var(--bg-tertiary));
+    background: color-mix(in srgb, var(--accent-primary) 8%, var(--bg-tertiary));
   }
 
   /* 左侧琥珀条用伪元素，避免 inset shadow 在圆角处溢成月牙 */

@@ -26,6 +26,7 @@ export const useClipboardStore = defineStore("clipboard", {
     isLoadingMore: false,
     typeCounts: emptyCounts(),
     searchKeyword: "" as string,
+    historyRequestId: 0,
   }),
 
   actions: {
@@ -43,25 +44,62 @@ export const useClipboardStore = defineStore("clipboard", {
       append = false,
       type?: string,
       keyword?: string,
+      preserveRange = false,
     ): Promise<StoreActionResult> {
+      const requestId = ++this.historyRequestId;
       this.isLoadingMore = true;
-      this.currentPage = page;
 
       const effectiveType = type ?? this.activeFilter;
       const effectiveKeyword = keyword ?? this.searchKeyword;
 
       try {
-        const result = await window.clipboard.getHistory(
-          page,
-          this.pageSize,
+        // 后台刷新覆盖已加载范围，并预留一页，避免新记录把末尾记录挤出列表。
+        const loadedPages = Math.max(
+          this.currentPage,
+          Math.ceil(this.clipboardData.length / this.pageSize),
+        );
+        const requestSize = preserveRange ? (loadedPages + 1) * this.pageSize : this.pageSize;
+        let result = await window.clipboard.getHistory(
+          preserveRange ? 1 : page,
+          requestSize,
           effectiveType,
           effectiveKeyword,
         );
+        if (requestId !== this.historyRequestId) return { ok: false };
+        if (preserveRange && result.total - this.totalItems > this.pageSize) {
+          result = await window.clipboard.getHistory(
+            1,
+            Math.ceil(
+              (this.clipboardData.length + result.total - this.totalItems) / this.pageSize,
+            ) * this.pageSize,
+            effectiveType,
+            effectiveKeyword,
+          );
+        }
+        if (
+          requestId !== this.historyRequestId ||
+          effectiveType !== this.activeFilter ||
+          effectiveKeyword !== this.searchKeyword
+        ) {
+          return { ok: false };
+        }
         if (result?.total !== undefined) {
           this.totalItems = result.total;
         }
 
-        const history = result?.items || [];
+        let history = result?.items || [];
+        if (preserveRange) {
+          const previousIds = new Set(this.clipboardData.map((item) => item.id));
+          const retainedEnd = history.reduce(
+            (end, item, index) => (previousIds.has(item.id) ? index + 1 : end),
+            this.clipboardData.length,
+          );
+          // 只在旧记录被挤到下一页时扩容，避免每次复制都多加载一页。
+          history = history.slice(
+            0,
+            Math.max(this.pageSize, Math.ceil(retainedEnd / this.pageSize) * this.pageSize),
+          );
+        }
         if (history && Array.isArray(history) && history.length > 0) {
           const processedHistory = history.map((item) => ({
             ...item,
@@ -73,12 +111,15 @@ export const useClipboardStore = defineStore("clipboard", {
         } else if (!append) {
           this.clipboardData = [];
         }
+        this.currentPage = preserveRange
+          ? Math.max(1, Math.ceil(this.clipboardData.length / this.pageSize))
+          : page;
         return { ok: true };
       } catch (error) {
         console.error("加载剪贴板历史出错:", error);
         return { ok: false };
       } finally {
-        this.isLoadingMore = false;
+        if (requestId === this.historyRequestId) this.isLoadingMore = false;
       }
     },
 
@@ -92,11 +133,8 @@ export const useClipboardStore = defineStore("clipboard", {
 
     /** 主进程入库后：刷新列表与计数 */
     async refreshAfterClipboardChange() {
-      await this.loadClipboardHistory(1, false);
+      await this.loadClipboardHistory(1, false, undefined, undefined, true);
       await this.refreshCounts();
-      if (this.activeFilter === "all" && !this.searchKeyword) {
-        this.totalItems = this.typeCounts.all;
-      }
     },
 
     async saveClipboardItem(item: ClipboardItem): Promise<SaveClipboardResult | null> {

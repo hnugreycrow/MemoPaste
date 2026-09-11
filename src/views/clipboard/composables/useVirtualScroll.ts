@@ -1,67 +1,118 @@
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, nextTick } from "vue";
 import { useClipboardStore } from "@/stores/clipboardStore";
-import { storeToRefs } from "pinia";
+import type { ClipboardRow } from "@/utils/dateGroups";
 
-const clipboardStore = useClipboardStore();
-const { isLoadingMore } = storeToRefs(clipboardStore);
-
-export function useVirtualScroll(items: () => any[]) {
+export function useVirtualScroll(rows: () => ClipboardRow[]) {
+  const store = useClipboardStore();
   const contentListRef = ref<HTMLElement | null>(null);
-
-  const virtualScroll = ref({
-    startIndex: 0,
-    endIndex: 0,
-    visibleCount: 0,
-    // 必须与列表行 CSS 高度一致；估错会导致跳动或提前/延后触底加载
-    itemHeight: 60,
-    containerHeight: 0,
-    totalHeight: 0,
+  const startIndex = ref(0);
+  const endIndex = ref(0);
+  const offsets = computed(() => {
+    const result = [0];
+    for (const row of rows()) result.push(result[result.length - 1] + row.height);
+    return result;
   });
-
-  const visibleItems = computed(() => {
-    return items().slice(virtualScroll.value.startIndex, virtualScroll.value.endIndex + 1);
+  const headers = computed(() =>
+    rows().flatMap((row, index) =>
+      row.kind === "header" ? [{ key: row.key, label: row.label, top: offsets.value[index] }] : [],
+    ),
+  );
+  // Keep each date section mounted independently of virtualized content rows.
+  // Native sticky positioning uses section bounds without waiting for scroll events.
+  const dateSections = computed(() =>
+    headers.value.map((header, index) => ({
+      ...header,
+      height: (headers.value[index + 1]?.top ?? contentHeight.value) - header.top,
+    })),
+  );
+  const contentHeight = computed(() => offsets.value[offsets.value.length - 1]);
+  const complete = computed(
+    () =>
+      !store.isLoadingMore &&
+      store.clipboardData.length > 0 &&
+      store.clipboardData.length >= store.totalItems,
+  );
+  const virtualScroll = computed(() => ({
+    totalHeight: contentHeight.value + (complete.value ? 48 : 0),
+    offset: offsets.value[startIndex.value] ?? 0,
+    contentHeight: contentHeight.value,
+    complete: complete.value,
+  }));
+  const visibleItems = computed(() => rows().slice(startIndex.value, endIndex.value));
+  let lastPrefetchKey = "";
+  // 在 DOM 更新前记住可见记录及其像素位置，日期分组高度也计入偏移。
+  let restoring = false;
+  watch(rows, async (nextRows, previousRows) => {
+    const el = contentListRef.value;
+    if (!el || !previousRows.length) return;
+    const top = el.scrollTop;
+    const nextOffsets = new Map<string, number>();
+    const nextTimestamps = new Map(
+      nextRows.flatMap((row) =>
+        row.kind === "item" ? [[row.key, Number(row.item.timestamp)] as const] : [],
+      ),
+    );
+    let offset = 0;
+    for (const row of nextRows) {
+      nextOffsets.set(row.key, offset);
+      offset += row.height;
+    }
+    let previousOffset = 0;
+    let target = top;
+    for (const row of previousRows) {
+      if (
+        row.kind === "item" &&
+        previousOffset + row.height > top &&
+        nextOffsets.has(row.key) &&
+        nextTimestamps.get(row.key) === Number(row.item.timestamp)
+      ) {
+        target = nextOffsets.get(row.key)! + top - previousOffset;
+        break;
+      }
+      previousOffset += row.height;
+    }
+    restoring = true;
+    await nextTick();
+    el.scrollTop = Math.max(0, target);
+    restoring = false;
+    handleScroll();
   });
-
-  const handleScroll = () => {
-    if (!contentListRef.value) return;
-
-    const { scrollTop, clientHeight } = contentListRef.value;
-    virtualScroll.value.containerHeight = clientHeight;
-
-    // +4：上下多渲几行，快速滑时少露白
-    const visibleCount = Math.ceil(clientHeight / virtualScroll.value.itemHeight) + 4;
-    virtualScroll.value.visibleCount = visibleCount;
-
-    const startIndex = Math.floor(scrollTop / virtualScroll.value.itemHeight);
-    virtualScroll.value.startIndex = Math.max(0, startIndex - 1);
-
-    const endIndex = Math.min(items().length - 1, virtualScroll.value.startIndex + visibleCount);
-    virtualScroll.value.endIndex = endIndex;
-
-    virtualScroll.value.totalHeight = items().length * virtualScroll.value.itemHeight;
-
-    // 距末尾 3 行就预取下一页，避免滚到底才等 IPC
-    const buffer = 3;
-    const hasMoreData = items().length < clipboardStore.totalItems;
-    const isNearBottom = endIndex >= items().length - 1 - buffer;
-
-    if (isNearBottom && hasMoreData && !isLoadingMore.value) {
-      clipboardStore.loadMoreData();
+  const handleScroll = (event?: Event) => {
+    if (restoring) return;
+    if (event?.type === "scroll") lastPrefetchKey = "";
+    const el = contentListRef.value;
+    if (!el) return;
+    const maxScroll = Math.max(0, virtualScroll.value.totalHeight - el.clientHeight);
+    if (el.scrollTop > maxScroll) el.scrollTop = maxScroll;
+    const top = Math.max(0, el.scrollTop - 144);
+    const bottom = el.scrollTop + el.clientHeight + 144;
+    const findRow = (position: number) => {
+      let low = 0;
+      let high = rows().length;
+      while (low < high) {
+        const mid = Math.floor((low + high) / 2);
+        if (offsets.value[mid + 1] <= position) low = mid + 1;
+        else high = mid;
+      }
+      return low;
+    };
+    startIndex.value = findRow(top);
+    endIndex.value = Math.min(rows().length, findRow(bottom) + 1);
+    const prefetchKey = `${store.clipboardData.length}:${store.totalItems}:${rows()[rows().length - 1]?.key}`;
+    if (
+      prefetchKey !== lastPrefetchKey &&
+      el.scrollTop + el.clientHeight >= contentHeight.value - 216 &&
+      store.clipboardData.length < store.totalItems &&
+      !store.isLoadingMore
+    ) {
+      // A failed/empty page must not trigger an automatic retry loop.
+      lastPrefetchKey = prefetchKey;
+      void store.loadMoreData();
     }
   };
-
-  watch(
-    items,
-    () => {
-      handleScroll();
-    },
-    { deep: true },
-  );
-
-  return {
-    contentListRef,
-    virtualScroll,
-    visibleItems,
-    handleScroll,
-  };
+  watch([rows, () => store.isLoadingMore, () => store.totalItems], () => handleScroll(), {
+    deep: true,
+    flush: "post",
+  });
+  return { contentListRef, virtualScroll, visibleItems, dateSections, handleScroll };
 }

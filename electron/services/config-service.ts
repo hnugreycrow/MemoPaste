@@ -12,6 +12,7 @@ const CONFIG_KEYS = new Set<ConfigKey>([
   "dataRetentionDays",
   "version",
   "autoCheckUpdate",
+  "clipboardListRatio",
 ]);
 
 function isConfigKey(key: unknown): key is ConfigKey {
@@ -32,6 +33,8 @@ function validateConfigValue(key: ConfigKey, value: unknown): boolean {
       return typeof value === "boolean";
     case "dataRetentionDays":
       return typeof value === "number" && Number.isInteger(value) && value > 0;
+    case "clipboardListRatio":
+      return typeof value === "number" && Number.isFinite(value) && value > 0 && value < 1;
     default:
       return false;
   }
@@ -51,6 +54,7 @@ export class ConfigService {
         dataRetentionDays: 1,
         version: "1.0.0",
         autoCheckUpdate: true,
+        clipboardListRatio: 0.40,
       },
       name: "config",
     });

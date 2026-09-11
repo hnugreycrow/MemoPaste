@@ -39,7 +39,10 @@ onMounted(async () => {
       updateDownloaded.value = true;
     } else if (status.status === "error") {
       isDownloading.value = false;
-      ElMessage.error("更新失败: " + (status.data.message?.substring(0, 100) || "未知错误"));
+      // 自动检查静默；手动操作由调用方提示，避免事件和返回值重复报错。
+      if (status.source === "install") {
+        ElMessage.error("安装更新失败: " + (status.data?.message || "未知错误"));
+      }
     }
   });
 });
@@ -51,7 +54,8 @@ onUnmounted(() => {
 const downloadUpdate = async () => {
   try {
     isDownloading.value = true;
-    await window.updater.downloadUpdate();
+    const result = await window.updater.downloadUpdate();
+    if (result !== true) throw new Error((result && result.error?.message) || "未知错误");
   } catch (error) {
     isDownloading.value = false;
     ElMessage.error("下载更新失败: " + error);

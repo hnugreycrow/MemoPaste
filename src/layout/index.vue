@@ -69,11 +69,11 @@ onUnmounted(() => {
 
 <template>
   <div class="common-layout">
-    <Sidebar />
-    <div class="right-stack">
-      <el-header :height="'var(--header-height)'" class="right-header">
-        <Header />
-      </el-header>
+    <el-header :height="'var(--header-height)'" class="app-header">
+      <Header />
+    </el-header>
+    <div class="layout-body">
+      <Sidebar />
       <el-main class="right-main">
         <router-view v-slot="{ Component, route }">
           <keep-alive :include="cacheRoutes">
@@ -88,7 +88,9 @@ onUnmounted(() => {
 <style lang="scss" scoped>
 .common-layout {
   display: flex;
+  flex-direction: column;
   flex: 1;
+  min-height: 0;
   width: 100%;
   height: 100%;
   margin: 0 auto;
@@ -96,16 +98,15 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.right-stack {
+.layout-body {
   display: flex;
-  flex-direction: column;
   flex: 1;
+  min-height: 0;
   min-width: 0;
-  height: 100%;
-  overflow: hidden;
+  overflow: visible;
 }
 
-.right-header {
+.app-header {
   padding: 0;
   flex-shrink: 0;
   background: var(--bg-secondary);
@@ -117,10 +118,14 @@ onUnmounted(() => {
   display: flex;
   flex: 1;
   min-height: 0;
+  min-width: 0;
   padding: 0;
   width: 100%;
   background: transparent;
   overflow: hidden;
+  border-radius: 12px 0 0 0;
+  box-shadow: var(--main-shadow, 0 0 4px rgba(0, 0, 0, 0.1));
+  z-index: 100;
 
   :deep(> *) {
     flex: 1;

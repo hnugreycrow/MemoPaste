@@ -1,6 +1,7 @@
 import {
   WindowControls,
   UpdateControls,
+  UpdateStatus,
   PanelControls,
   AppAPI,
   ShortcutAPI,
@@ -107,12 +108,12 @@ contextBridge.exposeInMainWorld("shell", {
 } as ShellAPI);
 
 contextBridge.exposeInMainWorld("updater", {
+  getUpdateStatus: () => ipcRenderer.invoke("get-update-status"),
   checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
   downloadUpdate: () => ipcRenderer.invoke("download-update"),
   installUpdate: () => ipcRenderer.invoke("install-update"),
-  onUpdateStatus: (callback: (status: { status: string; data?: unknown }) => void) => {
-    const wrappedCallback = (_event: unknown, status: { status: string; data?: unknown }) =>
-      callback(status);
+  onUpdateStatus: (callback: (status: UpdateStatus) => void) => {
+    const wrappedCallback = (_event: unknown, status: UpdateStatus) => callback(status);
     ipcRenderer.on("update-status", wrappedCallback);
     return () => ipcRenderer.removeListener("update-status", wrappedCallback);
   },

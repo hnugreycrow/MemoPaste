@@ -33,7 +33,7 @@ export class ClipboardService {
 
   constructor(_mainWindow: BrowserWindow, windowService?: WindowService) {
     this.windowService = windowService ?? null;
-    this.lastFingerprint = this.readCurrentFingerprint();
+    // 启动时的剪贴板尚未入库，不能提前标记为已处理。
     this.registerIpcHandlers();
     // 不依赖渲染进程挂载；托盘静默启动也能持续入库
     this.startWatching();
@@ -69,7 +69,6 @@ export class ClipboardService {
     if (text && text.trim() !== "") {
       const fingerprint = `text:${text}`;
       if (fingerprint === this.lastFingerprint) return;
-      this.lastFingerprint = fingerprint;
 
       const type = getContentType(text);
       const size = formatSize(Buffer.byteLength(text, "utf8"));
@@ -80,6 +79,7 @@ export class ClipboardService {
         size,
       });
       if (saved) {
+        this.lastFingerprint = fingerprint;
         this.notifyChanged();
       }
       return;
@@ -93,7 +93,6 @@ export class ClipboardService {
 
     const fingerprint = `img:${stored.hash}`;
     if (fingerprint === this.lastFingerprint) return;
-    this.lastFingerprint = fingerprint;
 
     const saved = saveClipboardItem({
       content: `图片 ${stored.width}×${stored.height}`,
@@ -105,6 +104,7 @@ export class ClipboardService {
       thumb_path: stored.thumbPath,
     });
     if (saved) {
+      this.lastFingerprint = fingerprint;
       this.notifyChanged();
     }
   }

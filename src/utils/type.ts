@@ -79,7 +79,8 @@ export type ConfigKey =
   | "openAtLogin"
   | "dataRetentionDays"
   | "version"
-  | "autoCheckUpdate";
+  | "autoCheckUpdate"
+  | "clipboardListRatio";
 
 export interface AppConfig {
   theme: ThemeMode;
@@ -90,6 +91,7 @@ export interface AppConfig {
   version?: string;
   /** 启动时是否自动检查更新 */
   autoCheckUpdate: boolean;
+  clipboardListRatio: number;
   /** 上次自动检查时间戳（仅主进程读写，不在渲染白名单） */
   lastUpdateCheckAt?: number;
 }
@@ -116,11 +118,19 @@ export interface PanelControls {
   onNav: (callback: (action: PanelNavAction) => void) => () => void;
 }
 
+export interface UpdateStatus {
+  status: string;
+  source: "auto" | "manual" | "download" | "install";
+  checkedAt: number;
+  data?: any;
+}
+
 export interface UpdateControls {
+  getUpdateStatus: () => Promise<UpdateStatus>;
   checkForUpdates: () => Promise<any>;
   downloadUpdate: () => Promise<boolean | { error: any }>;
   installUpdate: () => Promise<boolean>;
-  onUpdateStatus: (callback: (status: { status: string; data?: any }) => void) => () => void;
+  onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void;
 }
 
 export interface OpenAtLoginResult {

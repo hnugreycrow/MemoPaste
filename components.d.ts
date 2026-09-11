@@ -25,6 +25,8 @@ declare module 'vue' {
     IEpDelete: typeof import('~icons/ep/delete')['default']
     IEpDocument: typeof import('~icons/ep/document')['default']
     IEpDocumentCopy: typeof import('~icons/ep/document-copy')['default']
+    IEpExpand: typeof import('~icons/ep/expand')['default']
+    IEpFold: typeof import('~icons/ep/fold')['default']
     IEpLink: typeof import('~icons/ep/link')['default']
     IEpLoading: typeof import('~icons/ep/loading')['default']
     IEpMinus: typeof import('~icons/ep/minus')['default']

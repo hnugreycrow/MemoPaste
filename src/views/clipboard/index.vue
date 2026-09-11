@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, onActivated } from "vue";
+import { useDateGroups } from "@/composables/useDateGroups";
 import DetailPanel from "./components/DetailPanel.vue";
 import FilterChips from "./components/FilterChips.vue";
 import { ClipboardItem } from "@/utils/type";
-import { truncateText, formatRelativeTime, getTypeLabel, clipimgUrl } from "@/utils/utils";
+import { truncateText, formatTimeOfDay, formatTime, getTypeLabel, clipimgUrl } from "@/utils/utils";
 import { useSearch } from "./composables/useSearch";
 import { useVirtualScroll } from "./composables/useVirtualScroll";
+import { useColumnResize } from "./composables/useColumnResize";
 import { useClipboardStore } from "@/stores/clipboardStore";
 import { storeToRefs } from "pinia";
 
@@ -15,8 +17,7 @@ defineOptions({
 });
 
 const clipboardStore = useClipboardStore();
-const { clipboardData, isLoadingMore, activeFilter, totalItems, currentPage } =
-  storeToRefs(clipboardStore);
+const { clipboardData, isLoadingMore, activeFilter, currentPage } = storeToRefs(clipboardStore);
 
 /** 侧栏「收藏」：长期抽屉视图，与流水历史区分文案与布局 */
 const isFavoritesView = computed(() => activeFilter.value === "favorite");
@@ -34,37 +35,40 @@ const emptyDesc = computed(() =>
 // 搜索下推到 store，由主进程 SQL LIKE 处理（非前端过滤）
 const { searchQuery } = useSearch();
 
-const { contentListRef, virtualScroll, visibleItems, handleScroll } = useVirtualScroll(
-  () => clipboardData.value,
-);
+const { rows } = useDateGroups(() => clipboardData.value);
+
+const { contentListRef, virtualScroll, visibleItems, dateSections, handleScroll } =
+  useVirtualScroll(() => rows.value);
 
 const selectedItem = ref<ClipboardItem | null>(null);
+const {
+  columnsRef,
+  listWidth,
+  minWidth,
+  maxWidth,
+  isResizing,
+  startResize,
+  moveResize,
+  finishResize,
+} = useColumnResize();
 /** 避免快速切换或列表刷新时，过期的 getItem 覆盖当前选中 */
 let selectionRequestId = 0;
 
-/** 列表变化时：对齐到最新对象；选中项已不存在则默认首条 */
+/** 同一条记录保留全文对象和展开状态，后台更新只同步元数据。 */
 const ensureSelection = async () => {
   const items = clipboardData.value;
   if (items.length === 0) {
+    ++selectionRequestId;
     selectedItem.value = null;
     return;
   }
 
   if (selectedItem.value) {
-    // 去重置顶会换新对象（timestamp 等已变），不能只判断 id 还在就跳过
     const latest = items.find((item) => item.id === selectedItem.value?.id);
     if (latest) {
       const current = selectedItem.value;
-      // 列表追加翻页时数组会换新引用；已有全文且未置顶则跳过，避免详情闪烁
-      if (
-        current &&
-        String(current.timestamp) === String(latest.timestamp) &&
-        current.content.length > latest.content.length
-      ) {
-        return;
-      }
-      // 列表只有预览，须重新拉全文，避免详情被截断覆盖
-      await loadFullSelection(latest.id, latest);
+      current.timestamp = latest.timestamp;
+      current.is_favorite = latest.is_favorite;
       return;
     }
   }
@@ -78,7 +82,7 @@ watch(activeFilter, (newType) => {
 });
 
 watch(
-  () => clipboardData.value,
+  () => clipboardData.value.map((item) => item.id),
   () => {
     void ensureSelection();
   },
@@ -215,8 +219,8 @@ onActivated(() => {
 
 <template>
   <div class="main-content">
-    <div class="two-column-body">
-      <div class="content-container">
+    <div ref="columnsRef" class="two-column-body" :class="{ 'is-resizing': isResizing }">
+      <div id="clipboard-list" class="content-container" :style="{ flexBasis: `${listWidth}px` }">
         <div class="search-container">
           <div class="search-box">
             <i-ep-search class="search-icon" />
@@ -270,49 +274,69 @@ onActivated(() => {
             <div
               class="virtual-scroll-content"
               :style="{
-                transform: `translateY(${virtualScroll.startIndex * virtualScroll.itemHeight}px)`,
+                transform: `translateY(${virtualScroll.offset}px)`,
               }"
             >
-              <div
-                v-for="item in visibleItems"
-                :key="item.id"
-                class="content-item"
-                :class="{
-                  active: selectedItem?.id === item.id,
-                  favorite: item.is_favorite,
-                }"
-                @click="selectItem(item)"
-              >
-                <div class="item-type-badge" :class="`type-${item.type}`">
-                  {{ getTypeLabel(item.type) }}
-                </div>
-                <div class="item-content">
-                  <div class="item-title">
-                    {{ truncateText(item.content, 50) }}
+              <template v-for="row in visibleItems" :key="row.key">
+                <div
+                  v-if="row.kind === 'header'"
+                  class="date-group-placeholder"
+                  aria-hidden="true"
+                ></div>
+                <div v-else class="item-row">
+                  <div
+                    class="content-item"
+                    :class="{
+                      active: selectedItem?.id === row.item.id,
+                      favorite: row.item.is_favorite,
+                    }"
+                    @click="selectItem(row.item)"
+                  >
+                    <div class="item-type-badge" :class="`type-${row.item.type}`">
+                      {{ getTypeLabel(row.item.type) }}
+                    </div>
+                    <div class="item-content">
+                      <div class="item-title">
+                        {{ truncateText(row.item.content, 50) }}
+                      </div>
+                      <div class="item-time" :title="formatTime(row.item.timestamp)">
+                        {{ formatTimeOfDay(row.item.timestamp) }}
+                        <i-ep-Star v-if="row.item.is_favorite" class="favorite-star" />
+                      </div>
+                    </div>
+                    <div
+                      v-if="row.item.type === 'image' && row.item.thumb_path"
+                      class="item-thumb-wrap"
+                    >
+                      <img
+                        class="item-thumb"
+                        :src="clipimgUrl(row.item.thumb_path)"
+                        alt=""
+                        draggable="false"
+                      />
+                    </div>
                   </div>
-                  <div class="item-time">
-                    {{ formatRelativeTime(item.timestamp) }}
-                    <i-ep-Star v-if="item.is_favorite" class="favorite-star" />
-                  </div>
                 </div>
-                <div v-if="item.type === 'image' && item.thumb_path" class="item-thumb-wrap">
-                  <img
-                    class="item-thumb"
-                    :src="clipimgUrl(item.thumb_path)"
-                    alt=""
-                    draggable="false"
-                  />
-                </div>
-              </div>
+              </template>
+            </div>
 
-              <div
-                v-if="
-                  !isLoadingMore && clipboardData.length >= totalItems && clipboardData.length > 0
-                "
-                class="load-complete"
-              >
-                <span>已加载全部内容</span>
+            <div
+              v-for="section in dateSections"
+              :key="section.key"
+              class="date-section"
+              :style="{ top: `${section.top}px`, height: `${section.height}px` }"
+            >
+              <div class="date-group-title sticky-date-title" role="heading" aria-level="3">
+                {{ section.label }}
               </div>
+            </div>
+
+            <div
+              v-if="virtualScroll.complete"
+              :style="{ top: `${virtualScroll.contentHeight}px` }"
+              class="load-complete"
+            >
+              <span>已加载全部内容</span>
             </div>
           </template>
         </div>
@@ -323,6 +347,22 @@ onActivated(() => {
         </div>
       </div>
 
+      <div
+        class="column-resizer"
+        role="separator"
+        aria-label="调整列表和预览宽度"
+        aria-orientation="vertical"
+        aria-controls="clipboard-list"
+        :aria-valuemin="Math.round(minWidth)"
+        :aria-valuemax="Math.round(maxWidth)"
+        :aria-valuenow="Math.round(listWidth)"
+        title="拖动调整列表和预览宽度"
+        @pointerdown="startResize"
+        @pointermove="moveResize"
+        @pointerup="finishResize"
+        @pointercancel="finishResize"
+        @lostpointercapture="finishResize"
+      />
       <DetailPanel
         :item="selectedItem"
         v-model:showAllContent="showAllContent"
@@ -356,6 +396,32 @@ onActivated(() => {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+
+.column-resizer {
+  flex: 0 0 3px;
+  cursor: col-resize;
+  touch-action: none;
+  background: var(--border-light);
+  -webkit-app-region: no-drag;
+
+  &:hover {
+    background: var(--accent-primary);
+    outline: none;
+  }
+}
+
+.is-resizing {
+  cursor: col-resize;
+  user-select: none;
+
+  > .column-resizer {
+    background: var(--accent-primary);
+  }
+
+  > :not(.column-resizer) {
+    pointer-events: none;
+  }
 }
 
 /* 搜索区域 */
@@ -432,21 +498,19 @@ onActivated(() => {
 .content-container {
   display: flex;
   flex-direction: column;
-  flex: 0 1 44%;
-  min-width: 320px;
-  max-width: var(--list-max-width, 640px);
+  flex: 0 0 auto;
+  min-width: 0;
   overflow: hidden;
   height: 100%;
-  border-right: 1px solid var(--border-light);
 }
 
 /* 内容列表 */
 .content-list {
   flex: 1;
   overflow-y: auto;
-  padding: 12px 16px;
+  padding: 0;
   background: var(--list-bg);
-  scroll-behavior: smooth;
+  overflow-anchor: none;
   position: relative;
 }
 
@@ -471,12 +535,49 @@ onActivated(() => {
   font-size: 14px;
 }
 
+.date-group-title {
+  height: 24px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.date-group-placeholder {
+  height: 24px;
+}
+
+.date-section {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.sticky-date-title {
+  position: sticky;
+  top: 0;
+  background: var(--list-bg);
+}
+
+.item-row {
+  height: 72px;
+  box-sizing: border-box;
+  padding: 7px 0;
+}
+
 /* 内容项目 */
 .content-item {
   background: transparent;
   border-radius: 10px;
   padding: 7px;
-  margin: 7px;
+  margin: 0 7px;
+  height: 58px;
+  box-sizing: border-box;
   cursor: pointer;
   transition: all 0.25s ease;
   position: relative;
@@ -581,11 +682,16 @@ onActivated(() => {
 }
 
 .load-complete {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 48px;
+  box-sizing: border-box;
   padding: 12px;
   color: var(--text-tertiary);
   font-size: 13px;
   border-top: 1px dashed var(--border-light);
-  margin-top: 4px;
+  margin-top: 0;
 }
 
 /* 虚拟滚动占位元素 */
