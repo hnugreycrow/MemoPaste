@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
+import { APP_ICON_URL } from "@/constants/assets";
 import MaximizeIcon from "@/assets/window-maximize.svg";
 import RestoreIcon from "@/assets/window-restore.svg";
 
@@ -45,7 +46,10 @@ onUnmounted(() => {
 
 <template>
   <div class="titlebar">
-    <div class="titlebar-drag" />
+    <div class="titlebar-drag">
+      <img :src="APP_ICON_URL" class="titlebar-logo" alt="" />
+      <span class="titlebar-name">MemoPaste</span>
+    </div>
     <div class="titlebar-controls">
       <el-button class="titlebar-btn minimize-btn" aria-label="最小化窗口" @click="handleMinimize">
         <template #icon><i-ep-Minus /></template>
@@ -80,8 +84,24 @@ onUnmounted(() => {
 }
 
 .titlebar-drag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 20px;
   flex: 1;
   height: 100%;
+}
+
+.titlebar-logo {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.titlebar-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 
 .titlebar-controls {
