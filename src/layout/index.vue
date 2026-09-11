@@ -103,7 +103,7 @@ onUnmounted(() => {
   flex: 1;
   min-height: 0;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .app-header {
@@ -123,6 +123,9 @@ onUnmounted(() => {
   width: 100%;
   background: transparent;
   overflow: hidden;
+  border-radius: 12px 0 0 0;
+  box-shadow: var(--main-shadow, 0 0 4px rgba(0, 0, 0, 0.1));
+  z-index: 100;
 
   :deep(> *) {
     flex: 1;

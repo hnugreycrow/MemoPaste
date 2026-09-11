@@ -75,6 +75,7 @@
   --radius-lg: 14px;
   --shadow-soft: 0 2px 14px rgba(0, 0, 0, 0.28);
   --shadow-lift: 0 8px 22px rgba(125, 219, 184, 0.12);
+  --main-shadow: 0 0 0 1px var(--border-light), 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
 /* Midnight Lavender：侧栏更深 + 底部淡紫光晕 */
@@ -83,7 +84,6 @@ html.dark {
     background:
       radial-gradient(ellipse 130% 55% at 50% 108%, rgba(183, 156, 255, 0.14), transparent 52%),
       linear-gradient(180deg, #1b1624 0%, #17121f 100%);
-    border-right-color: var(--border-light);
   }
 
   .brand-logo {

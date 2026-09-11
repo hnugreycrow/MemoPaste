@@ -103,7 +103,6 @@ const toggleTheme = () => {
   display: flex;
   flex-direction: column;
   background: var(--bg-secondary);
-  border-right: 1px solid var(--border-light);
   padding: 12px 8px;
   box-sizing: border-box;
   overflow: hidden;
