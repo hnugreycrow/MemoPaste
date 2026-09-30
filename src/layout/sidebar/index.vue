@@ -145,11 +145,6 @@ const toggleTheme = () => {
     background: var(--bg-active);
     color: var(--accent-primary);
   }
-
-  &:focus-visible {
-    outline: 2px solid var(--accent-primary);
-    outline-offset: -2px;
-  }
 }
 
 .nav-icon {

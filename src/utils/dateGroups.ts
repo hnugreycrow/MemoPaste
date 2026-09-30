@@ -1,6 +1,8 @@
 import type { ClipboardItem } from "./type";
 
 export type DateGroup = string;
+export const HISTORY_ROW_HEIGHT = 64;
+export const DATE_HEADER_HEIGHT = 28;
 export type ClipboardRow =
   | { kind: "header"; key: string; label: DateGroup; height: number }
   | {
@@ -39,11 +41,18 @@ export function groupClipboardRows(items: ClipboardItem[], now: Date): Clipboard
         kind: "header",
         key: `group-${item.timestamp.getFullYear()}-${item.timestamp.getMonth() + 1}-${item.timestamp.getDate()}`,
         label,
-        height: 24,
+        height: DATE_HEADER_HEIGHT,
       });
       previous = label;
     }
-    rows.push({ kind: "item", key: `item-${item.id}`, item, index, label, height: 72 });
+    rows.push({
+      kind: "item",
+      key: `item-${item.id}`,
+      item,
+      index,
+      label,
+      height: HISTORY_ROW_HEIGHT,
+    });
   });
   return rows;
 }

@@ -1,90 +1,93 @@
 <template>
-  <div class="detail-panel">
+  <section class="detail-panel" aria-label="内容预览">
     <div class="detail-header">
       <div v-if="item" class="detail-header-meta">
         <span class="type-chip" :class="`type-${item.type}`">{{ typeLabel }}</span>
-        <span class="detail-time">{{ formattedTime }}</span>
+        <span class="detail-time" :title="formattedTime">{{ formattedTime }}</span>
       </div>
-      <div v-else class="detail-header-meta" />
-      <div class="detail-header-actions">
-        <template v-if="item">
-          <el-tooltip :content="item.is_favorite ? '取消收藏' : '收藏'" placement="bottom">
-            <el-button
-              class="header-action-btn"
-              :class="{ 'is-favorite': item.is_favorite }"
-              text
-              @click="toggleFavorite(item)"
-            >
-              <i-ep-Star />
-            </el-button>
-          </el-tooltip>
-          <el-tooltip content="删除" placement="bottom">
-            <el-button class="header-action-btn" text @click="deleteItem(item)">
-              <i-ep-Delete />
-            </el-button>
-          </el-tooltip>
-        </template>
+      <div v-else class="detail-header-meta"><span class="preview-label">内容预览</span></div>
+      <div v-if="item" class="detail-header-actions">
+        <el-button
+          class="favorite-btn"
+          :class="{ 'is-favorite': item.is_favorite }"
+          :aria-label="item.is_favorite ? '取消收藏' : '收藏'"
+          :aria-pressed="!!item.is_favorite"
+          :title="item.is_favorite ? '取消收藏' : '收藏'"
+          text
+          @click="toggleFavorite(item)"
+        >
+          <i-ep-StarFilled v-if="item.is_favorite" aria-hidden="true" />
+          <i-ep-Star v-else aria-hidden="true" />
+          <span>{{ item.is_favorite ? "已收藏" : "收藏" }}</span>
+        </el-button>
+        <el-dropdown trigger="click" placement="bottom-end">
+          <el-button class="header-action-btn" text aria-label="更多记录操作" title="更多操作">
+            <i-ep-MoreFilled />
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item @click="deleteItem(item)">
+                <i-ep-Delete class="el-icon--left" />删除记录
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </div>
     </div>
 
     <template v-if="item">
       <div class="detail-content">
-        <div class="detail-text" :class="{ 'is-image': isImage }">
-          <div class="detail-text-body">
-            <template v-if="isImage">
-              <div class="detail-image-wrap">
-                <el-image
-                  v-if="imageSrc"
-                  class="detail-image"
-                  :src="imageSrc"
-                  :preview-src-list="[imageSrc]"
-                  :scale="0.7"
-                  fit="contain"
-                  alt="剪贴板图片"
-                >
-                  <template #error>
-                    <div class="detail-image-fallback">图片文件不可用</div>
-                  </template>
-                </el-image>
-                <div v-else class="detail-image-fallback">图片文件不可用</div>
-              </div>
-            </template>
-            <template v-else>
-              <HighlightedText :content="displayContent" :type="props.item?.type" />
-              <div v-if="item.content.length > MAX_CONTENT_LENGTH" class="expand-button">
-                <el-button link type="primary" @click="showAllContent = !showAllContent">
-                  {{ showAllContent ? "收起" : "展开" }}
-                </el-button>
-              </div>
-            </template>
-          </div>
-        </div>
-
-        <div class="detail-meta-strip">
-          <span>大小 {{ item.size }}</span>
-          <template v-if="!isImage">
-            <span class="meta-sep">·</span>
-            <span>字符 {{ charCount }}</span>
+        <div class="detail-reading" :class="{ 'is-image': isImage }">
+          <template v-if="isImage">
+            <div class="detail-image-wrap">
+              <el-image
+                v-if="imageSrc"
+                class="detail-image"
+                :src="imageSrc"
+                :preview-src-list="[imageSrc]"
+                preview-teleported
+                :scale="0.7"
+                fit="contain"
+                alt="剪贴板图片"
+              >
+                <template #error><div class="detail-image-fallback">图片文件不可用</div></template>
+              </el-image>
+              <div v-else class="detail-image-fallback">图片文件不可用</div>
+            </div>
           </template>
-          <span class="meta-sep">·</span>
-          <span>ID {{ item.id }}</span>
+          <template v-else>
+            <HighlightedText :content="displayContent" :type="item.type" />
+            <div v-if="item.content.length > MAX_CONTENT_LENGTH" class="expand-button">
+              <el-button link type="primary" @click="showAllContent = !showAllContent">
+                {{ showAllContent ? "收起" : "展开全部内容" }}
+              </el-button>
+            </div>
+          </template>
         </div>
       </div>
-
       <div class="detail-actions">
+        <div class="detail-meta-strip">
+          <span>大小 {{ item.size }}</span>
+          <template v-if="!isImage"
+            ><span class="meta-sep" aria-hidden="true">·</span
+            ><span>{{ charCount }} 字符</span></template
+          >
+        </div>
+        <span class="keyboard-hint"><kbd>↑ ↓</kbd><span>切换</span></span>
         <el-button type="primary" class="action-copy" @click="copyItem(item)">
-          <i-ep-Document-Copy class="btn-icon" />
+          <i-ep-Document-Copy class="btn-icon" aria-hidden="true" />
           <span>{{ isImage ? "复制图片" : "复制内容" }}</span>
+          <kbd class="copy-shortcut">Enter</kbd>
         </el-button>
       </div>
     </template>
 
     <div v-else class="detail-empty">
-      <img src="/mascot.png" class="mascot" alt="MemoPaste" />
-      <div class="empty-title">暂无选中项</div>
-      <div class="empty-desc">选择一个剪贴板项目查看详情</div>
+      <img :src="`${baseUrl}mascot.png`" class="mascot" alt="MemoPaste" />
+      <div class="empty-title">选择一条记录</div>
+      <div class="empty-desc">在这里预览并复制内容</div>
     </div>
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -94,6 +97,7 @@ import { ClipboardItem } from "@/utils/type";
 import { formatTime, getTypeLabel, clipimgUrl } from "@/utils/utils";
 
 type Item = ClipboardItem;
+const baseUrl = import.meta.env.BASE_URL;
 
 const props = defineProps<{
   item: Item | null;
@@ -149,32 +153,25 @@ const toggleFavorite = (item: Item) => {
 </script>
 
 <style lang="scss" scoped>
-.mascot {
-  width: 168px;
-  max-width: 100%;
-  object-fit: contain;
-  image-rendering: pixelated;
-}
-
 .detail-panel {
+  container: clipboard-detail / inline-size;
+  display: flex;
   flex: 1;
+  flex-direction: column;
   min-width: 0;
   height: 100%;
-  background: var(--detail-bg);
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
-  position: relative;
+  background: var(--bg-tertiary);
 }
 
 .detail-header {
-  height: 52px;
-  flex-shrink: 0;
-  padding: 0 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  height: 52px;
+  padding: 0 18px;
+  flex-shrink: 0;
   border-bottom: 1px solid var(--border-light);
 }
 
@@ -182,25 +179,30 @@ const toggleFavorite = (item: Item) => {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 0;
   flex: 1;
+  min-width: 0;
 }
 
 .type-chip {
   flex-shrink: 0;
-  font-size: 12px;
-  font-weight: 500;
-  padding: 3px 10px;
-  border-radius: 6px;
-  letter-spacing: 0.02em;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 11px;
+  line-height: 1.6;
 }
 
 .detail-time {
-  font-size: 13px;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
+  font-size: 11px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.preview-label {
+  color: var(--text-secondary);
+  font-size: 12px;
 }
 
 .detail-header-actions {
@@ -210,74 +212,85 @@ const toggleFavorite = (item: Item) => {
   flex-shrink: 0;
 }
 
-.header-action-btn {
-  width: 32px;
-  height: 32px;
-  min-height: 32px;
-  padding: 0;
-  font-size: 16px;
+.favorite-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 7px;
   color: var(--text-secondary);
-
-  &:hover {
-    color: var(--text-primary);
-  }
+  font-size: 11px;
 
   &.is-favorite {
     color: var(--accent-quaternary);
   }
-}
 
-.detail-content {
-  flex: 1;
-  min-height: 0;
-  padding: 12px 16px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  overflow: hidden;
-}
+  :deep(svg) {
+    width: 14px;
+    height: 14px;
+  }
 
-.detail-text {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-tertiary);
-  border-radius: 10px;
-  padding: 12px 14px;
-  font-size: 14px;
-  line-height: 1.6;
-  word-break: break-all;
-  white-space: pre-wrap;
-  color: var(--text-primary);
-
-  &.is-image {
-    white-space: normal;
-    word-break: normal;
+  :deep(> span) {
+    gap: 5px;
   }
 }
 
-.detail-text-body {
+.header-action-btn {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.detail-content {
+  display: flex;
   flex: 1;
   min-height: 0;
-  padding-top: 28px;
+  padding: 20px;
+  overflow: hidden;
+}
+
+.detail-reading {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
   overflow: auto;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.75;
+
+  &.is-image {
+    display: flex;
+    overflow: hidden;
+  }
+
+  :deep(.code-block) {
+    padding: 14px 16px;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    background: var(--list-bg);
+    font-size: 13px;
+    line-height: 1.75;
+  }
 }
 
 .detail-image-wrap {
   display: flex;
+  flex: 1;
   align-items: center;
   justify-content: center;
-  min-height: 160px;
-  height: 100%;
+  min-width: 0;
+  min-height: 0;
 }
 
 .detail-image {
   width: 100%;
   height: 100%;
   max-height: 100%;
-  border-radius: 6px;
+  border-radius: 7px;
 
   :deep(.el-image__inner) {
     cursor: zoom-in;
@@ -291,71 +304,125 @@ const toggleFavorite = (item: Item) => {
   width: 100%;
   height: 100%;
   min-height: 120px;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
-.detail-meta-strip {
-  flex-shrink: 0;
+.detail-actions {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  min-height: 62px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border-light);
+}
+
+.detail-meta-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 4px 6px;
-  padding: 2px 2px 4px;
-  font-size: 12px;
-  color: var(--text-tertiary);
+  flex: 1;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 
 .meta-sep {
-  opacity: 0.7;
-}
-
-.detail-actions {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 12px 16px 14px;
-  border-top: 1px solid var(--border-light);
-  background: var(--detail-bg);
-}
-
-.action-copy {
-  flex: 1;
-}
-
-
-.btn-icon {
-  margin-right: 6px;
-}
-
-.detail-empty {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
-  text-align: center;
-  padding: 60px 24px;
-}
-
-.detail-empty .empty-title {
-  font-size: 16px;
-  margin-bottom: 8px;
-  color: var(--text-secondary);
-}
-
-.detail-empty .empty-desc {
-  font-size: 14px;
   color: var(--text-tertiary);
 }
 
-.expand-button {
-  display: flex;
-  justify-content: center;
+.keyboard-hint {
+  display: inline-flex;
   align-items: center;
-  margin-top: 10px;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+kbd {
+  padding: 1px 4px;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.action-copy {
+  flex-shrink: 0;
+  height: 34px;
+  min-width: 138px;
+  margin-left: 0;
+  padding: 0 12px;
+  font-size: 12px;
+
+  :deep(> span) {
+    gap: 6px;
+  }
+}
+
+.copy-shortcut {
+  margin-left: 4px;
+  border-color: color-mix(in srgb, var(--accent-on-primary) 35%, transparent);
+  color: var(--accent-on-primary);
+  font-size: 9px;
+}
+
+.mascot {
+  width: 128px;
+  max-width: 100%;
+  margin-bottom: 16px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.detail-empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 24px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.empty-title {
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.empty-desc {
+  font-size: 12px;
+}
+
+.expand-button {
+  margin-top: 16px;
+}
+
+@container clipboard-detail (max-width: 440px) {
+  .keyboard-hint {
+    display: none;
+  }
+
+  .detail-actions {
+    gap: 10px;
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .detail-meta-strip {
+    font-size: 10px;
+  }
+
+  .action-copy {
+    min-width: 130px;
+    padding: 0 10px;
+  }
 }
 </style>

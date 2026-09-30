@@ -25,7 +25,7 @@
 
   /* 背景：薄荷绿洗色 */
   --bg-primary: #f4f8f6;
-  --bg-secondary: #eaf4f0; /* 侧栏 */
+  --bg-secondary: #eef8f4; /* 侧栏 */
   --bg-tertiary: #ffffff;
   --bg-hover: #ede4ff;
   --bg-active: #e8deff;
@@ -110,9 +110,7 @@ html.light {
 
     &.active {
       background: var(--bg-active);
-      box-shadow:
-        inset 0 0 0 1px color-mix(in srgb, var(--accent-primary) 28%, transparent),
-        var(--shadow-soft);
+      box-shadow: var(--shadow-soft);
     }
   }
 

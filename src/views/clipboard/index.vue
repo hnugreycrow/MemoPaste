@@ -1,12 +1,21 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, onActivated } from "vue";
-import { useDateGroups } from "@/composables/useDateGroups";
+import {
+  ref,
+  computed,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  watch,
+  onActivated,
+  onDeactivated,
+} from "vue";
+import type { InputInstance } from "element-plus";
 import DetailPanel from "./components/DetailPanel.vue";
 import FilterChips from "./components/FilterChips.vue";
-import { ClipboardItem } from "@/utils/type";
-import { truncateText, formatTimeOfDay, formatTime, getTypeLabel, clipimgUrl } from "@/utils/utils";
+import HistoryList from "./components/HistoryList.vue";
+import FavoritesList from "./components/FavoritesList.vue";
+import type { ClipboardItem } from "@/utils/type";
 import { useSearch } from "./composables/useSearch";
-import { useVirtualScroll } from "./composables/useVirtualScroll";
 import { useColumnResize } from "./composables/useColumnResize";
 import { useClipboardStore } from "@/stores/clipboardStore";
 import { storeToRefs } from "pinia";
@@ -17,7 +26,8 @@ defineOptions({
 });
 
 const clipboardStore = useClipboardStore();
-const { clipboardData, isLoadingMore, activeFilter, currentPage } = storeToRefs(clipboardStore);
+const { clipboardData, isLoadingMore, activeFilter, currentPage, totalItems } =
+  storeToRefs(clipboardStore);
 
 /** 侧栏「收藏」：长期抽屉视图，与流水历史区分文案与布局 */
 const isFavoritesView = computed(() => activeFilter.value === "favorite");
@@ -26,21 +36,19 @@ const searchPlaceholder = computed(() =>
   isFavoritesView.value ? "搜索收藏..." : "搜索剪贴板内容...",
 );
 
-const emptyTitle = computed(() => (isFavoritesView.value ? "还没有收藏" : "暂无记录"));
-
-const emptyDesc = computed(() =>
-  isFavoritesView.value ? "在历史里点星标，重要内容会留在这里" : "复制文本或截图，它们会出现在这里",
-);
-
 // 搜索下推到 store，由主进程 SQL LIKE 处理（非前端过滤）
 const { searchQuery } = useSearch();
 
-const { rows } = useDateGroups(() => clipboardData.value);
-
-const { contentListRef, virtualScroll, visibleItems, dateSections, handleScroll } =
-  useVirtualScroll(() => rows.value);
-
 const selectedItem = ref<ClipboardItem | null>(null);
+const mainContentRef = ref<HTMLDivElement | null>(null);
+const historyListRef = ref<InstanceType<typeof HistoryList> | null>(null);
+const favoritesListRef = ref<InstanceType<typeof FavoritesList> | null>(null);
+const searchInputRef = ref<InputInstance | null>(null);
+const displayItems = computed(() =>
+  isFavoritesView.value
+    ? clipboardData.value.filter((item) => item.is_favorite)
+    : clipboardData.value,
+);
 const {
   columnsRef,
   listWidth,
@@ -50,13 +58,51 @@ const {
   startResize,
   moveResize,
   finishResize,
+  resizeWithKeyboard,
 } = useColumnResize();
 /** 避免快速切换或列表刷新时，过期的 getItem 覆盖当前选中 */
 let selectionRequestId = 0;
+let isPageActive = false;
+
+const hasOpenDialog = () =>
+  Array.from(
+    document.querySelectorAll('.el-image-viewer__wrapper, .el-message-box, [role="dialog"]'),
+  ).some((element) => element.getClientRects().length > 0);
+
+/** 切换完成后仅从导航、筛选或空白处恢复列表焦点，保留用户正在操作的控件。 */
+const canRestoreListFocus = () => {
+  const focused = document.activeElement;
+  if (hasOpenDialog()) return false;
+  return (
+    focused === document.body ||
+    focused === mainContentRef.value ||
+    (focused instanceof HTMLElement &&
+      (focused.matches(".nav-list .nav-item") ||
+        (!!mainContentRef.value?.contains(focused) &&
+          focused.matches(".filter-segment-item, .clipboard-item-select"))))
+  );
+};
+
+const focusListSelection = async (restore = false) => {
+  await nextTick();
+  if (!isPageActive || !mainContentRef.value?.isConnected) return;
+  if (restore && !canRestoreListFocus()) return;
+  if (selectedItem.value) {
+    const list = isFavoritesView.value ? favoritesListRef.value : historyListRef.value;
+    list?.scrollToItem(selectedItem.value.id);
+    await nextTick();
+  }
+  if (!isPageActive || !mainContentRef.value?.isConnected) return;
+  if (restore && !canRestoreListFocus()) return;
+  const selectedButton = mainContentRef.value.querySelector<HTMLButtonElement>(
+    "#clipboard-list .content-item.active .clipboard-item-select",
+  );
+  (selectedButton ?? mainContentRef.value).focus({ preventScroll: true });
+};
 
 /** 同一条记录保留全文对象和展开状态，后台更新只同步元数据。 */
 const ensureSelection = async () => {
-  const items = clipboardData.value;
+  const items = displayItems.value;
   if (items.length === 0) {
     ++selectionRequestId;
     selectedItem.value = null;
@@ -76,13 +122,17 @@ const ensureSelection = async () => {
   await selectItem(items[0]);
 };
 
-watch(activeFilter, (newType) => {
+watch(activeFilter, async (newType) => {
   currentPage.value = 1;
-  clipboardStore.loadClipboardHistory(1, false, newType);
+  const loaded = await clipboardStore.loadClipboardHistory(1, false, newType);
+  if (loaded.ok && newType === activeFilter.value) {
+    await ensureSelection();
+    await focusListSelection(true);
+  }
 });
 
 watch(
-  () => clipboardData.value.map((item) => item.id),
+  () => displayItems.value.map((item) => item.id),
   () => {
     void ensureSelection();
   },
@@ -104,6 +154,7 @@ const loadFullSelection = async (id: number, preview?: ClipboardItem) => {
 };
 
 const selectItem = async (item: ClipboardItem) => {
+  if (selectedItem.value?.id === item.id) return;
   showAllContent.value = false;
   await loadFullSelection(item.id, item);
 };
@@ -192,171 +243,138 @@ const clearAll = async () => {
   }
 };
 
+const handleKeyboard = async (event: KeyboardEvent) => {
+  if (!isPageActive || event.defaultPrevented || hasOpenDialog()) return;
+  if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "f") {
+    event.preventDefault();
+    searchInputRef.value?.focus();
+    return;
+  }
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  if (
+    target !== document.body &&
+    target !== mainContentRef.value &&
+    !target.closest(".clipboard-item-select")
+  ) {
+    return;
+  }
+  if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+  if (event.key === "Enter" && selectedItem.value) {
+    event.preventDefault();
+    await copyItem(selectedItem.value);
+    return;
+  }
+  if (!["ArrowUp", "ArrowDown"].includes(event.key) || displayItems.value.length === 0) return;
+  event.preventDefault();
+  const index = displayItems.value.findIndex((item) => item.id === selectedItem.value?.id);
+  const next = Math.max(
+    0,
+    Math.min(displayItems.value.length - 1, index + (event.key === "ArrowDown" ? 1 : -1)),
+  );
+  const item = displayItems.value[next];
+  void selectItem(item);
+  await focusListSelection();
+};
+
 onMounted(async () => {
+  isPageActive = true;
+  window.addEventListener("keydown", handleKeyboard);
   const loaded = await clipboardStore.loadClipboardHistory(1, false, activeFilter.value);
   if (!loaded.ok) {
     ElMessage({ message: "加载历史记录失败", type: "error", plain: true });
   }
   clipboardStore.refreshCounts();
-
-  setTimeout(() => {
-    handleScroll();
-  }, 100);
-
-  window.addEventListener("resize", handleScroll);
+  await ensureSelection();
+  await focusListSelection(true);
 });
 
 onUnmounted(() => {
-  window.removeEventListener("resize", handleScroll);
+  isPageActive = false;
+  window.removeEventListener("keydown", handleKeyboard);
 });
 
 onActivated(() => {
-  // keep-alive 再次插入时重算可视区与计数（监听在 layout）
-  handleScroll();
+  isPageActive = true;
+  window.addEventListener("keydown", handleKeyboard);
   clipboardStore.refreshCounts();
+  void focusListSelection(true);
+});
+onDeactivated(() => {
+  isPageActive = false;
+  window.removeEventListener("keydown", handleKeyboard);
 });
 </script>
 
 <template>
-  <div class="main-content">
+  <div ref="mainContentRef" class="main-content" tabindex="-1">
     <div ref="columnsRef" class="two-column-body" :class="{ 'is-resizing': isResizing }">
       <div id="clipboard-list" class="content-container" :style="{ flexBasis: `${listWidth}px` }">
-        <div class="search-container">
-          <div class="search-box">
-            <i-ep-search class="search-icon" />
-            <el-input
-              v-model="searchQuery"
-              class="search-input"
-              :placeholder="searchPlaceholder"
-              clearable
-            />
-          </div>
-          <el-dropdown trigger="click" placement="bottom-end">
-            <el-button class="search-action-btn" title="更多操作">
-              <i-ep-MoreFilled />
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item @click="clearExceptFavorites">
-                  <i-ep-Delete class="el-icon--left" />清空非收藏记录
-                </el-dropdown-item>
-                <el-dropdown-item @click="clearAll" divided>
-                  <i-ep-Warning class="el-icon--left" />清空全部（含收藏）
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </div>
-
-        <FilterChips v-if="!isFavoritesView" />
-        <div v-else class="favorites-banner" role="status">
-          <i-ep-Star class="favorites-banner-icon" />
-          <div class="favorites-banner-text">
-            <span class="favorites-banner-desc">已收藏的内容不会随保留天数自动清理</span>
-          </div>
-        </div>
-
-        <div class="content-list" ref="contentListRef" @scroll="handleScroll">
-          <template v-if="clipboardData.length === 0">
-            <div class="empty-state">
-              <img src="/mascot.png" class="mascot" alt="MemoPaste" />
-              <div class="empty-title">{{ emptyTitle }}</div>
-              <div class="empty-desc">{{ emptyDesc }}</div>
-            </div>
-          </template>
-          <template v-else>
-            <!-- 撑开真实滚动高度；可见行绝对定位叠在上面 -->
-            <div
-              class="virtual-scroll-placeholder"
-              :style="{ height: `${virtualScroll.totalHeight}px` }"
-            ></div>
-
-            <div
-              class="virtual-scroll-content"
-              :style="{
-                transform: `translateY(${virtualScroll.offset}px)`,
-              }"
-            >
-              <template v-for="row in visibleItems" :key="row.key">
-                <div
-                  v-if="row.kind === 'header'"
-                  class="date-group-placeholder"
-                  aria-hidden="true"
-                ></div>
-                <div v-else class="item-row">
-                  <div
-                    class="content-item"
-                    :class="{
-                      active: selectedItem?.id === row.item.id,
-                      favorite: row.item.is_favorite,
-                    }"
-                    @click="selectItem(row.item)"
-                  >
-                    <div class="item-type-badge" :class="`type-${row.item.type}`">
-                      {{ getTypeLabel(row.item.type) }}
-                    </div>
-                    <div class="item-content">
-                      <div class="item-title">
-                        {{ truncateText(row.item.content, 50) }}
-                      </div>
-                      <div class="item-time" :title="formatTime(row.item.timestamp)">
-                        {{ formatTimeOfDay(row.item.timestamp) }}
-                        <i-ep-Star v-if="row.item.is_favorite" class="favorite-star" />
-                      </div>
-                    </div>
-                    <div
-                      v-if="row.item.type === 'image' && row.item.thumb_path"
-                      class="item-thumb-wrap"
-                    >
-                      <img
-                        class="item-thumb"
-                        :src="clipimgUrl(row.item.thumb_path)"
-                        alt=""
-                        draggable="false"
-                      />
-                    </div>
-                  </div>
-                </div>
+        <div class="list-toolbar">
+          <div class="list-heading">
+            <h1>{{ isFavoritesView ? "收藏" : "历史记录" }}</h1>
+            <span class="list-count">{{ totalItems }} 条</span>
+            <el-dropdown v-if="!isFavoritesView" trigger="click" placement="bottom-end">
+              <el-button class="search-action-btn" text aria-label="更多历史操作" title="更多操作">
+                <i-ep-MoreFilled />
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="clearExceptFavorites">
+                    <i-ep-Delete class="el-icon--left" />清空非收藏记录
+                  </el-dropdown-item>
+                  <el-dropdown-item @click="clearAll" divided>
+                    <i-ep-Warning class="el-icon--left" />清空全部（含收藏）
+                  </el-dropdown-item>
+                </el-dropdown-menu>
               </template>
-            </div>
-
-            <div
-              v-for="section in dateSections"
-              :key="section.key"
-              class="date-section"
-              :style="{ top: `${section.top}px`, height: `${section.height}px` }"
+            </el-dropdown>
+          </div>
+          <el-input
+            ref="searchInputRef"
+            v-model="searchQuery"
+            class="search-input"
+            :placeholder="searchPlaceholder"
+            :aria-label="isFavoritesView ? '搜索收藏' : '搜索剪贴板内容'"
+            clearable
+          >
+            <template #prefix><i-ep-Search /></template>
+            <template #suffix
+              ><kbd v-if="!searchQuery" class="search-shortcut">Ctrl F</kbd></template
             >
-              <div class="date-group-title sticky-date-title" role="heading" aria-level="3">
-                {{ section.label }}
-              </div>
-            </div>
-
-            <div
-              v-if="virtualScroll.complete"
-              :style="{ top: `${virtualScroll.contentHeight}px` }"
-              class="load-complete"
-            >
-              <span>已加载全部内容</span>
-            </div>
-          </template>
+          </el-input>
         </div>
-
-        <div v-if="isLoadingMore && currentPage > 1" class="loading-more">
+        <FilterChips v-if="!isFavoritesView" />
+        <FavoritesList
+          v-if="isFavoritesView"
+          ref="favoritesListRef"
+          :selected-id="selectedItem?.id"
+          @select="selectItem"
+          @favorite="toggleFavorite"
+        />
+        <HistoryList
+          v-else
+          ref="historyListRef"
+          :selected-id="selectedItem?.id"
+          @select="selectItem"
+        />
+        <div v-if="isLoadingMore && currentPage > 1" class="loading-more" role="status">
           <el-icon class="is-loading"><i-ep-Loading /></el-icon>
           <span>加载更多...</span>
         </div>
       </div>
-
       <div
         class="column-resizer"
         role="separator"
+        tabindex="0"
         aria-label="调整列表和预览宽度"
         aria-orientation="vertical"
         aria-controls="clipboard-list"
         :aria-valuemin="Math.round(minWidth)"
         :aria-valuemax="Math.round(maxWidth)"
         :aria-valuenow="Math.round(listWidth)"
-        title="拖动调整列表和预览宽度"
+        title="拖动或使用左右方向键调整栏宽"
+        @keydown="resizeWithKeyboard"
         @pointerdown="startResize"
         @pointermove="moveResize"
         @pointerup="finishResize"
@@ -375,19 +393,13 @@ onActivated(() => {
 </template>
 
 <style lang="scss" scoped>
-.mascot {
-  width: 168px;
-  max-width: 100%;
-  object-fit: contain;
-  image-rendering: pixelated;
-}
-
 .main-content {
   display: flex;
   flex-direction: column;
   flex: 1;
-  background: var(--bg-primary);
+  min-width: 0;
   height: 100%;
+  background: var(--bg-primary);
   overflow: hidden;
 }
 
@@ -398,16 +410,117 @@ onActivated(() => {
   overflow: hidden;
 }
 
+.content-container {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--list-bg);
+}
+
+.list-toolbar {
+  padding: 12px 16px 10px;
+  flex-shrink: 0;
+}
+
+.list-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  margin-bottom: 10px;
+
+  h1 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .el-dropdown {
+    margin-left: auto;
+  }
+}
+
+.list-count {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.search-action-btn {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.search-input {
+  width: 100%;
+
+  :deep(.el-input__wrapper) {
+    padding: 0 10px;
+    min-height: 34px;
+    border-radius: 7px;
+  }
+
+  :deep(.el-input__inner) {
+    font-size: 12px;
+  }
+}
+
+.search-shortcut {
+  padding: 1px 4px;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
 .column-resizer {
-  flex: 0 0 3px;
+  position: relative;
+  z-index: 3;
+  flex: 0 0 6px;
   cursor: col-resize;
   touch-action: none;
-  background: var(--border-light);
   -webkit-app-region: no-drag;
+  background: var(--list-bg);
 
-  &:hover {
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 2px;
+    width: 1px;
+    background: var(--border-light);
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: calc(50% - 12px);
+    left: 1px;
+    width: 3px;
+    height: 24px;
+    border-radius: 3px;
+    background: var(--border-medium);
+  }
+
+  &:hover::after,
+  &:focus-visible::after {
     background: var(--accent-primary);
-    outline: none;
+  }
+
+  &:focus-visible {
+    outline: 1px solid var(--accent-primary);
+    outline-offset: -1px;
   }
 }
 
@@ -415,7 +528,7 @@ onActivated(() => {
   cursor: col-resize;
   user-select: none;
 
-  > .column-resizer {
+  > .column-resizer::after {
     background: var(--accent-primary);
   }
 
@@ -424,291 +537,14 @@ onActivated(() => {
   }
 }
 
-/* 搜索区域 */
-.search-container {
-  padding: 14px 14px 10px;
-  background: var(--list-bg);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.search-box {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-}
-
-.search-action-btn {
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  min-height: 32px;
-  padding: 0;
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-.search-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-tertiary);
-  z-index: 1;
-}
-
-.search-input {
-  width: 100%;
-}
-
-:deep(.el-input__wrapper) {
-  padding-left: 36px;
-}
-
-/* 收藏抽屉说明条（替换类型 Chips） */
-.favorites-banner {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 14px 10px;
-  background: var(--list-bg);
-  border-bottom: 1px solid var(--border-light);
-}
-
-.favorites-banner-icon {
-  flex-shrink: 0;
-  font-size: 16px;
-  color: var(--favorite-border);
-}
-
-.favorites-banner-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.favorites-banner-desc {
-  font-size: 12px;
-  color: var(--text-tertiary);
-  line-height: 1.35;
-}
-
-.content-container {
-  display: flex;
-  flex-direction: column;
-  flex: 0 0 auto;
-  min-width: 0;
-  overflow: hidden;
-  height: 100%;
-}
-
-/* 内容列表 */
-.content-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0;
-  background: var(--list-bg);
-  overflow-anchor: none;
-  position: relative;
-}
-
-/* 空状态 */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--text-secondary);
-  text-align: center;
-  padding: 60px 0;
-}
-
-.empty-title {
-  font-size: 16px;
-  margin-bottom: 8px;
-}
-
-.empty-desc {
-  font-size: 14px;
-}
-
-.date-group-title {
-  height: 24px;
-  box-sizing: border-box;
-  padding: 0 14px;
-  display: flex;
-  align-items: center;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.date-group-placeholder {
-  height: 24px;
-}
-
-.date-section {
-  position: absolute;
-  left: 0;
-  right: 0;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.sticky-date-title {
-  position: sticky;
-  top: 0;
-  background: var(--list-bg);
-}
-
-.item-row {
-  height: 72px;
-  box-sizing: border-box;
-  padding: 7px 0;
-}
-
-/* 内容项目 */
-.content-item {
-  background: transparent;
-  border-radius: 10px;
-  padding: 7px;
-  margin: 0 7px;
-  height: 58px;
-  box-sizing: border-box;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  &:hover {
-    background: var(--bg-hover);
-    background-origin: border-box;
-    background-clip: padding-box, border-box;
-    transform: translateY(-2px);
-  }
-
-  &.active {
-    background: var(--bg-active);
-    background-origin: border-box;
-    background-clip: padding-box, border-box;
-  }
-}
-
-.item-type-badge {
-  flex-shrink: 0;
-  font-size: 11px;
-  font-weight: 500;
-  padding: 3px 8px;
-  border-radius: 6px;
-  letter-spacing: 0.02em;
-}
-
-.item-thumb-wrap {
-  flex-shrink: 0;
-  width: 44px;
-  height: 44px;
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-light);
-}
-
-.item-thumb {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.item-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.item-title {
-  font-size: 14px;
-  color: var(--text-primary);
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  // 标准属性（未来兼容，目前主流浏览器尚未完全支持）
-  line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  letter-spacing: 0.01em;
-}
-
-.item-time {
-  font-size: 12px;
-  color: var(--text-tertiary);
-  font-variant-numeric: tabular-nums;
-  flex-shrink: 0;
-  align-self: center;
-  margin-top: 4px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.favorite-star {
-  font-size: 13px;
-  color: var(--accent-quaternary);
-  flex-shrink: 0;
-}
-
-/* 加载指示器样式 */
-.loading-more,
-.load-complete {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  color: var(--text-secondary);
-  font-size: 14px;
-  gap: 8px;
-}
-
 .loading-more {
-  padding: 12px;
-  background: var(--bg-tertiary);
-  border-radius: 8px;
-  margin-top: 8px;
-  margin-bottom: 8px;
-}
-
-.load-complete {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 48px;
-  box-sizing: border-box;
-  padding: 12px;
-  color: var(--text-tertiary);
-  font-size: 13px;
-  border-top: 1px dashed var(--border-light);
-  margin-top: 0;
-}
-
-/* 虚拟滚动占位元素 */
-.virtual-scroll-placeholder {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  pointer-events: none;
-}
-
-/* 可见项目容器 */
-.virtual-scroll-content {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  will-change: transform; /* 优化性能 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: 6px;
+  min-height: 30px;
+  color: var(--text-secondary);
+  font-size: 11px;
 }
 </style>

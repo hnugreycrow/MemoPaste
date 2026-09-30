@@ -1,4 +1,4 @@
-import { ref, watch } from "vue";
+import { onScopeDispose, ref, watch } from "vue";
 import { useClipboardStore } from "@/stores/clipboardStore";
 
 export function useSearch() {
@@ -13,6 +13,9 @@ export function useSearch() {
       clipboardStore.setSearchKeyword(newValue);
       searchDebounceTimer = null;
     }, 300);
+  });
+  onScopeDispose(() => {
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
   });
 
   return {

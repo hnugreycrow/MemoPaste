@@ -63,6 +63,19 @@ export function useColumnResize() {
     handle = undefined;
     void save();
   };
+  const resizeWithKeyboard = (event: KeyboardEvent) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    measure();
+    const width =
+      event.key === "Home"
+        ? minWidth.value
+        : event.key === "End"
+          ? maxWidth.value
+          : listWidth.value + (event.key === "ArrowRight" ? 16 : -16);
+    setWidth(width);
+    void save();
+  };
 
   onMounted(async () => {
     measure();
@@ -101,5 +114,6 @@ export function useColumnResize() {
     startResize,
     moveResize,
     finishResize,
+    resizeWithKeyboard,
   };
 }

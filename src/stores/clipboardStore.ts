@@ -237,6 +237,12 @@ export const useClipboardStore = defineStore("clipboard", {
         if (listed && listed !== item) {
           listed.is_favorite = newStatus;
         }
+        if (this.activeFilter === "favorite" && !newStatus) {
+          this.clipboardData = this.clipboardData.filter((row) => row.id !== item.id);
+          this.totalItems = Math.max(0, this.totalItems - 1);
+          // 补齐已加载页，避免取消收藏后跳过下一页边界上的记录。
+          await this.loadClipboardHistory(1, false, undefined, undefined, true);
+        }
         this.refreshCounts();
         return { ok: true, favorited: newStatus };
       } catch (error) {

@@ -645,8 +645,6 @@ onUnmounted(() => {
   }
 
   &:focus-visible {
-    outline: 2px solid var(--accent-primary);
-    outline-offset: 1px;
   }
 }
 

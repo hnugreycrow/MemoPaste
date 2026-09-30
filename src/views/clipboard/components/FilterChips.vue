@@ -56,7 +56,7 @@ if (["text", "url", "code"].includes(activeFilter.value)) {
 .filter-bar {
   display: flex;
   align-items: center;
-  padding: 0 14px 12px;
+  padding: 0 16px 12px;
   background: var(--list-bg);
   border-bottom: 1px solid var(--border-light);
 }
@@ -67,7 +67,7 @@ if (["text", "url", "code"].includes(activeFilter.value)) {
   align-items: stretch;
   gap: 2px;
   padding: 3px;
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--bg-secondary);
 }
 
@@ -77,13 +77,13 @@ if (["text", "url", "code"].includes(activeFilter.value)) {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 30px;
+  height: 28px;
   padding: 0px 14px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 6px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 11px;
   cursor: pointer;
   transition:
     background 0.15s ease,

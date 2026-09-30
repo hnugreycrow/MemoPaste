@@ -2,6 +2,8 @@ import { ref, computed, watch, nextTick } from "vue";
 import { useClipboardStore } from "@/stores/clipboardStore";
 import type { ClipboardRow } from "@/utils/dateGroups";
 
+export const LIST_FOOTER_HEIGHT = 32;
+
 export function useVirtualScroll(rows: () => ClipboardRow[]) {
   const store = useClipboardStore();
   const contentListRef = ref<HTMLElement | null>(null);
@@ -33,13 +35,16 @@ export function useVirtualScroll(rows: () => ClipboardRow[]) {
       store.clipboardData.length >= store.totalItems,
   );
   const virtualScroll = computed(() => ({
-    totalHeight: contentHeight.value + (complete.value ? 48 : 0),
+    totalHeight: contentHeight.value + (complete.value ? LIST_FOOTER_HEIGHT : 0),
     offset: offsets.value[startIndex.value] ?? 0,
     contentHeight: contentHeight.value,
     complete: complete.value,
   }));
   const visibleItems = computed(() => rows().slice(startIndex.value, endIndex.value));
   let lastPrefetchKey = "";
+  watch([() => store.activeFilter, () => store.searchKeyword], () => {
+    lastPrefetchKey = "";
+  });
   // 在 DOM 更新前记住可见记录及其像素位置，日期分组高度也计入偏移。
   let restoring = false;
   watch(rows, async (nextRows, previousRows) => {
@@ -114,5 +119,18 @@ export function useVirtualScroll(rows: () => ClipboardRow[]) {
     deep: true,
     flush: "post",
   });
-  return { contentListRef, virtualScroll, visibleItems, dateSections, handleScroll };
+  const scrollToItem = (id: number) => {
+    const el = contentListRef.value;
+    const index = rows().findIndex((row) => row.kind === "item" && row.item.id === id);
+    if (!el || index < 0) return;
+    const stickyHeight = rows().find((row) => row.kind === "header")?.height ?? 0;
+    const top = offsets.value[index] - stickyHeight;
+    const bottom = offsets.value[index + 1];
+    if (top < el.scrollTop) el.scrollTop = Math.max(0, top);
+    else if (bottom > el.scrollTop + el.clientHeight) {
+      el.scrollTop = Math.max(0, bottom - el.clientHeight);
+    }
+    handleScroll();
+  };
+  return { contentListRef, virtualScroll, visibleItems, dateSections, handleScroll, scrollToItem };
 }
