@@ -401,6 +401,11 @@ onDeactivated(() => {
   height: 100%;
   background: var(--bg-primary);
   overflow: hidden;
+
+  // 图片预览关闭时可能将焦点还给此容器；焦点提示由具体控件提供。
+  &:focus {
+    outline: none;
+  }
 }
 
 .two-column-body {
