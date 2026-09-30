@@ -87,7 +87,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding-left: 20px;
+  padding-left: 10px;
   flex: 1;
   height: 100%;
 }
@@ -99,7 +99,7 @@ onUnmounted(() => {
 }
 
 .titlebar-name {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-secondary);
 }
