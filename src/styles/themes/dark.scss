@@ -1,94 +1,105 @@
-/* ===== Midnight Lavender 深色主题：深紫炭 + 薄荷绿点缀 ===== */
+/* ===== Midnight Lavender 深色主题：低饱和灰紫 + 柔和蓝紫点缀 ===== */
 :root.dark {
   /* Element Plus */
-  --el-color-primary-rgb: 125, 219, 184;
-  --el-color-primary: #7ddbb8;
+  --el-color-primary-rgb: 169, 155, 239;
+  --el-color-primary: var(--accent-primary);
+  --el-color-primary-light-3: color-mix(in srgb, var(--accent-primary) 70%, var(--bg-primary));
+  --el-color-primary-light-5: color-mix(in srgb, var(--accent-primary) 50%, var(--bg-primary));
+  --el-color-primary-light-7: color-mix(in srgb, var(--accent-primary) 30%, var(--bg-primary));
+  --el-color-primary-light-8: color-mix(in srgb, var(--accent-primary) 20%, var(--bg-primary));
+  --el-color-primary-light-9: color-mix(in srgb, var(--accent-primary) 10%, var(--bg-primary));
+  --el-color-primary-dark-2: var(--accent-primary-hover);
 
-  --el-bg-color: #221c2e;
-  --el-bg-color-overlay: #2a2438;
-  --el-bg-color-page: #19141f;
+  --el-bg-color: var(--list-bg);
+  --el-bg-color-overlay: var(--bg-tertiary);
+  --el-bg-color-page: var(--bg-primary);
 
-  --el-text-color-primary: #ede6f7;
-  --el-text-color-regular: #b8b0c9;
-  --el-text-color-secondary: #8e8aa3;
+  --el-text-color-primary: var(--text-primary);
+  --el-text-color-regular: var(--text-secondary);
+  --el-text-color-secondary: var(--text-tertiary);
+  --el-text-color-placeholder: var(--text-tertiary);
 
-  --el-border-color: #3a3148;
-  --el-border-color-light: #433a54;
-  --el-border-color-lighter: #4d4460;
+  --el-border-color: var(--border-light);
+  --el-border-color-light: #30323e;
+  --el-border-color-lighter: #292b35;
 
-  --el-fill-color: #2e2740;
-  --el-fill-color-light: #352e4a;
-  --el-fill-color-blank: #221c2e;
+  --el-fill-color: var(--bg-hover);
+  --el-fill-color-light: var(--bg-tertiary);
+  --el-fill-color-lighter: var(--list-bg);
+  --el-fill-color-extra-light: var(--bg-primary);
+  --el-fill-color-blank: var(--list-bg);
 
-  --el-mask-color: rgba(10, 8, 16, 0.78);
-  --el-mask-color-extra-light: rgba(10, 8, 16, 0.35);
+  --el-mask-color: rgba(12, 13, 18, 0.78);
+  --el-mask-color-extra-light: rgba(12, 13, 18, 0.35);
 
-  /* 背景：深紫炭分层 */
-  --bg-primary: #19141f;
-  --bg-secondary: #1b1624; /* 侧栏更深 */
-  --bg-tertiary: #2a2438;
-  --bg-hover: #2e2740;
-  --bg-active: #352e4a;
+  /* 背景：窗口 / 列表 / 阅读区域按亮度分层 */
+  --bg-primary: #16171d;
+  --bg-secondary: #14151b;
+  --bg-tertiary: #22232c;
+  --bg-hover: #2a2b35;
+  --bg-active: #34363f;
 
-  --list-bg: #221c2e;
-  --detail-bg: #19141f;
-  --setting-card-bg: #221c2e;
+  --list-bg: #1d1e26;
+  --detail-bg: #22232c;
+  --setting-card-bg: #1d1e26;
 
-  /* 文本 */
-  --text-primary: #ede6f7;
-  --text-secondary: rgba(237, 230, 247, 0.72);
-  --text-tertiary: rgba(237, 230, 247, 0.5);
-  --text-inverse: #1a1524;
+  /* 固定灰白色，避免透明文字随背景变化而失去对比度 */
+  --text-primary: #e8e9ef;
+  --text-secondary: #b6b8c7;
+  --text-tertiary: #a0a3b4;
+  --text-inverse: #1c1828;
 
   /* 边框 */
-  --border-light: #3a3148;
-  --border-medium: #4d4460;
+  --border-light: #363844;
+  --border-medium: #4b4e5b;
 
-  /* 强调色：薄荷主色（CTA / 选中），薰衣草辅色 */
-  --accent-primary: #7ddbb8;
-  --accent-primary-hover: #6bcfa8;
-  --accent-on-primary: #1a1524;
-  --accent-secondary: #b79cff; /* 薰衣草紫 */
-  --accent-danger: #f0728a;
-  --accent-tertiary: #c4a8ff;
-  --accent-quaternary: #f0b45a;
+  /* 蓝紫用于主要操作与小面积标记，选中背景使用中性高亮 */
+  --accent-primary: #a99bef;
+  --accent-primary-hover: #b8acf4;
+  --accent-on-primary: #1c1828;
+  --accent-secondary: #b8a5e6;
+  --accent-danger: #eb8fa3;
+  --accent-tertiary: #b8a5e6;
+  --accent-quaternary: #dec08b;
 
-  --gradient-active-start: #b79cff;
-  --gradient-active-end: #7ddbb8;
+  --gradient-active-start: var(--accent-primary);
+  --gradient-active-end: var(--accent-primary-hover);
 
-  --favorite-bg: rgba(240, 180, 90, 0.1);
-  --favorite-border: #f0b45a;
+  --favorite-bg: #2c2821;
+  --favorite-border: #dec08b;
 
-  --type-text-bg: rgba(183, 156, 255, 0.16);
-  --type-url-bg: rgba(125, 219, 184, 0.14);
-  --type-code-bg: rgba(245, 108, 108, 0.18);
-  --type-image-bg: rgba(120, 180, 255, 0.16);
-  --type-favorite-bg: rgba(240, 180, 90, 0.14);
+  --type-text-bg: #343044;
+  --type-url-bg: #263832;
+  --type-code-bg: #3d2b33;
+  --type-image-bg: #293345;
+  --type-favorite-bg: #2c2821;
 
-  --type-text-fg: #c4a8ff;
-  --type-url-fg: #7ddbb8;
-  --type-code-fg: #F56C6C;
-  --type-image-fg: #8ec5ff;
+  --type-text-fg: #b8a5e6;
+  --type-url-fg: #88d4b5;
+  --type-code-fg: #e69ba8;
+  --type-image-fg: #9bbfe8;
 
   --radius-sm: 7px;
   --radius-md: 11px;
   --radius-lg: 14px;
   --shadow-soft: 0 2px 14px rgba(0, 0, 0, 0.28);
-  --shadow-lift: 0 8px 22px rgba(125, 219, 184, 0.12);
+  --shadow-lift: 0 8px 22px rgba(0, 0, 0, 0.3);
   --main-shadow: 0 0 0 1px var(--border-light), 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
-/* Midnight Lavender：侧栏更深 + 底部淡紫光晕 */
+/* 中性表面与浅灰高亮，避免选中区域带有明显色调 */
 html.dark {
   .nav-sidebar {
-    background:
-      radial-gradient(ellipse 130% 55% at 50% 108%, rgba(183, 156, 255, 0.14), transparent 52%),
-      linear-gradient(180deg, #1b1624 0%, #17121f 100%);
+    background: var(--bg-secondary);
   }
 
-  .brand-logo {
-    border-radius: var(--radius-md);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-secondary) 35%, transparent);
+  .app-header,
+  .titlebar {
+    background: var(--bg-primary);
+  }
+
+  .close-btn:hover .el-icon {
+    color: var(--text-inverse);
   }
 
   .nav-item,
@@ -96,12 +107,12 @@ html.dark {
     border-radius: var(--radius-md);
 
     &.active {
-      background: color-mix(in srgb, var(--accent-primary) 14%, transparent);
+      background: var(--bg-active);
       color: var(--accent-primary);
-      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-primary) 28%, transparent);
+      box-shadow: inset 0 0 0 1px var(--border-medium);
 
       .nav-count {
-        color: var(--accent-primary);
+        color: var(--text-secondary);
       }
     }
   }
@@ -113,9 +124,17 @@ html.dark {
       background: var(--bg-hover);
     }
 
+    &:has(> .clipboard-item-select:focus-visible) {
+      outline-color: var(--accent-primary);
+    }
+
     &.active {
-      background: color-mix(in srgb, var(--accent-secondary) 12%, var(--bg-active));
-      box-shadow: 0 0 18px rgba(183, 156, 255, 0.08);
+      background: var(--bg-active);
+      box-shadow: none;
+
+      &::before {
+        background: var(--accent-primary);
+      }
     }
   }
 
@@ -123,20 +142,54 @@ html.dark {
     border-radius: var(--radius-sm);
 
     &.active {
-      background: color-mix(in srgb, var(--accent-primary) 18%, transparent);
-      border-color: color-mix(in srgb, var(--accent-primary) 30%, transparent);
+      background: var(--bg-active);
+      border-color: var(--border-medium);
       color: var(--accent-primary);
 
       .filter-count {
-        color: var(--accent-primary);
+        color: var(--text-secondary);
       }
     }
   }
 
+  .nav-item,
+  .util-item,
+  .filter-segment-item {
+    &:focus-visible {
+      outline: 2px solid var(--accent-primary);
+      outline-offset: -2px;
+    }
+  }
+
+  .segment.active {
+    background: var(--bg-active);
+    color: var(--text-primary);
+  }
+
+  .theme-option.active .theme-preview {
+    border-color: var(--accent-primary);
+  }
+
+  .clip-card:hover,
+  .clip-card.favorite:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-medium);
+  }
+
+  .clip-card.focused,
+  .clip-card.favorite.focused {
+    background: var(--bg-active);
+    border-color: var(--accent-primary);
+  }
+
+  .detail-panel {
+    background: var(--detail-bg);
+  }
+
   .detail-text {
     border-radius: var(--radius-md);
-    border-color: color-mix(in srgb, var(--accent-secondary) 22%, var(--border-light));
-    background: color-mix(in srgb, var(--bg-tertiary) 88%, #000);
+    border-color: var(--border-light);
+    background: var(--detail-bg);
   }
 
   .panel-shell {
@@ -144,7 +197,7 @@ html.dark {
   }
 
   ::-webkit-scrollbar-thumb {
-    background: color-mix(in srgb, var(--accent-secondary) 30%, var(--border-light));
+    background: var(--border-medium);
 
     &:hover {
       background: color-mix(in srgb, var(--accent-primary) 35%, var(--border-medium));
