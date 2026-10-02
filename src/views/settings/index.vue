@@ -606,15 +606,15 @@ onUnmounted(() => {
   }
 
   &.dark {
-    background: #22232c;
+    background: #20212a;
 
     .preview-sidebar {
-      background: #14151b;
-      border-right: 1px solid #363844;
+      background: #14151a;
+      border-right: 1px solid #30313b;
     }
 
     .preview-line {
-      background: #a99bef;
+      background: #b5a0ef;
     }
   }
 }

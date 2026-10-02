@@ -1,9 +1,9 @@
-/* ===== Midnight Lavender 深色主题：低饱和灰紫 + 柔和蓝紫点缀 ===== */
+/* ===== Midnight Lavender 深色主题：冷调炭灰分层 + 淡紫色选中态 ===== */
 :root.dark {
-  --favorite-text: #dec08b;
+  --favorite-text: #d8bf86;
   --search-mark-bg: #675325;
   /* Element Plus */
-  --el-color-primary-rgb: 169, 155, 239;
+  --el-color-primary-rgb: 181, 160, 239;
   --el-color-primary: var(--accent-primary);
   --el-color-primary-light-3: color-mix(in srgb, var(--accent-primary) 70%, var(--bg-primary));
   --el-color-primary-light-5: color-mix(in srgb, var(--accent-primary) 50%, var(--bg-primary));
@@ -22,8 +22,8 @@
   --el-text-color-placeholder: var(--text-tertiary);
 
   --el-border-color: var(--border-light);
-  --el-border-color-light: #30323e;
-  --el-border-color-lighter: #292b35;
+  --el-border-color-light: var(--border-light);
+  --el-border-color-lighter: #292a34;
 
   --el-fill-color: var(--bg-hover);
   --el-fill-color-light: var(--bg-tertiary);
@@ -35,40 +35,42 @@
   --el-mask-color-extra-light: rgba(12, 13, 18, 0.35);
 
   /* 背景：窗口 / 列表 / 阅读区域按亮度分层 */
-  --bg-primary: #16171d;
-  --bg-secondary: #14151b;
-  --bg-tertiary: #22232c;
-  --bg-hover: #2a2b35;
-  --bg-active: #34363f;
+  --bg-primary: #14151a;
+  --bg-secondary: #14151a;
+  --bg-tertiary: #20212a;
+  --bg-hover: #272832;
+  --bg-active: #302b43;
+  --bg-inset: #191a21;
 
-  --list-bg: #1d1e26;
-  --detail-bg: #22232c;
-  --setting-card-bg: #1d1e26;
+  --list-bg: #1b1c23;
+  --detail-bg: #20212a;
+  --setting-card-bg: #1b1c23;
 
   /* 固定灰白色，避免透明文字随背景变化而失去对比度 */
-  --text-primary: #e8e9ef;
-  --text-secondary: #b6b8c7;
-  --text-tertiary: #a0a3b4;
-  --text-inverse: #1c1828;
+  --text-primary: #e8e8ef;
+  --text-secondary: #a2a4b5;
+  --text-tertiary: #9699ac;
+  --text-inverse: #211a32;
 
   /* 边框 */
-  --border-light: #363844;
-  --border-medium: #4b4e5b;
+  --border-light: #30313b;
+  --border-medium: #454754;
+  --border-selected: #514566;
 
-  /* 蓝紫用于主要操作与小面积标记，选中背景使用中性高亮 */
-  --accent-primary: #a99bef;
-  --accent-primary-hover: #b8acf4;
-  --accent-on-primary: #1c1828;
+  /* 淡紫用于主要操作与标记，深紫底色统一表达选中状态 */
+  --accent-primary: #b5a0ef;
+  --accent-primary-hover: #c4b2f5;
+  --accent-on-primary: #211a32;
   --accent-secondary: #b8a5e6;
   --accent-danger: #eb8fa3;
   --accent-tertiary: #b8a5e6;
-  --accent-quaternary: #dec08b;
+  --accent-quaternary: #d8bf86;
 
   --gradient-active-start: var(--accent-primary);
   --gradient-active-end: var(--accent-primary-hover);
 
   --favorite-bg: #2c2821;
-  --favorite-border: #dec08b;
+  --favorite-border: #d8bf86;
 
   --type-text-bg: #343044;
   --type-url-bg: #263832;
@@ -89,7 +91,7 @@
   --main-shadow: 0 0 0 1px var(--border-light), 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
-/* 中性表面与浅灰高亮，避免选中区域带有明显色调 */
+/* 表面以明暗区分层级，紫色集中在交互状态 */
 html.dark {
   .nav-sidebar {
     background: var(--bg-secondary);
@@ -111,7 +113,7 @@ html.dark {
     &.active {
       background: var(--bg-active);
       color: var(--accent-primary);
-      box-shadow: inset 0 0 0 1px var(--border-medium);
+      box-shadow: inset 0 0 0 1px var(--border-selected);
 
       .nav-count {
         color: var(--text-secondary);
@@ -145,7 +147,7 @@ html.dark {
 
     &.active {
       background: var(--bg-active);
-      border-color: var(--border-medium);
+      border-color: var(--border-selected);
       color: var(--accent-primary);
 
       .filter-count {
@@ -189,7 +191,21 @@ html.dark {
   .detail-text {
     border-radius: var(--radius-md);
     border-color: var(--border-light);
-    background: var(--detail-bg);
+    background: var(--bg-inset);
+  }
+
+  .detail-reading .code-block {
+    background: var(--bg-inset);
+    border-color: color-mix(in srgb, var(--border-light) 55%, var(--bg-inset));
+  }
+
+  .search-input .el-input__wrapper {
+    background: var(--bg-inset);
+  }
+
+  .hljs-comment,
+  .hljs-quote {
+    color: var(--text-tertiary);
   }
 
   .panel-shell {
