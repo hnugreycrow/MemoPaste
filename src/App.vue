@@ -1,28 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import { themeService } from "./utils/theme";
 import UpdateDialog from "./components/UpdateDialog.vue";
 import router from "./router";
 
-const windowRole = ref<"main" | "panel">("main");
+const windowRole = ref<"main" | "panel">(
+  document.documentElement.classList.contains("is-panel") ? "panel" : "main",
+);
 
 onMounted(async () => {
-  // 同一套渲染代码跑在主窗口与面板窗口，需先分辨角色
-  try {
-    const role = await window.windowControls.getRole();
-    windowRole.value = role === "panel" ? "panel" : "main";
-  } catch {
-    windowRole.value = "main";
-  }
-
-  // 面板窗口背景需透明，才能露出圆角/亚克力
-  if (windowRole.value === "panel") {
-    document.documentElement.classList.add("is-panel");
-    document.body.classList.add("is-panel");
-  }
-
-  await themeService.initTheme();
-
   // 版本更新日志仅在主窗口提示
   if (windowRole.value !== "main") return;
 
@@ -107,6 +92,9 @@ html.is-panel #app {
   --el-button-hover-bg-color: var(--bg-hover);
   --el-button-hover-text-color: var(--text-primary);
   --el-button-hover-border-color: var(--border-medium);
+  --el-button-disabled-bg-color: var(--bg-secondary);
+  --el-button-disabled-text-color: var(--text-tertiary);
+  --el-button-disabled-border-color: var(--border-light);
 }
 
 .el-button--primary {
@@ -131,10 +119,20 @@ html.is-panel #app {
   --el-dropdown-menuItem-hover-fill: var(--bg-hover);
 }
 
-button {
-  &:focus,
-  &:focus-visible {
-    outline: none;
-  }
+button:focus {
+  outline: none;
+}
+button:focus-visible:not(.nav-item):not(.util-item):not(.clipboard-item-select) {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+.nav-item:focus-visible,
+.util-item:focus-visible {
+  outline: none;
+}
+mark {
+  background: var(--search-mark-bg);
+  color: inherit;
+  border-radius: 2px;
 }
 </style>

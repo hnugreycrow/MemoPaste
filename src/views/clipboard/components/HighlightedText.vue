@@ -1,19 +1,27 @@
 <template>
   <div ref="rootRef" class="highlighted-text">
-    <pre v-if="isCode && chunked" class="hljs code-block"><code><span
+    <pre
+      v-if="isCode && chunked && search"
+      class="hljs code-block"
+    ><code v-html="markSearchHtml(chunkHtml.join(''), search)"></code></pre>
+    <pre v-else-if="isCode && chunked" class="hljs code-block"><code><span
         v-for="(html, i) in chunkHtml"
         :key="i"
         :data-idx="i"
         :ref="(el) => setChunkRef(el, i)"
         class="hl-chunk"
-        v-html="html"
+        v-html="markSearchHtml(html, search || '')"
       ></span></code></pre>
-    <pre v-else-if="isCode" class="hljs code-block"><code v-html="highlightedCode"></code></pre>
+    <pre
+      v-else-if="isCode"
+      class="hljs code-block"
+    ><code v-html="markSearchHtml(highlightedCode, search || '')"></code></pre>
     <div v-else class="plain-text" v-html="highlightedText"></div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { markSearchHtml } from "@/utils/searchHighlight";
 import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
 import { hljs, acquireHljsTheme, releaseHljsTheme } from "@/utils/hljsSetup";
 
@@ -52,14 +60,9 @@ const highlightedCode = computed(() => {
   }
 });
 
-const highlightedText = computed(() => {
-  const txt = props.content || "";
-  if (!props.search) return escapeHtml(txt).replace(/\n/g, "<br/>");
-  const escaped = escapeHtml(txt);
-  const term = props.search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const re = new RegExp(term, "gi");
-  return escaped.replace(re, (m) => `<mark>${m}</mark>`).replace(/\n/g, "<br/>");
-});
+const highlightedText = computed(() =>
+  markSearchHtml(escapeHtml(props.content || ""), props.search || ""),
+);
 
 // ===== 长内容：按视口分块高亮 =====
 const CHUNK_THRESHOLD = 4000; // 超过此长度才启用切块
@@ -180,7 +183,7 @@ function rebuild() {
   const split = splitChunks(props.content || "");
   chunks.value = split;
   chunkHtml.value = split.map(escapeHtml);
-  setupObserver();
+  if (!props.search) setupObserver();
 }
 
 onMounted(() => {
@@ -189,7 +192,7 @@ onMounted(() => {
 });
 
 watch(
-  () => [props.content, props.language, props.type],
+  () => [props.content, props.language, props.type, props.search],
   () => rebuild(),
   { flush: "post" },
 );
@@ -219,8 +222,9 @@ onUnmounted(() => {
 .hl-chunk {
   display: inline;
 }
-mark {
-  background: rgba(255, 229, 100, 0.25);
+:deep(mark) {
+  background: var(--search-mark-bg);
+  color: inherit;
   padding: 0 2px;
   border-radius: 2px;
 }

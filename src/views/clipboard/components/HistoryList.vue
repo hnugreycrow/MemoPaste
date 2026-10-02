@@ -132,7 +132,7 @@ defineExpose({ scrollToItem });
 
 .item-row {
   height: var(--row-height);
-  padding: 2px 0;
+  padding: 4px 0;
 }
 
 .empty-state {

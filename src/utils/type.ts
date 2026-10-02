@@ -13,6 +13,7 @@ export interface ClipboardItem {
   type: string;
   /** 列表可能为预览截断；详情经 getItem 取全文 */
   content: string;
+  searchPreview?: string;
   timestamp: Date;
   size: string;
   is_favorite?: boolean;
@@ -44,6 +45,8 @@ export interface TypeCounts {
   favorite: number;
 }
 
+export type PasteResult = { status: "sent" | "copied" | "failed" | "busy" };
+
 export interface ClipboardAPI {
   /** 按历史 id 写回系统剪贴板（文本或图片） */
   write: (id: number) => Promise<boolean>;
@@ -64,7 +67,7 @@ export interface ClipboardAPI {
   /** 按 id 取全文（列表 getHistory 只含预览） */
   getItem: (id: number) => Promise<ClipboardItem | null>;
   /** 按 id 写入剪贴板、隐藏面板并模拟粘贴到原窗口 */
-  pasteAndHide: (id: number) => Promise<boolean>;
+  pasteAndHide: (id: number) => Promise<PasteResult>;
   setFavorite: (id: number, isFavorite: boolean) => Promise<boolean>;
   getCounts: () => Promise<TypeCounts>;
 }

@@ -184,7 +184,10 @@ test("clearing a search allows prefetching the same history range again", async 
   const scroll = scope.run(() =>
     useVirtualScroll(() => groupClipboardRows(store.clipboardData, new Date(2026, 8, 10))),
   );
-  scroll.contentListRef.value = { scrollTop: 0, clientHeight: 500 };
+  scroll.contentListRef.value = {
+    scrollTop: 0,
+    clientHeight: DATE_HEADER_HEIGHT + 8 * HISTORY_ROW_HEIGHT,
+  };
   scroll.handleScroll();
   await nextTick();
   await nextTick();
@@ -200,4 +203,28 @@ test("clearing a search allows prefetching the same history range again", async 
   assert.equal(store.clipboardData.length, 20);
   assert.equal(requests.filter((request) => request.page === 2).length, 2);
   scope.stop();
+});
+
+test("failed search does not show stale rows and can be retried", async () => {
+  setActivePinia(createPinia());
+  let fails = false;
+  globalThis.window = {
+    clipboard: {
+      getHistory: async () => {
+        if (fails) throw new Error("offline");
+        return { items: [item(1)], total: 1 };
+      },
+    },
+  };
+  const store = useClipboardStore();
+  await store.loadClipboardHistory();
+  fails = true;
+  store.setSearchKeyword("new query");
+  await nextTick();
+  assert.equal(store.clipboardData.length, 0);
+  assert.ok(store.historyError);
+  fails = false;
+  await store.loadClipboardHistory();
+  assert.equal(store.historyError, "");
+  assert.equal(store.clipboardData.length, 1);
 });

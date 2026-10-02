@@ -71,6 +71,7 @@ const toggleTheme = () => {
         :aria-label="
           themeService.currentTheme.value === 'dark' ? '切换到浅色主题' : '切换到深色主题'
         "
+        :disabled="themeService.saving.value"
         @click="toggleTheme"
       >
         <span class="util-icon-wrap" aria-hidden="true">
@@ -134,7 +135,9 @@ const toggleTheme = () => {
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 
   &:hover {
     background: var(--bg-hover);

@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { useClipboardStore } from "@/stores/clipboardStore";
 import type { ClipboardItem } from "@/utils/type";
-import type { ClipboardRow } from "@/utils/dateGroups";
+import { HISTORY_ROW_HEIGHT, type ClipboardRow } from "@/utils/dateGroups";
 import { useVirtualScroll, LIST_FOOTER_HEIGHT } from "../composables/useVirtualScroll";
 import ClipboardListItem from "./ClipboardListItem.vue";
 
@@ -22,7 +22,7 @@ const rows = computed<ClipboardRow[]>(() =>
     item,
     index,
     label: "收藏",
-    height: 76,
+    height: HISTORY_ROW_HEIGHT,
   })),
 );
 const { contentListRef, virtualScroll, visibleItems, handleScroll, scrollToItem } =
@@ -50,7 +50,10 @@ defineExpose({ scrollToItem });
     <div
       ref="contentListRef"
       class="favorites-scroll"
-      :style="{ '--footer-height': `${LIST_FOOTER_HEIGHT}px` }"
+      :style="{
+        '--footer-height': `${LIST_FOOTER_HEIGHT}px`,
+        '--row-height': `${HISTORY_ROW_HEIGHT}px`,
+      }"
       @scroll="handleScroll"
     >
       <div v-if="favoriteItems.length === 0" class="empty-state">
@@ -137,7 +140,7 @@ defineExpose({ scrollToItem });
 }
 
 .favorite-row {
-  height: 76px;
+  height: var(--row-height);
   padding: 4px 0;
 }
 

@@ -56,6 +56,10 @@ npm run build
 
 产物由 electron-builder 生成，输出目录见构建日志。
 
+## 验证
+
+开发验证：使用 Node.js 22.13+ 运行 `npm test`（搜索测试使用内置 SQLite）；运行 `npx vue-tsc --noEmit` 和 `npm run lint` 检查类型与代码。界面回归先执行 `npx vite build`，再执行 `npm run test:ui`。界面测试使用独立临时配置和模拟数据，不访问真实剪贴板，截图与结果保存在终端报告的临时目录中；自动粘贴到外部应用仍需手动验证。
+
 ## License
 
 [MIT](./LICENSE)

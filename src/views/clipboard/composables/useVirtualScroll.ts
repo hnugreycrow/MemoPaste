@@ -8,6 +8,7 @@ export function useVirtualScroll(rows: () => ClipboardRow[]) {
   const store = useClipboardStore();
   const contentListRef = ref<HTMLElement | null>(null);
   const startIndex = ref(0);
+  const viewportHeight = ref(0);
   const endIndex = ref(0);
   const offsets = computed(() => {
     const result = [0];
@@ -30,6 +31,7 @@ export function useVirtualScroll(rows: () => ClipboardRow[]) {
   const contentHeight = computed(() => offsets.value[offsets.value.length - 1]);
   const complete = computed(
     () =>
+      contentHeight.value > viewportHeight.value &&
       !store.isLoadingMore &&
       store.clipboardData.length > 0 &&
       store.clipboardData.length >= store.totalItems,
@@ -87,6 +89,7 @@ export function useVirtualScroll(rows: () => ClipboardRow[]) {
     if (event?.type === "scroll") lastPrefetchKey = "";
     const el = contentListRef.value;
     if (!el) return;
+    viewportHeight.value = el.clientHeight;
     const maxScroll = Math.max(0, virtualScroll.value.totalHeight - el.clientHeight);
     if (el.scrollTop > maxScroll) el.scrollTop = maxScroll;
     const top = Math.max(0, el.scrollTop - 144);

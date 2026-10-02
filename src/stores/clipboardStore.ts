@@ -27,6 +27,7 @@ export const useClipboardStore = defineStore("clipboard", {
     typeCounts: emptyCounts(),
     searchKeyword: "" as string,
     historyRequestId: 0,
+    historyError: "",
   }),
 
   actions: {
@@ -48,6 +49,7 @@ export const useClipboardStore = defineStore("clipboard", {
     ): Promise<StoreActionResult> {
       const requestId = ++this.historyRequestId;
       this.isLoadingMore = true;
+      this.historyError = "";
 
       const effectiveType = type ?? this.activeFilter;
       const effectiveKeyword = keyword ?? this.searchKeyword;
@@ -116,6 +118,7 @@ export const useClipboardStore = defineStore("clipboard", {
           : page;
         return { ok: true };
       } catch (error) {
+        if (requestId === this.historyRequestId) this.historyError = "加载失败，请重试";
         console.error("加载剪贴板历史出错:", error);
         return { ok: false };
       } finally {
@@ -127,6 +130,8 @@ export const useClipboardStore = defineStore("clipboard", {
       const next = (keyword || "").trim();
       if (next === this.searchKeyword) return;
       this.searchKeyword = next;
+      this.clipboardData = [];
+      this.totalItems = 0;
       this.currentPage = 1;
       void this.loadClipboardHistory(1, false);
     },

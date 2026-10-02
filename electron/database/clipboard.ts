@@ -10,6 +10,7 @@ const BetterSqlite3 = require("better-sqlite3");
 
 /** SQLite 行：timestamp 存 ISO 字符串；is_favorite 为 0/1 */
 export type ClipboardRow = {
+  searchPreview?: string;
   id: number;
   content: string;
   type: string;
@@ -462,11 +463,16 @@ export function getClipboardHistory(
     const whereSql =
       whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
+    const previewStart = "max(1, instr(lower(content), lower(?)) - 16)";
+    const searchColumn = trimmedKeyword
+      ? `, CASE WHEN ${previewStart} > 1 THEN '…' ELSE '' END || substr(content, ${previewStart}, max(200, length(?) + 120)) || CASE WHEN length(content) >= ${previewStart} + max(200, length(?) + 120) THEN '…' ELSE '' END AS searchPreview`
+      : "";
+    const previewParams = trimmedKeyword ? Array(5).fill(trimmedKeyword) : [];
     const selectQuery = `
       SELECT id,
              substr(content, 1, ${LIST_CONTENT_PREVIEW_LEN}) AS content,
              type, timestamp, size, is_favorite,
-             content_hash, file_path, thumb_path
+             content_hash, file_path, thumb_path ${searchColumn}
       FROM clipboard_items
       ${whereSql}
       ORDER BY timestamp DESC, id DESC LIMIT ? OFFSET ?
@@ -483,7 +489,7 @@ export function getClipboardHistory(
 
     const items = database
       .prepare(selectQuery)
-      .all(...filterParams, pageSize, offset) as ClipboardRow[];
+      .all(...previewParams, ...filterParams, pageSize, offset) as ClipboardRow[];
 
     return {
       items,
@@ -493,12 +499,7 @@ export function getClipboardHistory(
     };
   } catch (error) {
     console.error("Failed to get clipboard history:", error);
-    return {
-      items: [] as ClipboardRow[],
-      total: 0,
-      page,
-      pageSize,
-    };
+    throw error;
   }
 }
 

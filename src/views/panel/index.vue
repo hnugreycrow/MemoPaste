@@ -83,11 +83,22 @@ const openMain = () => {
 };
 
 /** 选中项：隐藏面板并粘贴到原输入框 */
+const pasteBusy = ref(false);
+const pasteNotice = ref("");
 const pasteItem = async (item: ClipboardItem) => {
+  if (pasteBusy.value) return;
+  pasteBusy.value = true;
+  pasteNotice.value = "";
   try {
-    await window.clipboard.pasteAndHide(item.id);
+    const result = await window.clipboard.pasteAndHide(item.id);
+    if (result.status === "copied") pasteNotice.value = "已复制，请按 Ctrl + V 粘贴";
+    if (result.status === "failed")
+      pasteNotice.value = "复制失败，记录或图片文件可能不可用，请重试";
   } catch (error) {
     console.error("粘贴失败:", error);
+    pasteNotice.value = "粘贴失败，请重试";
+  } finally {
+    pasteBusy.value = false;
   }
 };
 
@@ -110,7 +121,8 @@ const handlePanelNav = (action: PanelNavAction) => {
 };
 
 const toggleFavorite = async (item: ClipboardItem, event: Event) => {
-  await clipboardStore.toggleFavorite(item, event);
+  const result = await clipboardStore.toggleFavorite(item, event);
+  if (!result.ok) pasteNotice.value = "收藏操作失败，请重试";
 };
 
 /** 内容形如「图片 1920×1080」，列表右侧只展示尺寸 */
@@ -156,6 +168,7 @@ onMounted(async () => {
   await refreshList();
 
   removeShownListener = window.panel.onShown(() => {
+    pasteNotice.value = "";
     refreshList();
   });
 
@@ -201,12 +214,15 @@ onUnmounted(() => {
       </span>
       <button type="button" class="text-btn" @click="clearHistory">
         <el-icon class="text-btn-icon"><i-ep-Delete /></el-icon>
-        全部清除
+        清空非收藏
       </button>
     </div>
 
+    <div v-if="clipboardStore.historyError" class="panel-notice" role="alert">
+      {{ clipboardStore.historyError }} <button class="text-btn" @click="refreshList">重试</button>
+    </div>
     <div ref="listRef" class="panel-list" @scroll="onScroll">
-      <div v-if="!hasItems" class="empty">
+      <div v-if="!hasItems && !clipboardStore.historyError" class="empty">
         <el-icon class="empty-icon"><i-ep-DocumentCopy /></el-icon>
         <p>暂无记录</p>
         <span class="empty-hint">复制文本或截图后会出现在这里</span>
@@ -281,6 +297,7 @@ onUnmounted(() => {
       </template>
     </div>
 
+    <div v-if="pasteNotice" class="panel-notice" role="status">{{ pasteNotice }}</div>
     <footer class="panel-footer">
       <span class="footer-hint">↑↓ 选择</span>
       <span class="footer-sep">·</span>
@@ -292,6 +309,13 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss" scoped>
+.panel-notice {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  color: var(--text-primary);
+  background: var(--bg-active);
+  font-size: 12px;
+}
 .panel-shell {
   width: 100%;
   height: 100%;
@@ -524,7 +548,10 @@ onUnmounted(() => {
   color: var(--text-primary);
   white-space: pre-wrap;
   word-break: break-word;
-  height: 3.9em;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  height: 4.35em;
   overflow: hidden;
   padding-right: 28px;
 

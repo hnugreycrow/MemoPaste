@@ -1,5 +1,7 @@
 /* ===== Midnight Lavender 深色主题：低饱和灰紫 + 柔和蓝紫点缀 ===== */
 :root.dark {
+  --favorite-text: #dec08b;
+  --search-mark-bg: #675325;
   /* Element Plus */
   --el-color-primary-rgb: 169, 155, 239;
   --el-color-primary: var(--accent-primary);
@@ -152,8 +154,6 @@ html.dark {
     }
   }
 
-  .nav-item,
-  .util-item,
   .filter-segment-item {
     &:focus-visible {
       outline: 2px solid var(--accent-primary);

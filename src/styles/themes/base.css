@@ -1,4 +1,10 @@
 :root {
+  --clip-card-height: 68px;
+  --clip-title-size: 13px;
+  --clip-meta-size: 12px;
+  --shortcut-size: 11px;
+  --search-mark-bg: #f4de8b;
+  --favorite-text: #906018;
   /* ===== 全局通用变量（所有主题共享） ===== */
   /* 布局尺寸 */
   --nav-width: 64px;

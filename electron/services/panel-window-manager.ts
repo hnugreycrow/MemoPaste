@@ -157,15 +157,15 @@ export class PanelWindowManager {
   /**
    * 显示快捷面板：showInactive 不抢原输入框焦点；Esc / 全局快捷键关闭
    */
-  public show(): void {
+  public show(preserveState = false): void {
     if (!this.panelWin || this.panelWin.isDestroyed()) return;
 
-    this.positionNearCursor();
+    if (!preserveState) this.positionNearCursor();
     this.panelWin.setAlwaysOnTop(true, "pop-up-menu");
     this.panelWin.showInactive();
     this.registerShortcuts();
     this.installOutsideClickHook();
-    this.panelWin.webContents.send("panel-shown");
+    if (!preserveState) this.panelWin.webContents.send("panel-shown");
   }
 
   public hide(): void {

@@ -1,9 +1,11 @@
 import { ref } from "vue";
+import { ElMessage } from "element-plus";
 import type { ThemeMode } from "./type";
 
 export type ThemeType = ThemeMode;
 
-const currentTheme = ref<ThemeType>("dark");
+const saving = ref(false);
+const currentTheme = ref<ThemeType>("light");
 
 /** 避免 initTheme 被多次调用时重复挂上 IPC 监听 */
 let themeListenerBound = false;
@@ -29,23 +31,28 @@ const initTheme = async (): Promise<void> => {
 
   try {
     const savedTheme = await window.config.get<ThemeType>("theme");
-    currentTheme.value = savedTheme ?? "dark";
+    currentTheme.value = savedTheme === "dark" ? "dark" : "light";
     applyTheme(currentTheme.value);
   } catch (error) {
     console.error("获取主题设置失败:", error);
-    currentTheme.value = "dark";
-    applyTheme("dark");
+    currentTheme.value = "light";
+    applyTheme("light");
   }
 };
 
-const setTheme = (theme: ThemeType): void => {
-  currentTheme.value = theme;
-  window.config.set("theme", theme).catch((error: unknown) => {
-    console.error("保存主题设置失败:", error);
-  });
-  applyTheme(theme);
-  // 先改本窗 DOM，再广播；对端只 apply，避免循环写 config
-  window.theme.broadcast(theme);
+const setTheme = async (theme: ThemeType): Promise<void> => {
+  if (saving.value || theme === currentTheme.value) return;
+  saving.value = true;
+  try {
+    if (!(await window.config.set("theme", theme))) throw new Error("保存失败");
+    currentTheme.value = theme;
+    applyTheme(theme);
+    window.theme.broadcast(theme);
+  } catch {
+    ElMessage.error("主题保存失败，请重试");
+  } finally {
+    saving.value = false;
+  }
 };
 
 /** 主题样式挂在 :root.dark / :root.light（见 themes.css） */
@@ -56,6 +63,7 @@ const applyTheme = (theme: ThemeType): void => {
 
 export const themeService = {
   currentTheme,
+  saving,
   initTheme,
   setTheme,
 };

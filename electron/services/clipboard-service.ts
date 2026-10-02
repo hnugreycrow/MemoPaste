@@ -13,6 +13,7 @@ import {
 import { simulatePaste } from "../utils/simulate-paste";
 import { storeClipboardImage, resolveImageAbsolutePath } from "./image-storage";
 import { getContentType, formatSize } from "@shared/content-type";
+import type { PasteResult } from "../../src/utils/type";
 import type { WindowService } from "./window-service";
 
 // clipboard-event 为 CJS；主进程是 ESM，用 createRequire 加载
@@ -114,7 +115,8 @@ export class ClipboardService {
     const row = getClipboardItemById(id);
     if (!row) return false;
 
-    if (row.type === "image" && row.file_path) {
+    if (row.type === "image") {
+      if (!row.file_path) return false;
       const abs = resolveImageAbsolutePath(row.file_path);
       if (!abs) {
         console.error("图片路径非法:", row.file_path);
@@ -146,12 +148,12 @@ export class ClipboardService {
      * 快捷面板选中项：按 id 写入剪贴板 → 隐藏面板 → 模拟 Ctrl+V
      * 依赖面板不抢焦点，原输入框仍可接收按键
      */
-    ipcMain.handle("clipboard-paste-and-hide", async (_, id: number) => {
-      if (this.isAutoPasting) return false;
+    ipcMain.handle("clipboard-paste-and-hide", async (_, id: number): Promise<PasteResult> => {
+      if (this.isAutoPasting) return { status: "busy" };
       this.isAutoPasting = true;
       try {
         if (!this.writeItemToClipboard(id)) {
-          return false;
+          return { status: "failed" };
         }
         this.windowService?.hidePanel();
         try {
@@ -159,11 +161,13 @@ export class ClipboardService {
         } catch (error) {
           // 内容已在剪贴板；按键失败时用户仍可手动粘贴
           console.error("自动粘贴按键失败:", error);
+          this.windowService?.restorePanel();
+          return { status: "copied" };
         }
-        return true;
+        return { status: "sent" };
       } catch (error) {
         console.error("写入剪贴板失败:", error);
-        return false;
+        return { status: "failed" };
       } finally {
         this.isAutoPasting = false;
       }

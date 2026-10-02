@@ -4,6 +4,8 @@
   "version": "1.13.0",
   "type": "module",
   "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:ui": "electron tests/ui-smoke.cjs",
     "dev": "vite",
     "build": "vite build && electron-builder",
     "preview": "vite preview",

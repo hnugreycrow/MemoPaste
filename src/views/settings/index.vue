@@ -40,6 +40,25 @@ const updateLabel = computed(() => {
 const appVersion = ref("–");
 const router = useRouter();
 
+const saving = ref<Record<string, boolean>>({});
+const saveSetting = async (
+  key: "minimizeToTray" | "autoCheckUpdate" | "dataRetentionDays",
+  value: boolean | number,
+  rollback: () => void,
+) => {
+  if (saving.value[key]) return;
+  saving.value[key] = true;
+  try {
+    if (!(await window.config.set(key, value))) throw new Error("保存失败");
+    if (key === "dataRetentionDays") ElMessage.success(`数据保存时间已设置为 ${value} 天`);
+  } catch {
+    rollback();
+    ElMessage.error("设置保存失败，请重试");
+  } finally {
+    saving.value[key] = false;
+  }
+};
+
 const retentionOptions = [1, 2, 3, 4, 5, 6, 7];
 
 const theme = computed<ThemeType>({
@@ -62,7 +81,9 @@ onMounted(async () => {
 });
 
 const handleMinimizeToTrayChange = (value: boolean) => {
-  window.config.set("minimizeToTray", value);
+  void saveSetting("minimizeToTray", value, () => {
+    minimizeToTray.value = !value;
+  });
 };
 
 /** 开机自启：开发态可能仅写入配置，打包后才真正生效 */
@@ -86,13 +107,17 @@ const handleOpenAtLoginChange = async (value: boolean) => {
 };
 
 const handleDataRetentionChange = (value: number) => {
+  const previous = dataRetentionDays.value;
   dataRetentionDays.value = value;
-  window.config.set("dataRetentionDays", value);
-  ElMessage.success(`数据保存时间已设置为 ${value} 天`);
+  void saveSetting("dataRetentionDays", value, () => {
+    dataRetentionDays.value = previous;
+  });
 };
 
 const handleAutoCheckUpdateChange = (value: boolean) => {
-  window.config.set("autoCheckUpdate", value);
+  void saveSetting("autoCheckUpdate", value, () => {
+    autoCheckUpdate.value = !value;
+  });
 };
 
 const setTheme = (value: ThemeType) => {
@@ -173,7 +198,9 @@ onUnmounted(() => {
               <button
                 type="button"
                 class="theme-option"
+                :disabled="themeService.saving.value"
                 :class="{ active: theme === 'light' }"
+                :aria-pressed="theme === 'light'"
                 @click="setTheme('light')"
               >
                 <div class="theme-preview light">
@@ -191,7 +218,9 @@ onUnmounted(() => {
               <button
                 type="button"
                 class="theme-option"
+                :disabled="themeService.saving.value"
                 :class="{ active: theme === 'dark' }"
+                :aria-pressed="theme === 'dark'"
                 @click="setTheme('dark')"
               >
                 <div class="theme-preview dark">
@@ -214,7 +243,11 @@ onUnmounted(() => {
               <span class="setting-label">关闭时最小化到托盘</span>
               <span class="setting-desc">点击关闭时隐藏到托盘</span>
             </div>
-            <el-switch v-model="minimizeToTray" @change="handleMinimizeToTrayChange" />
+            <el-switch
+              v-model="minimizeToTray"
+              :disabled="saving.minimizeToTray"
+              @change="handleMinimizeToTrayChange"
+            />
           </div>
 
           <div class="setting-row">
@@ -240,9 +273,11 @@ onUnmounted(() => {
                 type="button"
                 class="segment"
                 :class="{ active: dataRetentionDays === days }"
+                :aria-pressed="dataRetentionDays === days"
+                :disabled="saving.dataRetentionDays"
                 @click="handleDataRetentionChange(days)"
               >
-                {{ days }}
+                {{ days }} 天
               </button>
             </div>
           </div>
@@ -328,7 +363,11 @@ onUnmounted(() => {
                 >有新版本时弹窗提醒，检查失败仅在此处显示；每 24 小时最多检查一次</span
               >
             </div>
-            <el-switch v-model="autoCheckUpdate" @change="handleAutoCheckUpdateChange" />
+            <el-switch
+              v-model="autoCheckUpdate"
+              :disabled="saving.autoCheckUpdate"
+              @change="handleAutoCheckUpdateChange"
+            />
           </div>
 
           <div class="setting-row">
@@ -621,9 +660,9 @@ onUnmounted(() => {
 }
 
 .segment {
-  min-width: 30px;
+  min-width: 38px;
   height: 28px;
-  padding: 0 8px;
+  padding: 0 6px;
   border: none;
   border-radius: 6px;
   background: transparent;
@@ -645,6 +684,8 @@ onUnmounted(() => {
   }
 
   &:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
   }
 }
 

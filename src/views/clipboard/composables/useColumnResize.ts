@@ -2,7 +2,8 @@ import { computed, onActivated, onDeactivated, onMounted, onUnmounted, ref } fro
 
 export function useColumnResize() {
   const columnsRef = ref<HTMLElement | null>(null);
-  const ratio = ref(0.44);
+  const ratio = ref(0.4);
+  const ready = ref(false);
   const availableWidth = ref(0);
   const isResizing = ref(false);
   const minWidth = computed(() => Math.min(320, availableWidth.value / 2));
@@ -77,6 +78,12 @@ export function useColumnResize() {
     void save();
   };
 
+  const resetWidth = () => {
+    measure();
+    setWidth(Math.max(340, Math.min(420, availableWidth.value * 0.4)));
+    void save();
+  };
+
   onMounted(async () => {
     measure();
     observer = new ResizeObserver(measure);
@@ -95,6 +102,8 @@ export function useColumnResize() {
       }
     } catch (error) {
       console.error("Failed to load column ratio", error);
+    } finally {
+      ready.value = true;
     }
   });
   onActivated(measure);
@@ -106,6 +115,8 @@ export function useColumnResize() {
   });
 
   return {
+    ready,
+    resetWidth,
     columnsRef,
     listWidth,
     minWidth,

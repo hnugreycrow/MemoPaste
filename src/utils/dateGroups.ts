@@ -1,7 +1,7 @@
 import type { ClipboardItem } from "./type";
 
 export type DateGroup = string;
-export const HISTORY_ROW_HEIGHT = 64;
+export const HISTORY_ROW_HEIGHT = 76;
 export const DATE_HEADER_HEIGHT = 28;
 export type ClipboardRow =
   | { kind: "header"; key: string; label: DateGroup; height: number }

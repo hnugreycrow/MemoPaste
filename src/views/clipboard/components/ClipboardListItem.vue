@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { searchParts } from "../../../../shared/search";
+import { useClipboardStore } from "@/stores/clipboardStore";
 import { computed } from "vue";
 import type { ClipboardItem } from "@/utils/type";
 import { clipimgUrl, formatTime, formatTimeOfDay, getTypeLabel } from "@/utils/utils";
@@ -11,8 +13,9 @@ const props = withDefaults(
   }>(),
   { favorites: false },
 );
+const store = useClipboardStore();
 const itemTitle = computed(
-  () => props.item.content.split(/\r?\n/).find((line) => line.trim()) || "空白内容",
+  () => props.item.searchPreview || props.item.content.trim() || "空白内容",
 );
 
 const emit = defineEmits<{
@@ -46,7 +49,14 @@ const emit = defineEmits<{
         <i-ep-Document v-else />
       </span>
       <span class="item-content">
-        <span class="item-title">{{ itemTitle }}</span>
+        <span class="item-title"
+          ><template
+            v-for="(part, index) in searchParts(itemTitle, store.searchKeyword)"
+            :key="index"
+            ><mark v-if="part.match">{{ part.text }}</mark
+            ><template v-else>{{ part.text }}</template></template
+          ></span
+        >
         <span class="item-meta" :title="formatTime(item.timestamp)">
           <span>{{ getTypeLabel(item.type) }}</span>
           <span class="meta-dot" aria-hidden="true">·</span>
@@ -79,7 +89,7 @@ const emit = defineEmits<{
   position: relative;
   display: flex;
   align-items: center;
-  height: 60px;
+  height: var(--clip-card-height);
   margin: 0 8px;
   border-radius: 8px;
   background: transparent;
@@ -111,7 +121,7 @@ const emit = defineEmits<{
   }
 
   &.favorite-item {
-    height: 68px;
+    height: var(--clip-card-height);
     margin: 0 12px;
   }
 }
@@ -123,7 +133,7 @@ const emit = defineEmits<{
   flex: 1;
   min-width: 0;
   height: 100%;
-  padding: 8px 12px;
+  padding: 6px 12px;
   border: 0;
   border-radius: inherit;
   color: var(--text-primary);
@@ -139,8 +149,8 @@ const emit = defineEmits<{
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 7px;
   overflow: hidden;
 
@@ -172,9 +182,13 @@ const emit = defineEmits<{
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13px;
-  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: var(--clip-title-size);
+  line-height: 1.35;
 }
 
 .item-meta {
@@ -183,7 +197,7 @@ const emit = defineEmits<{
   gap: 6px;
   margin-top: 3px;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--clip-meta-size);
   line-height: 1.5;
   font-variant-numeric: tabular-nums;
 }

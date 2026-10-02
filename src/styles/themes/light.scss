@@ -3,6 +3,12 @@
   /* Element Plus */
   --el-color-primary-rgb: 139, 109, 232;
   --el-color-primary: #8b6de8;
+  --el-color-primary-light-3: color-mix(in srgb, var(--accent-primary) 70%, white);
+  --el-color-primary-light-5: color-mix(in srgb, var(--accent-primary) 50%, white);
+  --el-color-primary-light-7: color-mix(in srgb, var(--accent-primary) 30%, white);
+  --el-color-primary-light-8: color-mix(in srgb, var(--accent-primary) 20%, white);
+  --el-color-primary-light-9: color-mix(in srgb, var(--accent-primary) 10%, white);
+  --el-color-primary-dark-2: var(--accent-primary-hover);
 
   --el-bg-color: #f7fbfa;
   --el-bg-color-overlay: #ffffff;
@@ -67,7 +73,7 @@
 
   --type-text-fg: #7a5ad9;
   --type-url-fg: #2f9e74;
-  --type-code-fg: #F56C6C;
+  --type-code-fg: #f56c6c;
   --type-image-fg: #3a7fd4;
 
   --radius-sm: 7px;
@@ -95,7 +101,7 @@ html.light {
     border-radius: var(--radius-md);
 
     &.active {
-      background: color-mix(in srgb, var(--accent-primary) 25%, white);
+      background: color-mix(in srgb, var(--accent-primary) 12%, white);
       color: var(--accent-primary);
       box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-primary) 28%, transparent);
     }
@@ -118,7 +124,7 @@ html.light {
     border-radius: var(--radius-sm);
 
     &.active {
-      background: color-mix(in srgb, var(--accent-primary) 18%, white);
+      background: color-mix(in srgb, var(--accent-primary) 10%, white);
       border-color: color-mix(in srgb, var(--accent-primary) 30%, transparent);
       color: var(--accent-primary);
     }

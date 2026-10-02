@@ -108,6 +108,7 @@ export class WindowService {
       frame: false,
       icon: path.join(this.publicPath, "icon.png"),
       show: false,
+      backgroundColor: this.configService.get("theme") === "dark" ? "#16171d" : "#f4f8f6",
       webPreferences: {
         preload: this.preloadPath,
         // 渲染进程据此区分主窗/面板（透明背景、更新弹窗等），无需等 IPC
@@ -216,6 +217,10 @@ export class WindowService {
 
   public showPanel(): void {
     this.panel.show();
+  }
+
+  public restorePanel(): void {
+    this.panel.show(true);
   }
 
   public hidePanel(): void {

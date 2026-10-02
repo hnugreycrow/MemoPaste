@@ -152,6 +152,6 @@ export async function simulatePaste(): Promise<void> {
   try {
     await execFileAsync("xdotool", ["key", "ctrl+v"]);
   } catch {
-    console.warn("当前环境不支持自动粘贴（需要 xdotool）");
+    throw new Error("当前环境不支持自动粘贴（需要 xdotool）");
   }
 }

@@ -37,7 +37,11 @@
 
     <template v-if="item">
       <div class="detail-content">
-        <div class="detail-reading" :class="{ 'is-image': isImage }">
+        <div
+          ref="readingRef"
+          class="detail-reading"
+          :class="{ 'is-image': isImage, 'is-plain': !isImage && item.type !== 'code' }"
+        >
           <template v-if="isImage">
             <div class="detail-image-wrap">
               <el-image
@@ -56,8 +60,8 @@
             </div>
           </template>
           <template v-else>
-            <HighlightedText :content="displayContent" :type="item.type" />
-            <div v-if="item.content.length > MAX_CONTENT_LENGTH" class="expand-button">
+            <HighlightedText :content="displayContent" :type="item.type" :search="search" />
+            <div v-if="!search && item.content.length > MAX_CONTENT_LENGTH" class="expand-button">
               <el-button link type="primary" @click="showAllContent = !showAllContent">
                 {{ showAllContent ? "收起" : "展开全部内容" }}
               </el-button>
@@ -67,17 +71,18 @@
       </div>
       <div class="detail-actions">
         <div class="detail-meta-strip">
+          <span v-if="isImage">{{ item.content.replace(/^图片\s*/, "") }} ·</span>
           <span>大小 {{ item.size }}</span>
           <template v-if="!isImage"
             ><span class="meta-sep" aria-hidden="true">·</span
             ><span>{{ charCount }} 字符</span></template
           >
         </div>
-        <span class="keyboard-hint"><kbd>↑ ↓</kbd><span>切换</span></span>
+        <span v-if="keyboardActive" class="keyboard-hint"><kbd>↑ ↓</kbd><span>切换记录</span></span>
         <el-button type="primary" class="action-copy" @click="copyItem(item)">
           <i-ep-Document-Copy class="btn-icon" aria-hidden="true" />
           <span>{{ isImage ? "复制图片" : "复制内容" }}</span>
-          <kbd class="copy-shortcut">Enter</kbd>
+          <kbd v-if="keyboardActive" class="copy-shortcut">Enter</kbd>
         </el-button>
       </div>
     </template>
@@ -91,7 +96,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, watch, nextTick } from "vue";
 import HighlightedText from "./HighlightedText.vue";
 import { ClipboardItem } from "@/utils/type";
 import { formatTime, getTypeLabel, clipimgUrl } from "@/utils/utils";
@@ -101,7 +106,22 @@ const baseUrl = import.meta.env.BASE_URL;
 
 const props = defineProps<{
   item: Item | null;
+  search?: string;
+  keyboardActive?: boolean;
 }>();
+
+const readingRef = ref<HTMLElement | null>(null);
+watch(
+  () => [props.item?.id, props.search, props.item?.content],
+  async () => {
+    await nextTick();
+    const root = readingRef.value;
+    if (!root) return;
+    if (props.search) root.querySelector("mark")?.scrollIntoView({ block: "center" });
+    else root.scrollTop = 0;
+  },
+  { flush: "post" },
+);
 
 const emit = defineEmits<{
   close: [];
@@ -133,7 +153,7 @@ const MAX_CONTENT_LENGTH = 3000;
 const displayContent = computed(() => {
   if (!props.item?.content) return "";
   const content = props.item.content;
-  if (!showAllContent.value && content.length > MAX_CONTENT_LENGTH) {
+  if (!props.search && !showAllContent.value && content.length > MAX_CONTENT_LENGTH) {
     return content.slice(0, MAX_CONTENT_LENGTH) + "...";
   }
   return content;
@@ -187,13 +207,13 @@ const toggleFavorite = (item: Item) => {
   flex-shrink: 0;
   padding: 2px 7px;
   border-radius: 5px;
-  font-size: 11px;
+  font-size: var(--clip-meta-size);
   line-height: 1.6;
 }
 
 .detail-time {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--clip-meta-size);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -220,10 +240,13 @@ const toggleFavorite = (item: Item) => {
   min-height: 30px;
   padding: 0 7px;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--clip-meta-size);
 
   &.is-favorite {
-    color: var(--accent-quaternary);
+    color: var(--favorite-text);
+    :deep(svg) {
+      color: var(--accent-quaternary);
+    }
   }
 
   :deep(svg) {
@@ -261,6 +284,12 @@ const toggleFavorite = (item: Item) => {
   color: var(--text-primary);
   font-size: 14px;
   line-height: 1.75;
+
+  &.is-plain {
+    width: 100%;
+    max-width: 760px;
+    margin-inline: auto;
+  }
 
   &.is-image {
     display: flex;
@@ -326,7 +355,7 @@ const toggleFavorite = (item: Item) => {
   flex: 1;
   min-width: 0;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--clip-meta-size);
   font-variant-numeric: tabular-nums;
 }
 
@@ -339,7 +368,7 @@ const toggleFavorite = (item: Item) => {
   align-items: center;
   gap: 5px;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--shortcut-size);
   white-space: nowrap;
 }
 
@@ -348,7 +377,7 @@ kbd {
   border: 1px solid var(--border-light);
   border-radius: 4px;
   font-family: inherit;
-  font-size: 10px;
+  font-size: var(--shortcut-size);
   line-height: 1.4;
 }
 
@@ -369,7 +398,7 @@ kbd {
   margin-left: 4px;
   border-color: color-mix(in srgb, var(--accent-on-primary) 35%, transparent);
   color: var(--accent-on-primary);
-  font-size: 9px;
+  font-size: var(--shortcut-size);
 }
 
 .mascot {
@@ -417,7 +446,7 @@ kbd {
   }
 
   .detail-meta-strip {
-    font-size: 10px;
+    font-size: var(--shortcut-size);
   }
 
   .action-copy {

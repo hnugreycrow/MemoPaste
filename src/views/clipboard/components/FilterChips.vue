@@ -43,6 +43,7 @@ if (["text", "url", "code"].includes(activeFilter.value)) {
         class="filter-segment-item"
         :class="{ active: activeFilter === item.key }"
         :aria-selected="activeFilter === item.key"
+        :title="`${item.label}：全部历史中的 ${item.count} 条，不受搜索影响`"
         @click="selectFilter(item.key)"
       >
         <span class="filter-label">{{ item.label }}</span>

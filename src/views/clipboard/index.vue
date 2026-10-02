@@ -50,6 +50,8 @@ const displayItems = computed(() =>
     : clipboardData.value,
 );
 const {
+  ready,
+  resetWidth,
   columnsRef,
   listWidth,
   minWidth,
@@ -63,6 +65,16 @@ const {
 /** 避免快速切换或列表刷新时，过期的 getItem 覆盖当前选中 */
 let selectionRequestId = 0;
 let isPageActive = false;
+const keyboardActive = ref(false);
+const updateKeyboardHint = () => {
+  const target = document.activeElement;
+  keyboardActive.value =
+    !hasOpenDialog() &&
+    (target === document.body ||
+      target === mainContentRef.value ||
+      !!target?.closest(".clipboard-item-select"));
+};
+let dialogObserver: MutationObserver | undefined;
 
 const hasOpenDialog = () =>
   Array.from(
@@ -123,6 +135,8 @@ const ensureSelection = async () => {
 };
 
 watch(activeFilter, async (newType) => {
+  clipboardStore.clipboardData = [];
+  clipboardStore.totalItems = 0;
   currentPage.value = 1;
   const loaded = await clipboardStore.loadClipboardHistory(1, false, newType);
   if (loaded.ok && newType === activeFilter.value) {
@@ -278,6 +292,15 @@ const handleKeyboard = async (event: KeyboardEvent) => {
 };
 
 onMounted(async () => {
+  document.addEventListener("focusin", updateKeyboardHint);
+  document.addEventListener("focusout", updateKeyboardHint);
+  dialogObserver = new MutationObserver(updateKeyboardHint);
+  dialogObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["style", "class"],
+  });
   isPageActive = true;
   window.addEventListener("keydown", handleKeyboard);
   const loaded = await clipboardStore.loadClipboardHistory(1, false, activeFilter.value);
@@ -290,6 +313,9 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  document.removeEventListener("focusin", updateKeyboardHint);
+  document.removeEventListener("focusout", updateKeyboardHint);
+  dialogObserver?.disconnect();
   isPageActive = false;
   window.removeEventListener("keydown", handleKeyboard);
 });
@@ -308,12 +334,19 @@ onDeactivated(() => {
 
 <template>
   <div ref="mainContentRef" class="main-content" tabindex="-1">
-    <div ref="columnsRef" class="two-column-body" :class="{ 'is-resizing': isResizing }">
+    <div
+      ref="columnsRef"
+      class="two-column-body"
+      :class="{ 'is-resizing': isResizing }"
+      :style="{ visibility: ready ? 'visible' : 'hidden' }"
+    >
       <div id="clipboard-list" class="content-container" :style="{ flexBasis: `${listWidth}px` }">
         <div class="list-toolbar">
           <div class="list-heading">
             <h1>{{ isFavoritesView ? "收藏" : "历史记录" }}</h1>
-            <span class="list-count">{{ totalItems }} 条</span>
+            <span class="list-count">{{
+              clipboardStore.searchKeyword ? `找到 ${totalItems} 条` : `${totalItems} 条`
+            }}</span>
             <el-dropdown v-if="!isFavoritesView" trigger="click" placement="bottom-end">
               <el-button class="search-action-btn" text aria-label="更多历史操作" title="更多操作">
                 <i-ep-MoreFilled />
@@ -340,24 +373,32 @@ onDeactivated(() => {
           >
             <template #prefix><i-ep-Search /></template>
             <template #suffix
-              ><kbd v-if="!searchQuery" class="search-shortcut">Ctrl F</kbd></template
+              ><kbd v-if="!searchQuery" class="search-shortcut">Ctrl + F</kbd></template
             >
           </el-input>
         </div>
         <FilterChips v-if="!isFavoritesView" />
-        <FavoritesList
-          v-if="isFavoritesView"
-          ref="favoritesListRef"
-          :selected-id="selectedItem?.id"
-          @select="selectItem"
-          @favorite="toggleFavorite"
-        />
-        <HistoryList
-          v-else
-          ref="historyListRef"
-          :selected-id="selectedItem?.id"
-          @select="selectItem"
-        />
+        <div v-if="clipboardStore.historyError" class="history-error" role="alert">
+          {{ clipboardStore.historyError }}
+          <el-button link type="primary" @click="clipboardStore.loadClipboardHistory()"
+            >重试</el-button
+          >
+        </div>
+        <template v-if="!clipboardStore.historyError || clipboardData.length > 0">
+          <FavoritesList
+            v-if="isFavoritesView"
+            ref="favoritesListRef"
+            :selected-id="selectedItem?.id"
+            @select="selectItem"
+            @favorite="toggleFavorite"
+          />
+          <HistoryList
+            v-else
+            ref="historyListRef"
+            :selected-id="selectedItem?.id"
+            @select="selectItem"
+          />
+        </template>
         <div v-if="isLoadingMore && currentPage > 1" class="loading-more" role="status">
           <el-icon class="is-loading"><i-ep-Loading /></el-icon>
           <span>加载更多...</span>
@@ -373,7 +414,8 @@ onDeactivated(() => {
         :aria-valuemin="Math.round(minWidth)"
         :aria-valuemax="Math.round(maxWidth)"
         :aria-valuenow="Math.round(listWidth)"
-        title="拖动或使用左右方向键调整栏宽"
+        title="拖动或使用左右方向键调整栏宽，双击恢复默认"
+        @dblclick="resetWidth"
         @keydown="resizeWithKeyboard"
         @pointerdown="startResize"
         @pointermove="moveResize"
@@ -383,6 +425,8 @@ onDeactivated(() => {
       />
       <DetailPanel
         :item="selectedItem"
+        :search="clipboardStore.searchKeyword"
+        :keyboard-active="keyboardActive"
         v-model:showAllContent="showAllContent"
         @copy="copyItem"
         @delete="deleteItem"
@@ -393,6 +437,11 @@ onDeactivated(() => {
 </template>
 
 <style lang="scss" scoped>
+.history-error {
+  padding: 10px 16px;
+  color: var(--text-primary);
+  font-size: 12px;
+}
 .main-content {
   display: flex;
   flex-direction: column;
@@ -484,7 +533,7 @@ onDeactivated(() => {
   border-radius: 4px;
   color: var(--text-secondary);
   font-family: inherit;
-  font-size: 10px;
+  font-size: var(--shortcut-size);
   line-height: 1.4;
 }
 
