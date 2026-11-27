@@ -104,8 +104,8 @@ const metaLabel = computed(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 46px;
-  padding: 0 10px;
+  height: 38px;
+  padding: 0 10px 2px;
   background: var(--bg-header);
   border-bottom: 1px solid var(--border-light);
   -webkit-app-region: drag;

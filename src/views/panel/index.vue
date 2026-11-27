@@ -528,6 +528,9 @@ onUnmounted(() => {
 
 <template>
   <div class="panel-shell">
+    <div class="panel-drag-bar" title="按住拖动窗口" aria-hidden="true">
+      <span class="drag-pill" />
+    </div>
     <Transition name="view-fade" mode="out-in" @enter="handleViewEnter">
       <InlineSettings
         v-if="view === 'settings'"
@@ -732,6 +735,35 @@ onUnmounted(() => {
   box-shadow: var(--top-highlight);
 }
 
+.panel-drag-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 14px;
+  padding-top: 3px;
+  flex-shrink: 0;
+  background: var(--bg-header);
+  -webkit-app-region: drag;
+
+  &:hover .drag-pill {
+    width: 38px;
+    background: var(--accent-primary);
+    opacity: 0.55;
+  }
+}
+
+.drag-pill {
+  width: 30px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--border-medium);
+  opacity: 0.72;
+  transition:
+    width 0.18s var(--ease-out),
+    background-color 0.16s ease,
+    opacity 0.16s ease;
+}
+
 .list-view {
   display: flex;
   flex-direction: column;
@@ -744,8 +776,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 46px;
-  padding: 0 10px 0 14px;
+  height: 38px;
+  padding: 0 10px 2px 14px;
   background: var(--bg-header);
   border-bottom: 1px solid var(--border-light);
   -webkit-app-region: drag;
@@ -885,6 +917,7 @@ onUnmounted(() => {
   padding: 7px 10px;
   border-bottom: 1px solid var(--border-light);
   background: var(--bg-elevated);
+  -webkit-app-region: drag;
 }
 
 .tab-group {
@@ -895,6 +928,7 @@ onUnmounted(() => {
   padding: 2px;
   border-radius: 8px;
   background: var(--bg-secondary);
+  -webkit-app-region: no-drag;
 }
 
 /* 弹性滑动胶囊指示器 */
@@ -960,6 +994,7 @@ onUnmounted(() => {
   color: var(--text-tertiary);
   font-size: 12px;
   cursor: pointer;
+  -webkit-app-region: no-drag;
   transition:
     background-color 0.12s ease,
     color 0.12s ease;
@@ -1075,6 +1110,7 @@ onUnmounted(() => {
   color: var(--text-tertiary);
   font-size: 11px;
   user-select: none;
+  -webkit-app-region: drag;
 }
 
 .hint-item {
