@@ -5,21 +5,26 @@ const { mkdtempSync, writeFileSync } = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
 const assert = require("node:assert/strict");
+
 const output = mkdtempSync(path.join(os.tmpdir(), "memopaste-ui-"));
 app.setPath("userData", path.join(output, "profile"));
 app.disableHardwareAcceleration();
 app.on("window-all-closed", () => {});
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 app
   .whenReady()
   .then(async () => {
     const errors = [];
+
     for (const theme of ["light", "dark"]) {
       const win = new BrowserWindow({
-        width: 1000,
-        height: 700,
+        width: 380,
+        height: 520,
         show: false,
         frame: false,
+        transparent: true,
         webPreferences: {
           backgroundThrottling: false,
           offscreen: true,
@@ -31,161 +36,127 @@ app
         if (level >= 3) errors.push(message);
       });
       const run = (code) => win.webContents.executeJavaScript(code);
+
       await win.loadFile(path.join(__dirname, "../dist/index.html"));
-      for (let i = 0; i < 50 && !(await run('!!document.querySelector(".content-item")')); i++)
+      for (let i = 0; i < 50 && !(await run('!!document.querySelector(".clip-card")')); i++) {
         await sleep(100);
+      }
+
+      // 1. 主题与无横向溢出校验
       assert.equal(
-        await run("document.documentElement.classList.contains(" + JSON.stringify(theme) + ")"),
+        await run(`document.documentElement.classList.contains(${JSON.stringify(theme)})`),
         true,
       );
-      for (const [width, height, zoom] of [
-        [800, 600, 1],
-        [1000, 700, 1],
-        [1500, 1050, 1.5],
-        [1920, 1080, 1],
-      ]) {
-        win.setSize(width, height);
-        win.webContents.setZoomFactor(zoom);
-        await sleep(150);
-        const layout = await run(`(() => {
-        const button = document.querySelector('.action-copy').getBoundingClientRect();
-        const list = document.querySelector('.content-container').getBoundingClientRect();
-        return { overflow: document.documentElement.scrollWidth > innerWidth, buttonFits: button.right <= innerWidth && button.bottom <= innerHeight, listWidth: list.width };
+      const layout = await run(`(() => ({
+        overflowX: document.documentElement.scrollWidth > innerWidth,
+        cardCount: document.querySelectorAll('.clip-card').length,
+        firstAlias: document.querySelector('.card-alias')?.textContent?.trim() || '',
+        slot1: document.querySelector('.slot-num')?.textContent?.trim() || '',
+      }))()`);
+      assert.equal(layout.overflowX, false);
+      assert.equal(layout.cardCount, 3);
+      assert.equal(layout.firstAlias, "公司发票抬头");
+      assert.equal(layout.slot1, "1");
+      writeFileSync(
+        path.join(output, `${theme}-panel.png`),
+        (await win.webContents.capturePage()).toPNG(),
+      );
+
+      // 2. 实时搜索内容与安全高亮（无 script 注入）
+      await run(`(() => {
+        const el = document.querySelector('.search-input');
+        el.value = 'Needle';
+        el.dispatchEvent(new Event('input', { bubbles: true }));
       })()`);
-        assert.equal(layout.overflow, false);
-        assert.equal(layout.buttonFits, true);
-        assert.ok(layout.listWidth >= 320);
-        writeFileSync(
-          path.join(output, `${theme}-${width}-${zoom}.png`),
-          (await win.webContents.capturePage()).toPNG(),
-        );
-      }
-      win.setSize(1000, 700);
-      win.webContents.setZoomFactor(1);
-      await run(
-        `document.querySelector('.column-resizer').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))`,
-      );
-      await sleep(100);
-      assert.ok(
-        await run(
-          `(() => { const width = document.querySelector('.content-container').getBoundingClientRect().width; return width >= 340 && width <= 420; })()`,
-        ),
-      );
-      await run(`document.querySelector('.nav-item').focus()`);
-      assert.equal(
-        await run(`getComputedStyle(document.querySelector('.nav-item')).outlineStyle`),
-        "none",
-      );
-      await run(
-        `(() => { const el = document.querySelector('.search-input input'); el.focus(); el.value = 'Needle'; el.dispatchEvent(new Event('input', { bubbles: true })); })()`,
-      );
-      await sleep(600);
-      assert.equal(
-        await run(`document.querySelector('.list-count').textContent.trim()`),
-        "找到 2 条",
-      );
-      assert.ok(await run(`document.querySelector('.detail-reading').scrollTop > 0`));
-      assert.equal(await run(`!!document.querySelector('.keyboard-hint')`), false);
-      assert.equal(
-        await run(`document.querySelector('.detail-reading mark').textContent`),
-        "Needle",
-      );
-      assert.equal(await run(`document.querySelector('.detail-reading script')`), null);
-      assert.ok(
-        await run(
-          `(() => { const mark = document.querySelector('.item-title mark').getBoundingClientRect(); const title = document.querySelector('.item-title').getBoundingClientRect(); return mark.bottom <= title.bottom + 1; })()`,
-        ),
-      );
-      await run(`document.querySelectorAll('.clipboard-item-select')[1].click()`);
-      await sleep(200);
-      assert.equal(
-        await run(`document.querySelector('.detail-reading mark').textContent`),
-        "Needle",
-      );
-      assert.ok(await run(`document.querySelector('.detail-reading').scrollTop > 0`));
-      await run(`document.querySelector('.action-copy').click()`);
-      await sleep(50);
-      assert.ok((await run(`window.__test.snapshot().written`)).length > 3000);
+      await sleep(300);
+      assert.equal(await run(`document.querySelectorAll('.clip-card').length`), 2);
+      assert.equal(await run(`document.querySelector('.card-text mark')?.textContent`), "Needle");
+      assert.equal(await run(`document.querySelector('.panel-list script')`), null);
       writeFileSync(
         path.join(output, `${theme}-search.png`),
         (await win.webContents.capturePage()).toPNG(),
       );
-      await run(`location.hash = '#/settings'`);
+
+      // 3. 搜索备注名命中
+      await run(`(() => {
+        const el = document.querySelector('.search-input');
+        el.value = '发票';
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      })()`);
       await sleep(300);
-      const otherTheme = theme === "light" ? 1 : 0;
-      await run(
-        `window.__test.failSave(true); document.querySelectorAll('.theme-option')[${otherTheme}].click()`,
-      );
+      assert.equal(await run(`document.querySelectorAll('.clip-card').length`), 1);
+      assert.equal(await run(`document.querySelector('.card-alias mark')?.textContent`), "发票");
+
+      // 清空搜索
+      await run(`document.querySelector('.search-clear').click()`);
+      await sleep(250);
+      assert.equal(await run(`document.querySelectorAll('.clip-card').length`), 3);
+
+      // 4. 预览全文 + 仅复制（验证写入完整长文本）
+      await run(`document.querySelector('.action-icon[aria-label="预览全文"]').click()`);
+      await sleep(200);
+      assert.ok(await run(`!!document.querySelector('.preview-view')`));
+      await run(`document.querySelector('.preview-footer .btn.secondary').click()`);
       await sleep(100);
-      assert.equal(await run(`window.__test.snapshot().broadcastCount`), 0);
-      assert.equal(await run(`window.__test.snapshot().config.theme`), theme);
-      await run(`window.__test.failSave(true); document.querySelectorAll('.segment')[2].click()`);
-      await sleep(100);
-      assert.equal(
-        await run(`document.querySelector('.segment.active').textContent.trim()`),
-        "1 天",
+      assert.ok((await run(`window.__test.snapshot().written`)).length > 2000);
+      writeFileSync(
+        path.join(output, `${theme}-preview.png`),
+        (await win.webContents.capturePage()).toPNG(),
       );
-      await run(
-        `window.__test.failSave(false, true); document.querySelectorAll('.segment')[2].click()`,
-      );
-      await sleep(100);
-      assert.equal(
-        await run(`document.querySelector('.segment.active').textContent.trim()`),
-        "1 天",
-      );
-      await run(`window.__test.failSave(false); document.querySelectorAll('.segment')[2].click()`);
-      await sleep(100);
-      assert.equal(await run(`window.__test.snapshot().config.dataRetentionDays`), 3);
-      await run(`document.querySelectorAll('.theme-option')[${otherTheme}].click()`);
-      await sleep(100);
-      assert.equal(await run(`window.__test.snapshot().broadcastCount`), 1);
-      assert.equal(
-        await run(`window.__test.snapshot().config.theme`),
-        theme === "light" ? "dark" : "light",
-      );
-      await run(`document.querySelectorAll('.theme-option')[${1 - otherTheme}].click()`);
+      await run(`document.querySelector('.preview-view .back-btn').click()`);
       await sleep(150);
+
+      // 5. 暂停监听按钮 + 提示条
+      await run(`document.querySelector('.header-btn[aria-label="暂停记录"]').click()`);
+      await sleep(120);
+      assert.equal(await run(`window.__test.snapshot().paused`), true);
+      assert.ok(await run(`!!document.querySelector('.paused-strip')`));
+      await run(`document.querySelector('.paused-strip').click()`);
+      await sleep(120);
+      assert.equal(await run(`window.__test.snapshot().paused`), false);
+
+      // 6. 粘贴降级提示
+      await run(`window.__test.pasteStatus('copied'); document.querySelector('.clip-card').click()`);
+      await sleep(120);
+      assert.ok(
+        (await run(`document.querySelector('.panel-toast')?.textContent || ''`)).includes("Ctrl+V"),
+      );
+
+      // 7. 内嵌设置：主题与保留天数保存失败回滚 + 正常保存
+      await run(`document.querySelector('.header-btn[aria-label="打开设置"]').click()`);
+      await sleep(200);
+      assert.ok(await run(`!!document.querySelector('.settings-view')`));
       writeFileSync(
         path.join(output, `${theme}-settings.png`),
         (await win.webContents.capturePage()).toPNG(),
       );
+
+      const otherThemeIndex = theme === "light" ? 1 : 0;
+      await run(
+        `window.__test.failSave(true); document.querySelectorAll('.settings-view [aria-label="外观主题"] .seg-btn')[${otherThemeIndex}].click()`,
+      );
+      await sleep(100);
+      assert.equal(await run(`window.__test.snapshot().config.theme`), theme);
+
+      await run(
+        `window.__test.failSave(false, true); document.querySelectorAll('.retention-row .seg-btn')[3].click()`,
+      );
+      await sleep(100);
+      assert.equal(await run(`window.__test.snapshot().config.dataRetentionDays`), 7);
+
+      await run(
+        `window.__test.failSave(false); document.querySelectorAll('.retention-row .seg-btn')[3].click()`,
+      );
+      await sleep(100);
+      assert.equal(await run(`window.__test.snapshot().config.dataRetentionDays`), 30);
+
+      await run(`document.querySelector('.settings-view .back-btn').click()`);
+      await sleep(120);
+      assert.ok(await run(`!!document.querySelector('.panel-list')`));
+
       win.destroy();
     }
-    const panel = new BrowserWindow({
-      width: 350,
-      height: 480,
-      show: false,
-      frame: false,
-      webPreferences: {
-        backgroundThrottling: false,
-        offscreen: true,
-        preload: path.join(__dirname, "fixtures/ui-preload.cjs"),
-      },
-    });
-    await panel.loadFile(path.join(__dirname, "../dist/index.html"), { hash: "/panel" });
-    await sleep(500);
-    const panelRun = (code) => panel.webContents.executeJavaScript(code);
-    assert.ok(await panelRun(`document.documentElement.classList.contains('is-panel')`));
-    await panelRun(
-      `window.__test.pasteStatus('copied'); document.querySelector('.clip-card').click()`,
-    );
-    await sleep(100);
-    assert.equal(
-      await panelRun(`document.querySelector('.panel-notice').textContent`),
-      "已复制，请按 Ctrl + V 粘贴",
-    );
-    writeFileSync(
-      path.join(output, "panel-copied.png"),
-      (await panel.webContents.capturePage()).toPNG(),
-    );
-    await panelRun(
-      `window.__test.pasteStatus('failed'); document.querySelector('.clip-card').click()`,
-    );
-    await sleep(100);
-    assert.ok(
-      (await panelRun(`document.querySelector('.panel-notice').textContent`)).includes("复制失败"),
-    );
-    panel.destroy();
+
     assert.deepEqual(errors, []);
     writeFileSync(path.join(output, "result.json"), JSON.stringify({ ok: true, output }));
     console.log(`UI smoke checks passed. Screenshots: ${output}`);

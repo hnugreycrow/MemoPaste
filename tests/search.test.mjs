@@ -29,14 +29,40 @@ const databaseModule = compile(
   },
 );
 
-test("bounded search previews find late literal matches and preserve full content", () => {
+function createMemoryDb() {
   const db = new DatabaseSync(":memory:");
-  db.exec(`CREATE TABLE clipboard_items (id INTEGER PRIMARY KEY, content TEXT, type TEXT,
-    timestamp TEXT, size TEXT, is_favorite INTEGER, content_hash TEXT, file_path TEXT, thumb_path TEXT)`);
+  db.exec(`CREATE TABLE clipboard_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    content TEXT NOT NULL,
+    type TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    size TEXT,
+    is_favorite INTEGER DEFAULT 0,
+    alias TEXT,
+    content_hash TEXT,
+    file_path TEXT,
+    thumb_path TEXT
+  )`);
+  db.transaction = (fn) => () => {
+    db.exec("BEGIN");
+    try {
+      const result = fn();
+      db.exec("COMMIT");
+      return result;
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
+  };
   databaseModule.useTestDatabase(db);
+  return db;
+}
+
+test("bounded search previews find late literal matches and preserve full content", () => {
+  const db = createMemoryDb();
   const content = "前文😀".repeat(1100) + "Needle 中文 %_\\ <script> &" + "后文".repeat(150);
   db.prepare(
-    "INSERT INTO clipboard_items VALUES (1, ?, 'code', '2026-10-02', '20 KB', 0, NULL, NULL, NULL)",
+    "INSERT INTO clipboard_items VALUES (1, ?, 'code', '2026-10-02', '20 KB', 0, NULL, NULL, NULL, NULL)",
   ).run(content);
   for (const keyword of ["needle", "中文", "%_\\", "<script>", "&"]) {
     const result = databaseModule.getClipboardHistory(1, 10, "all", keyword);
@@ -49,6 +75,40 @@ test("bounded search previews find late literal matches and preserve full conten
   }
   assert.equal(databaseModule.getClipboardHistory(1, 10, "all", "missing").total, 0);
   assert.equal(databaseModule.getClipboardHistory(1, 10, "all").items[0].searchPreview, undefined);
+  db.close();
+});
+
+test("alias supports saving, trimming, searching and surviving deduplication", () => {
+  const db = createMemoryDb();
+  const saved = databaseModule.saveClipboardItem({
+    content: "91110108MA0012345X",
+    type: "text",
+    timestamp: new Date("2026-10-02T01:00:00Z"),
+    size: "18 B",
+    is_favorite: true,
+  });
+  assert.ok(saved);
+
+  assert.equal(databaseModule.setClipboardItemAlias(saved.id, "  公司发票抬头  "), true);
+  const byAlias = databaseModule.getClipboardHistory(1, 10, "all", "发票");
+  assert.equal(byAlias.total, 1);
+  assert.equal(byAlias.items[0].alias, "公司发票抬头");
+  assert.equal(byAlias.items[0].content, "91110108MA0012345X");
+
+  // Re-copying the same content deduplicates and keeps alias + favorite
+  const deduped = databaseModule.saveClipboardItem({
+    content: "91110108MA0012345X",
+    type: "text",
+    timestamp: new Date("2026-10-02T02:00:00Z"),
+    size: "18 B",
+  });
+  assert.equal(deduped.isNew, false);
+  assert.equal(deduped.is_favorite, true);
+  assert.equal(databaseModule.getClipboardItemById(saved.id).alias, "公司发票抬头");
+
+  // Blank alias clears it back to null
+  assert.equal(databaseModule.setClipboardItemAlias(saved.id, "   "), true);
+  assert.equal(databaseModule.getClipboardItemById(saved.id).alias, null);
   db.close();
 });
 

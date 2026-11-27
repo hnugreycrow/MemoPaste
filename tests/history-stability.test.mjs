@@ -3,14 +3,12 @@ import assert from "node:assert/strict";
 import { build } from "esbuild";
 import { createRequire } from "node:module";
 
-// Exercise the real store and virtual scroll together without starting Electron.
+// Exercise the real Pinia store without starting Electron.
 const compiled = await build({
   stdin: {
     contents: `export { useClipboardStore } from './src/stores/clipboardStore';
-      export { useVirtualScroll } from './src/views/clipboard/composables/useVirtualScroll';
-      export { groupClipboardRows, HISTORY_ROW_HEIGHT, DATE_HEADER_HEIGHT } from './src/utils/dateGroups';
       export { createPinia, setActivePinia } from 'pinia';
-      export { effectScope, nextTick } from 'vue';`,
+      export { nextTick } from 'vue';`,
     resolveDir: process.cwd(),
   },
   bundle: true,
@@ -24,76 +22,50 @@ new Function("require", "module", "exports", compiled.outputFiles[0].text)(
   module,
   module.exports,
 );
-const {
-  useClipboardStore,
-  useVirtualScroll,
-  groupClipboardRows,
-  HISTORY_ROW_HEIGHT,
-  DATE_HEADER_HEIGHT,
-  createPinia,
-  setActivePinia,
-  effectScope,
-  nextTick,
-} = module.exports;
+const { useClipboardStore, createPinia, setActivePinia, nextTick } = module.exports;
+
 const item = (id) => ({
   id,
   content: `record ${id}`,
   type: "text",
   timestamp: new Date(2026, 8, 10),
-  size: "10",
+  size: "10 B",
+  alias: null,
 });
 
-test("background arrivals retain loaded records, scroll anchor and pagination", async () => {
+test("background arrivals retain loaded records and pagination without duplicating", async () => {
   setActivePinia(createPinia());
-  let database = Array.from({ length: 80 }, (_, i) => item(80 - i));
+  const database = Array.from({ length: 100 }, (_, i) => item(100 - i));
   globalThis.window = {
     clipboard: {
       getHistory: async (page, size) => ({
         items: database.slice((page - 1) * size, page * size),
         total: database.length,
       }),
-      getCounts: async () => ({ all: database.length }),
+      getCounts: async () => ({ all: database.length, text: database.length, url: 0, code: 0, image: 0, favorite: 0 }),
     },
   };
   const store = useClipboardStore();
   await store.loadClipboardHistory();
   await store.loadClipboardHistory(2, true);
-  await store.loadClipboardHistory(3, true);
-  const scope = effectScope();
-  const scroll = scope.run(() =>
-    useVirtualScroll(() => groupClipboardRows(store.clipboardData, new Date(2026, 8, 10))),
-  );
-  const element = {
-    scrollTop: DATE_HEADER_HEIGHT + 15 * HISTORY_ROW_HEIGHT + 13,
-    clientHeight: 300,
-  };
-  scroll.contentListRef.value = element;
-  scroll.handleScroll();
-  database.unshift(item(81));
+  assert.equal(store.clipboardData.length, 40);
+
+  database.unshift(item(101));
   await store.refreshAfterClipboardChange();
-  await nextTick();
-  assert.equal(element.scrollTop, DATE_HEADER_HEIGHT + 16 * HISTORY_ROW_HEIGHT + 13);
-  assert.ok(store.clipboardData.some((row) => row.id === 51));
-  assert.equal(store.currentPage, 4);
-  await store.loadClipboardHistory(5, true);
-  assert.equal(new Set(store.clipboardData.map((row) => row.id)).size, 50);
-  // Recopying an already first record must not load another page.
+  assert.ok(store.clipboardData.some((row) => row.id === 61));
+  assert.equal(store.currentPage, 3);
+
+  await store.loadClipboardHistory(4, true);
+  assert.equal(new Set(store.clipboardData.map((row) => row.id)).size, 80);
+
+  // Recopying the top record must not expand loaded range
   await store.refreshAfterClipboardChange();
-  assert.equal(store.clipboardData.length, 50);
-  // A burst larger than one page must also retain the old tail.
-  database.unshift(...Array.from({ length: 25 }, (_, i) => item(106 - i)));
+  assert.equal(store.clipboardData.length, 80);
+
+  // A burst larger than one page must still retain the old tail
+  database.unshift(...Array.from({ length: 25 }, (_, i) => item(126 - i)));
   await store.refreshAfterClipboardChange();
-  await nextTick();
-  assert.ok(store.clipboardData.some((row) => row.id === 32));
-  assert.equal(element.scrollTop, DATE_HEADER_HEIGHT + 41 * HISTORY_ROW_HEIGHT + 13);
-  // Recopy the visible anchor itself: stay with its neighbours instead of following it to the top.
-  const movedIndex = database.findIndex((row) => row.id === 65);
-  const [moved] = database.splice(movedIndex, 1);
-  database.unshift({ ...moved, timestamp: new Date(2026, 8, 10, 12) });
-  await store.refreshAfterClipboardChange();
-  await nextTick();
-  assert.equal(element.scrollTop, DATE_HEADER_HEIGHT + 41 * HISTORY_ROW_HEIGHT + 13);
-  scope.stop();
+  assert.ok(store.clipboardData.some((row) => row.id === 22));
 });
 
 test("late background responses cannot replace newer search results", async () => {
@@ -107,7 +79,7 @@ test("late background responses cannot replace newer search results", async () =
           : new Promise((resolve) => {
               resolveOld = resolve;
             }),
-      getCounts: async () => ({ all: 100 }),
+      getCounts: async () => ({ all: 100, text: 100, url: 0, code: 0, image: 0, favorite: 0 }),
     },
   };
   const store = useClipboardStore();
@@ -126,8 +98,8 @@ test("late background responses cannot replace newer search results", async () =
 
 test("removing a favorite refills the loaded page without skipping the next record", async () => {
   setActivePinia(createPinia());
-  const database = Array.from({ length: 25 }, (_, index) => ({
-    ...item(25 - index),
+  const database = Array.from({ length: 30 }, (_, index) => ({
+    ...item(30 - index),
     is_favorite: true,
   }));
   globalThis.window = {
@@ -143,7 +115,14 @@ test("removing a favorite refills the loaded page without skipping the next reco
         database.find((row) => row.id === id).is_favorite = favorite;
         return true;
       },
-      getCounts: async () => ({ favorite: database.filter((row) => row.is_favorite).length }),
+      getCounts: async () => ({
+        all: database.length,
+        text: database.length,
+        url: 0,
+        code: 0,
+        image: 0,
+        favorite: database.filter((row) => row.is_favorite).length,
+      }),
     },
   };
   const store = useClipboardStore();
@@ -152,57 +131,45 @@ test("removing a favorite refills the loaded page without skipping the next reco
   const result = await store.toggleFavorite(store.clipboardData[0]);
   assert.equal(result.ok, true);
   assert.equal(result.favorited, false);
-  assert.equal(store.totalItems, 24);
-  assert.equal(store.clipboardData.length, 10);
+  assert.equal(store.totalItems, 29);
+  assert.equal(store.clipboardData.length, 20);
   assert.deepEqual(
     store.clipboardData.map((row) => row.id),
-    Array.from({ length: 10 }, (_, index) => 24 - index),
+    Array.from({ length: 20 }, (_, index) => 29 - index),
   );
   await store.loadClipboardHistory(2, true);
   assert.deepEqual(
     store.clipboardData.map((row) => row.id),
-    Array.from({ length: 20 }, (_, index) => 24 - index),
+    Array.from({ length: 29 }, (_, index) => 29 - index),
   );
 });
 
-test("clearing a search allows prefetching the same history range again", async () => {
+test("setting a non-empty alias auto-favorites the item and updates state", async () => {
   setActivePinia(createPinia());
-  const database = Array.from({ length: 50 }, (_, index) => item(50 - index));
-  const requests = [];
+  const favCalls = [];
+  const aliasCalls = [];
   globalThis.window = {
     clipboard: {
-      getHistory: async (page, size, _type, keyword) => {
-        requests.push({ page, keyword });
-        const rows = keyword ? [] : database;
-        return { items: rows.slice((page - 1) * size, page * size), total: rows.length };
+      getHistory: async () => ({ items: [item(1)], total: 1 }),
+      setAlias: async (id, alias) => {
+        aliasCalls.push({ id, alias });
+        return true;
       },
+      setFavorite: async (id, fav) => {
+        favCalls.push({ id, fav });
+        return true;
+      },
+      getCounts: async () => ({ all: 1, text: 1, url: 0, code: 0, image: 0, favorite: 1 }),
     },
   };
   const store = useClipboardStore();
   await store.loadClipboardHistory();
-  const scope = effectScope();
-  const scroll = scope.run(() =>
-    useVirtualScroll(() => groupClipboardRows(store.clipboardData, new Date(2026, 8, 10))),
-  );
-  scroll.contentListRef.value = {
-    scrollTop: 0,
-    clientHeight: DATE_HEADER_HEIGHT + 8 * HISTORY_ROW_HEIGHT,
-  };
-  scroll.handleScroll();
-  await nextTick();
-  await nextTick();
-  assert.equal(store.clipboardData.length, 20);
-  store.searchKeyword = "missing";
-  await store.loadClipboardHistory();
-  await nextTick();
-  assert.equal(store.clipboardData.length, 0);
-  store.searchKeyword = "";
-  await store.loadClipboardHistory();
-  await nextTick();
-  await nextTick();
-  assert.equal(store.clipboardData.length, 20);
-  assert.equal(requests.filter((request) => request.page === 2).length, 2);
-  scope.stop();
+  const res = await store.setItemAlias(store.clipboardData[0], "  常用命令  ");
+  assert.deepEqual(res, { ok: true, favorited: true });
+  assert.equal(store.clipboardData[0].alias, "常用命令");
+  assert.equal(store.clipboardData[0].is_favorite, true);
+  assert.deepEqual(aliasCalls, [{ id: 1, alias: "常用命令" }]);
+  assert.deepEqual(favCalls, [{ id: 1, fav: true }]);
 });
 
 test("failed search does not show stale rows and can be retried", async () => {
