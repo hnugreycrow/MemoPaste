@@ -1,73 +1,67 @@
-/* ===== Midnight Lavender 深色主题：冷调炭灰分层 + 淡紫色选中态 ===== */
+/* ===== Obsidian Mist 深色主题：深邃曜石 + 柔光靛蓝 ===== */
 :root.dark {
-  --favorite-text: #d8bf86;
-  --search-mark-bg: #675325;
+  /* 背景层级 */
+  --bg-primary: #16181d;
+  --bg-secondary: #1e2028;
+  --bg-tertiary: #1c1e25;
+  --bg-elevated: #1b1d24;
+  --bg-hover: #232630;
+  --bg-active: #232940;
+  --bg-seg-active: #2c3142;
 
-  /* 背景：窗口 / 卡片按亮度分层 */
-  --bg-primary: #14151a;
-  --bg-secondary: #1b1c23;
-  --bg-tertiary: #20212a;
-  --bg-hover: #272832;
-  --bg-active: #302b43;
+  /* 文本层级 */
+  --text-primary: #eceef4;
+  --text-secondary: #9da3b4;
+  --text-tertiary: #6e7587;
+  --text-inverse: #14161c;
 
-  /* 固定灰白色，避免透明文字随背景变化而失去对比度 */
-  --text-primary: #e8e8ef;
-  --text-secondary: #a2a4b5;
-  --text-tertiary: #9699ac;
-  --text-inverse: #211a32;
+  /* 发丝级边框 */
+  --border-light: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.15);
+  --border-selected: rgba(110, 139, 255, 0.42);
 
-  /* 边框 */
-  --border-light: #30313b;
-  --border-medium: #454754;
-  --border-selected: #514566;
+  /* 主强调色：柔光靛蓝 */
+  --accent-primary: #6e8bff;
+  --accent-primary-hover: #829cff;
+  --accent-on-primary: #ffffff;
+  --accent-soft: rgba(110, 139, 255, 0.16);
+  --accent-secondary: #34d399;
+  --accent-danger: #f26c7d;
+  --accent-tertiary: #a78bfa;
+  --accent-quaternary: #e8b24b;
 
-  /* 淡紫用于主要操作与标记，深紫底色统一表达选中状态 */
-  --accent-primary: #b5a0ef;
-  --accent-primary-hover: #c4b2f5;
-  --accent-on-primary: #211a32;
-  --accent-secondary: #b8a5e6;
-  --accent-danger: #eb8fa3;
-  --accent-tertiary: #b8a5e6;
-  --accent-quaternary: #d8bf86;
+  /* 常用收藏与搜索高亮 */
+  --favorite-bg: rgba(232, 178, 75, 0.14);
+  --favorite-border: #e8b24b;
+  --favorite-text: #f2c97d;
+  --search-mark-bg: rgba(234, 179, 8, 0.34);
 
-  --favorite-bg: #2c2821;
-  --favorite-border: #d8bf86;
+  /* 类型胶囊 */
+  --type-text-bg: rgba(110, 139, 255, 0.16);
+  --type-url-bg: rgba(52, 211, 153, 0.14);
+  --type-code-bg: rgba(167, 139, 250, 0.16);
+  --type-image-bg: rgba(96, 165, 250, 0.16);
+  --type-favorite-bg: rgba(232, 178, 75, 0.14);
 
-  --type-text-bg: #343044;
-  --type-url-bg: #263832;
-  --type-code-bg: #3d2b33;
-  --type-image-bg: #293345;
-  --type-favorite-bg: #2c2821;
+  --type-text-fg: #93abff;
+  --type-url-fg: #5eead4;
+  --type-code-fg: #c4b5fd;
+  --type-image-fg: #93c5fd;
 
-  --type-text-fg: #b8a5e6;
-  --type-url-fg: #88d4b5;
-  --type-code-fg: #e69ba8;
-  --type-image-fg: #9bbfe8;
-
-  --radius-sm: 7px;
-  --radius-md: 11px;
-  --radius-lg: 14px;
-  --shadow-soft: 0 2px 14px rgba(0, 0, 0, 0.28);
+  /* 窗口多层柔和投影 */
+  --panel-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.09),
+    0 14px 28px -4px rgba(0, 0, 0, 0.56),
+    0 4px 10px -2px rgba(0, 0, 0, 0.36);
+  --shadow-seg: 0 1px 3px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
 html.dark {
-  .tab-btn.active {
-    background: var(--bg-active);
-    border-color: var(--border-selected);
-    color: var(--accent-primary);
-  }
-
-  .panel-shell {
-    box-shadow:
-      0 10px 22px -4px rgba(0, 0, 0, 0.5),
-      0 3px 8px -2px rgba(0, 0, 0, 0.3);
-  }
-
   ::-webkit-scrollbar-thumb {
-    background: var(--border-medium);
+    background: rgba(255, 255, 255, 0.16);
 
     &:hover {
-      background: color-mix(in srgb, var(--accent-primary) 35%, var(--border-medium));
+      background: rgba(255, 255, 255, 0.28);
     }
   }
 }

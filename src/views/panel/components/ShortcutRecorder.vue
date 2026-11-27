@@ -89,31 +89,32 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  min-width: 120px;
-  min-height: 32px;
-  padding: 4px 10px;
+  gap: 4px;
+  min-width: 96px;
+  min-height: 30px;
+  padding: 4px 8px;
   border-radius: 8px;
-  border: 1.5px dashed var(--border-medium);
-  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  background: var(--bg-secondary);
   cursor: pointer;
   transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+    border-color 0.14s ease,
+    box-shadow 0.14s ease,
+    background-color 0.14s ease;
 
   &:hover {
     border-color: var(--accent-primary);
   }
 
   &.recording {
-    border-style: solid;
     border-color: var(--accent-primary);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 20%, transparent);
+    background: var(--bg-tertiary);
+    box-shadow: 0 0 0 2.5px var(--accent-soft);
   }
 
   &.invalid {
     border-color: var(--accent-danger);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-danger) 20%, transparent);
+    box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--accent-danger) 20%, transparent);
   }
 }
 
@@ -133,11 +134,11 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   min-width: 22px;
-  height: 22px;
+  height: 21px;
   padding: 0 6px;
   border-radius: 5px;
-  border: 1px solid var(--border-medium);
-  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  background: var(--bg-tertiary);
   box-shadow: 0 1px 0 var(--border-medium);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11px;

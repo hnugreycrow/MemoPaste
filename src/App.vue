@@ -19,7 +19,16 @@ body,
   padding: 0;
   overflow: hidden;
   background: transparent;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  font-family:
+    "Segoe UI Variable",
+    "Segoe UI",
+    -apple-system,
+    BlinkMacSystemFont,
+    "PingFang SC",
+    "Microsoft YaHei UI",
+    "Microsoft YaHei",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
   color: var(--text-primary);
 }
 
@@ -42,13 +51,13 @@ body,
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-light);
-  border-radius: 3px;
+  background: var(--border-medium);
+  border-radius: 999px;
   transition: background-color 0.2s ease;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--border-medium);
+button {
+  font-family: inherit;
 }
 
 button:focus {
@@ -63,7 +72,7 @@ button:focus-visible {
 mark {
   background: var(--search-mark-bg);
   color: inherit;
-  border-radius: 2px;
-  padding: 0 1px;
+  border-radius: 3px;
+  padding: 0 2px;
 }
 </style>

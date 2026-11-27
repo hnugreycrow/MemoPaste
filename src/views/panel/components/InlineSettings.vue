@@ -99,88 +99,92 @@ const handleQuit = () => {
         <i-ep-ArrowLeft />
         <span>返回</span>
       </button>
-      <span class="sub-title">设置</span>
+      <span class="sub-title">偏好设置</span>
     </header>
 
     <div class="settings-body">
-      <div class="setting-row shortcut-row">
-        <div class="row-info">
-          <span class="row-label">唤起快捷键</span>
-          <span class="row-desc">全局呼出或隐藏浮窗</span>
+      <div class="settings-group">
+        <div class="setting-row shortcut-row">
+          <div class="row-info">
+            <span class="row-label">唤起快捷键</span>
+            <span class="row-desc">全局呼出或隐藏浮窗</span>
+          </div>
+          <ShortcutRecorder
+            v-model:shortcut="shortcut"
+            @feedback="emit('feedback', $event)"
+            @recording-change="emit('recordingChange', $event)"
+          />
         </div>
-        <ShortcutRecorder
-          v-model:shortcut="shortcut"
-          @feedback="emit('feedback', $event)"
-          @recording-change="emit('recordingChange', $event)"
-        />
-      </div>
 
-      <div class="setting-row">
-        <div class="row-info">
-          <span class="row-label">外观主题</span>
-          <span class="row-desc">切换浅色或深色界面</span>
+        <div class="setting-row">
+          <div class="row-info">
+            <span class="row-label">外观主题</span>
+            <span class="row-desc">切换浅色瓷白或深色曜石</span>
+          </div>
+          <div class="segmented" role="radiogroup" aria-label="外观主题">
+            <button
+              type="button"
+              class="seg-btn"
+              :class="{ active: theme === 'light' }"
+              role="radio"
+              :aria-checked="theme === 'light'"
+              @click="handleThemeChange('light')"
+            >
+              浅色
+            </button>
+            <button
+              type="button"
+              class="seg-btn"
+              :class="{ active: theme === 'dark' }"
+              role="radio"
+              :aria-checked="theme === 'dark'"
+              @click="handleThemeChange('dark')"
+            >
+              深色
+            </button>
+          </div>
         </div>
-        <div class="segmented" role="radiogroup" aria-label="外观主题">
+
+        <div class="setting-row">
+          <div class="row-info">
+            <span class="row-label">开机自启</span>
+            <span class="row-desc">登录系统后静默常驻托盘</span>
+          </div>
           <button
             type="button"
-            class="seg-btn"
-            :class="{ active: theme === 'light' }"
-            role="radio"
-            :aria-checked="theme === 'light'"
-            @click="handleThemeChange('light')"
+            class="toggle-switch"
+            :class="{ checked: openAtLogin }"
+            role="switch"
+            :aria-checked="openAtLogin"
+            :disabled="saving.openAtLogin"
+            aria-label="开机自启"
+            @click="handleOpenAtLoginToggle"
           >
-            浅色
-          </button>
-          <button
-            type="button"
-            class="seg-btn"
-            :class="{ active: theme === 'dark' }"
-            role="radio"
-            :aria-checked="theme === 'dark'"
-            @click="handleThemeChange('dark')"
-          >
-            深色
+            <span class="toggle-knob" />
           </button>
         </div>
       </div>
 
-      <div class="setting-row">
-        <div class="row-info">
-          <span class="row-label">开机自启</span>
-          <span class="row-desc">登录系统后静默常驻托盘</span>
-        </div>
-        <button
-          type="button"
-          class="toggle-switch"
-          :class="{ checked: openAtLogin }"
-          role="switch"
-          :aria-checked="openAtLogin"
-          :disabled="saving.openAtLogin"
-          aria-label="开机自启"
-          @click="handleOpenAtLoginToggle"
-        >
-          <span class="toggle-knob" />
-        </button>
-      </div>
-
-      <div class="setting-row retention-row">
-        <div class="row-info">
-          <span class="row-label">自动清理</span>
-          <span class="row-desc">启动时清理超时非收藏记录（常用不受影响）</span>
-        </div>
-        <div class="segmented" role="radiogroup" aria-label="历史保留天数">
-          <button
-            v-for="days in retentionOptions"
-            :key="days"
-            type="button"
-            class="seg-btn"
-            :class="{ active: dataRetentionDays === days }"
-            role="radio"
-            :aria-checked="dataRetentionDays === days"
-            @click="handleRetentionChange(days)"
-          >
-            {{ days }}天
-          </button>
+      <div class="settings-group">
+        <div class="setting-row retention-row">
+          <div class="row-info">
+            <span class="row-label">自动清理</span>
+            <span class="row-desc">启动时清理超时非收藏记录，常用收藏不受影响</span>
+          </div>
+          <div class="segmented" role="radiogroup" aria-label="历史保留天数">
+            <button
+              v-for="days in retentionOptions"
+              :key="days"
+              type="button"
+              class="seg-btn"
+              :class="{ active: dataRetentionDays === days }"
+              role="radio"
+              :aria-checked="dataRetentionDays === days"
+              @click="handleRetentionChange(days)"
+            >
+              {{ days }}天
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -204,7 +208,8 @@ const handleQuit = () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px 8px;
+  height: 46px;
+  padding: 0 10px;
   border-bottom: 1px solid var(--border-light);
   -webkit-app-region: drag;
 }
@@ -223,6 +228,7 @@ const handleQuit = () => {
   font-size: 12.5px;
   font-weight: 500;
   cursor: pointer;
+  transition: background-color 0.12s ease;
 
   &:hover {
     background: var(--bg-hover);
@@ -239,10 +245,17 @@ const handleQuit = () => {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 10px 12px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+}
+
+.settings-group {
+  border-radius: 11px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-tertiary);
+  overflow: hidden;
 }
 
 .setting-row {
@@ -250,15 +263,16 @@ const handleQuit = () => {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 11px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border-light);
-  background: var(--bg-tertiary);
+  padding: 12px 13px;
+
+  & + & {
+    border-top: 1px solid var(--border-light);
+  }
 
   &.retention-row {
     flex-direction: column;
     align-items: stretch;
-    gap: 8px;
+    gap: 10px;
   }
 }
 
@@ -278,15 +292,14 @@ const handleQuit = () => {
 .row-desc {
   font-size: 11px;
   color: var(--text-tertiary);
-  line-height: 1.35;
+  line-height: 1.4;
 }
 
 .segmented {
   display: inline-flex;
-  padding: 2px;
+  padding: 2.5px;
   gap: 2px;
   border-radius: 8px;
-  border: 1px solid var(--border-light);
   background: var(--bg-secondary);
   flex-shrink: 0;
 
@@ -298,7 +311,7 @@ const handleQuit = () => {
 .seg-btn {
   min-width: 44px;
   height: 26px;
-  padding: 0 8px;
+  padding: 0 9px;
   border: none;
   border-radius: 6px;
   background: transparent;
@@ -307,8 +320,9 @@ const handleQuit = () => {
   font-weight: 500;
   cursor: pointer;
   transition:
-    background-color 0.12s ease,
-    color 0.12s ease;
+    background-color 0.14s ease,
+    color 0.14s ease,
+    box-shadow 0.14s ease;
 
   .retention-row & {
     flex: 1;
@@ -319,8 +333,10 @@ const handleQuit = () => {
   }
 
   &.active {
-    background: var(--accent-primary);
-    color: var(--accent-on-primary, #fff);
+    background: var(--bg-seg-active);
+    color: var(--accent-primary);
+    font-weight: 600;
+    box-shadow: var(--shadow-seg);
   }
 }
 
@@ -334,7 +350,7 @@ const handleQuit = () => {
   background: var(--border-medium);
   cursor: pointer;
   flex-shrink: 0;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.16s ease;
 
   &.checked {
     background: var(--accent-primary);
@@ -353,7 +369,7 @@ const handleQuit = () => {
   border-radius: 50%;
   background: #ffffff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
-  transition: transform 0.15s ease;
+  transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1);
 
   .toggle-switch.checked & {
     transform: translateX(16px);
@@ -366,7 +382,7 @@ const handleQuit = () => {
   justify-content: space-between;
   padding: 10px 14px;
   border-top: 1px solid var(--border-light);
-  background: color-mix(in srgb, var(--bg-primary) 50%, transparent);
+  background: var(--bg-elevated);
 }
 
 .version-text {
@@ -378,9 +394,9 @@ const handleQuit = () => {
 .quit-btn {
   height: 28px;
   padding: 0 12px;
-  border-radius: 7px;
-  border: 1px solid color-mix(in srgb, var(--accent-danger) 40%, transparent);
-  background: color-mix(in srgb, var(--accent-danger) 10%, transparent);
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--accent-danger) 35%, transparent);
+  background: color-mix(in srgb, var(--accent-danger) 9%, transparent);
   color: var(--accent-danger);
   font-size: 12px;
   font-weight: 500;
@@ -390,7 +406,7 @@ const handleQuit = () => {
     border-color 0.12s ease;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent-danger) 18%, transparent);
+    background: color-mix(in srgb, var(--accent-danger) 16%, transparent);
     border-color: var(--accent-danger);
   }
 }

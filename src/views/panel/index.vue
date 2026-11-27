@@ -648,6 +648,13 @@ onUnmounted(() => {
           <div v-if="isLoadingMore" class="list-footer">加载中…</div>
         </template>
       </div>
+
+      <footer class="panel-footer" aria-hidden="true">
+        <span class="hint-item"><kbd>↵</kbd> 粘贴</span>
+        <span class="hint-item"><kbd>Space</kbd> 预览</span>
+        <span class="hint-item"><kbd>F2</kbd> 备注</span>
+        <span class="hint-item"><kbd>Alt</kbd>+<kbd>1-9</kbd> 秒贴</span>
+      </footer>
     </template>
 
     <Transition name="toast">
@@ -681,17 +688,16 @@ onUnmounted(() => {
   border-radius: var(--radius-lg, 14px);
   overflow: hidden;
   background: var(--bg-primary);
-  border: 1px solid var(--border-light);
-  box-shadow:
-    0 10px 22px -4px rgba(24, 24, 38, 0.18),
-    0 3px 8px -2px rgba(24, 24, 38, 0.08);
+  box-shadow: var(--panel-shadow);
 }
 
 .panel-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 10px 8px;
+  height: 46px;
+  padding: 0 10px 0 14px;
+  border-bottom: 1px solid var(--border-light);
   -webkit-app-region: drag;
 }
 
@@ -705,23 +711,19 @@ onUnmounted(() => {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 8px;
-  border-radius: 8px;
-  border: 1px solid var(--border-light);
-  background: var(--bg-tertiary);
-  transition: border-color 0.12s ease;
-
-  &:focus-within {
-    border-color: var(--accent-primary);
-  }
+  gap: 8px;
+  height: 100%;
 }
 
 .search-icon {
   flex-shrink: 0;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--text-tertiary);
+  transition: color 0.14s ease;
+
+  .search-box:focus-within & {
+    color: var(--accent-primary);
+  }
 }
 
 .search-input {
@@ -731,7 +733,7 @@ onUnmounted(() => {
   border: none;
   background: transparent;
   color: var(--text-primary);
-  font-size: 12.5px;
+  font-size: 13.5px;
   outline: none;
 
   &::placeholder {
@@ -752,6 +754,9 @@ onUnmounted(() => {
   color: var(--text-secondary);
   font-size: 11px;
   cursor: pointer;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
 
   &:hover {
     background: var(--bg-hover);
@@ -763,30 +768,27 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
   padding: 0;
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  background: var(--bg-tertiary);
+  border: none;
+  border-radius: 7px;
+  background: transparent;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 15px;
   cursor: pointer;
   transition:
     background-color 0.12s ease,
-    border-color 0.12s ease,
     color 0.12s ease;
 
   &:hover {
     background: var(--bg-hover);
-    border-color: var(--border-medium);
     color: var(--text-primary);
   }
 
   &.paused {
-    background: color-mix(in srgb, var(--favorite-border) 18%, var(--bg-tertiary));
-    border-color: var(--favorite-border);
+    background: var(--favorite-bg);
     color: var(--favorite-border);
   }
 }
@@ -796,8 +798,9 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 0 10px 8px;
+  padding: 7px 10px;
   border-bottom: 1px solid var(--border-light);
+  background: var(--bg-elevated);
 }
 
 .tab-group {
@@ -815,7 +818,7 @@ onUnmounted(() => {
   gap: 4px;
   height: 24px;
   padding: 0 9px;
-  border: 1px solid transparent;
+  border: none;
   border-radius: 6px;
   background: transparent;
   color: var(--text-secondary);
@@ -823,19 +826,19 @@ onUnmounted(() => {
   font-weight: 500;
   cursor: pointer;
   transition:
-    background-color 0.12s ease,
-    color 0.12s ease,
-    border-color 0.12s ease;
+    background-color 0.14s ease,
+    color 0.14s ease,
+    box-shadow 0.14s ease;
 
   &:hover:not(.active) {
     color: var(--text-primary);
   }
 
   &.active {
-    background: var(--bg-tertiary);
-    border-color: var(--border-light);
+    background: var(--bg-seg-active);
     color: var(--accent-primary);
     font-weight: 600;
+    box-shadow: var(--shadow-seg);
   }
 }
 
@@ -846,6 +849,7 @@ onUnmounted(() => {
 
   .tab-btn.active & {
     color: var(--accent-primary);
+    opacity: 0.85;
   }
 }
 
@@ -874,7 +878,7 @@ onUnmounted(() => {
   }
 
   &:disabled {
-    opacity: 0.45;
+    opacity: 0.4;
     cursor: default;
   }
 }
@@ -884,7 +888,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 5px 12px;
+  padding: 6px 12px;
   border: none;
   border-bottom: 1px solid var(--border-light);
   background: var(--favorite-bg);
@@ -924,10 +928,10 @@ onUnmounted(() => {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 8px;
+  padding: 6px 7px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 2px;
 }
 
 .empty-state {
@@ -952,10 +956,47 @@ onUnmounted(() => {
   color: var(--text-tertiary);
 }
 
+.panel-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 30px;
+  padding: 0 12px;
+  border-top: 1px solid var(--border-light);
+  background: var(--bg-elevated);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  user-select: none;
+}
+
+.hint-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+
+  kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+    background: var(--bg-tertiary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10px;
+    color: var(--text-secondary);
+    line-height: 1;
+  }
+}
+
 .panel-toast {
   position: absolute;
   left: 50%;
-  bottom: 12px;
+  bottom: 40px;
   transform: translateX(-50%);
   max-width: calc(100% - 28px);
   padding: 6px 12px;

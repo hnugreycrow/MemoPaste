@@ -75,9 +75,11 @@ const metaLabel = computed(() => {
         <img v-if="imageSrc" :src="imageSrc" class="preview-img" alt="剪贴板图片预览" />
         <div v-else class="preview-status">图片文件不可用</div>
       </div>
-      <pre v-else class="preview-text" :class="{ 'is-code': item.type === 'code' }">{{
-        item.content
-      }}</pre>
+      <div v-else class="preview-card">
+        <pre class="preview-text" :class="{ 'is-code': item.type === 'code' }">{{
+          item.content
+        }}</pre>
+      </div>
     </div>
 
     <footer class="preview-footer">
@@ -102,7 +104,8 @@ const metaLabel = computed(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px 8px;
+  height: 46px;
+  padding: 0 10px;
   border-bottom: 1px solid var(--border-light);
   -webkit-app-region: drag;
 }
@@ -125,6 +128,7 @@ const metaLabel = computed(() => {
   font-size: 12.5px;
   font-weight: 500;
   cursor: pointer;
+  transition: background-color 0.12s ease;
 
   &:hover {
     background: var(--bg-hover);
@@ -140,7 +144,7 @@ const metaLabel = computed(() => {
 }
 
 .type-pill {
-  padding: 1px 6px;
+  padding: 1.5px 6px;
   border-radius: 5px;
   font-size: 10.5px;
   font-weight: 600;
@@ -174,6 +178,9 @@ const metaLabel = computed(() => {
   color: var(--text-secondary);
   font-size: 14px;
   cursor: pointer;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
 
   &:hover {
     background: var(--bg-hover);
@@ -186,6 +193,7 @@ const metaLabel = computed(() => {
   }
 
   &.danger:hover {
+    background: color-mix(in srgb, var(--accent-danger) 12%, transparent);
     color: var(--accent-danger);
   }
 }
@@ -194,9 +202,10 @@ const metaLabel = computed(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 14px;
+  margin: 10px 12px 0;
+  padding: 7px 10px;
+  border-radius: 8px;
   background: var(--favorite-bg);
-  border-bottom: 1px solid var(--border-light);
   color: var(--favorite-text);
   font-size: 12px;
   font-weight: 600;
@@ -218,7 +227,7 @@ const metaLabel = computed(() => {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 12px 14px;
+  padding: 10px 12px 12px;
 
   &.is-image {
     display: flex;
@@ -227,11 +236,19 @@ const metaLabel = computed(() => {
   }
 }
 
+.preview-card {
+  min-height: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-tertiary);
+}
+
 .preview-status {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 120px;
+  min-height: 140px;
   font-size: 12.5px;
   color: var(--text-tertiary);
 }
@@ -247,7 +264,7 @@ const metaLabel = computed(() => {
 .preview-img {
   max-width: 100%;
   max-height: 100%;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid var(--border-light);
   object-fit: contain;
   display: block;
@@ -259,7 +276,7 @@ const metaLabel = computed(() => {
   word-break: break-word;
   font-family: inherit;
   font-size: 12.5px;
-  line-height: 1.6;
+  line-height: 1.65;
   color: var(--text-primary);
   user-select: text;
 
@@ -276,7 +293,7 @@ const metaLabel = computed(() => {
   gap: 10px;
   padding: 10px 12px;
   border-top: 1px solid var(--border-light);
-  background: color-mix(in srgb, var(--bg-primary) 50%, transparent);
+  background: var(--bg-elevated);
 }
 
 .footer-meta {
@@ -294,7 +311,7 @@ const metaLabel = computed(() => {
 .btn {
   height: 30px;
   padding: 0 12px;
-  border-radius: 7px;
+  border-radius: 8px;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;

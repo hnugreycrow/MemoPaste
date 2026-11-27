@@ -1,63 +1,67 @@
-/* ===== ClipMint 浅色主题：薄荷绿底 + 薰衣草紫主色 ===== */
+/* ===== Porcelain Slate 浅色主题：温润瓷白 + 晴空靛蓝 ===== */
 :root.light {
-  /* 背景：薄荷绿洗色 */
-  --bg-primary: #f4f8f6;
-  --bg-secondary: #eaf3ef;
+  /* 背景层级 */
+  --bg-primary: #fbfbfd;
+  --bg-secondary: #f2f4f8;
   --bg-tertiary: #ffffff;
-  --bg-hover: #ede4ff;
-  --bg-active: #e8deff;
+  --bg-elevated: #f6f7fb;
+  --bg-hover: #f1f3f8;
+  --bg-active: #eef2ff;
+  --bg-seg-active: #ffffff;
 
-  /* 文本 */
-  --text-primary: #2a2438;
-  --text-secondary: #5c566e;
-  --text-tertiary: #8f889e;
+  /* 文本层级 */
+  --text-primary: #181a20;
+  --text-secondary: #5a6070;
+  --text-tertiary: #8e95a5;
   --text-inverse: #ffffff;
 
-  /* 边框 */
-  --border-light: #d5e8e1;
-  --border-medium: #c2d9d0;
+  /* 发丝级边框 */
+  --border-light: rgba(15, 23, 42, 0.08);
+  --border-medium: rgba(15, 23, 42, 0.15);
+  --border-selected: rgba(79, 110, 247, 0.34);
 
-  /* 强调色：薰衣草紫主色 */
-  --accent-primary: #8b6de8;
-  --accent-primary-hover: #7a5ad9;
+  /* 主强调色：冷静靛蓝 */
+  --accent-primary: #4f6ef7;
+  --accent-primary-hover: #3f5de3;
   --accent-on-primary: #ffffff;
-  --accent-secondary: #3db88a;
-  --accent-danger: #e45d7a;
-  --accent-tertiary: #9b7aef;
-  --accent-quaternary: #e0a14a;
+  --accent-soft: rgba(79, 110, 247, 0.11);
+  --accent-secondary: #0f766e;
+  --accent-danger: #e1495b;
+  --accent-tertiary: #6d28d9;
+  --accent-quaternary: #d98a1a;
 
-  --favorite-bg: rgba(224, 161, 74, 0.12);
-  --favorite-border: #e0a14a;
+  /* 常用收藏与搜索高亮 */
+  --favorite-bg: rgba(217, 138, 26, 0.1);
+  --favorite-border: #d98a1a;
+  --favorite-text: #9a5b0a;
+  --search-mark-bg: rgba(250, 204, 21, 0.42);
 
-  --type-text-bg: rgba(139, 109, 232, 0.12);
-  --type-url-bg: rgba(61, 184, 138, 0.12);
-  --type-code-bg: rgba(245, 108, 108, 0.16);
-  --type-image-bg: rgba(64, 140, 230, 0.12);
-  --type-favorite-bg: rgba(224, 161, 74, 0.12);
+  /* 类型胶囊（低饱和克制配色） */
+  --type-text-bg: rgba(79, 110, 247, 0.1);
+  --type-url-bg: rgba(15, 118, 110, 0.1);
+  --type-code-bg: rgba(109, 40, 217, 0.1);
+  --type-image-bg: rgba(29, 78, 216, 0.1);
+  --type-favorite-bg: rgba(217, 138, 26, 0.12);
 
-  --type-text-fg: #7a5ad9;
-  --type-url-fg: #2f9e74;
-  --type-code-fg: #f56c6c;
-  --type-image-fg: #3a7fd4;
+  --type-text-fg: #3f5de3;
+  --type-url-fg: #0f766e;
+  --type-code-fg: #6d28d9;
+  --type-image-fg: #1d4ed8;
 
-  --radius-sm: 7px;
-  --radius-md: 11px;
-  --radius-lg: 14px;
-  --shadow-soft: 0 2px 12px rgba(139, 109, 232, 0.07);
+  /* 窗口多层柔和投影 */
+  --panel-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.08),
+    0 12px 26px -6px rgba(15, 23, 42, 0.16),
+    0 4px 10px -2px rgba(15, 23, 42, 0.07);
+  --shadow-seg: 0 1px 2px rgba(15, 23, 42, 0.09), 0 0 0 1px rgba(15, 23, 42, 0.04);
 }
 
 html.light {
-  .tab-btn.active {
-    background: color-mix(in srgb, var(--accent-primary) 10%, white);
-    border-color: color-mix(in srgb, var(--accent-primary) 30%, transparent);
-    color: var(--accent-primary);
-  }
-
   ::-webkit-scrollbar-thumb {
-    background: color-mix(in srgb, var(--accent-primary) 25%, var(--border-light));
+    background: rgba(15, 23, 42, 0.16);
 
     &:hover {
-      background: color-mix(in srgb, var(--accent-primary) 40%, var(--border-medium));
+      background: rgba(15, 23, 42, 0.28);
     }
   }
 }

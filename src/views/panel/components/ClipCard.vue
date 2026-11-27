@@ -199,56 +199,54 @@ const handleCardClick = () => {
       </template>
     </div>
 
-    <div v-if="!editingAlias" class="card-trail">
-      <div class="card-meta">
-        <span v-if="showTypeBadge" class="type-pill" :class="`type-${item.type}`">
-          {{ getTypeLabel(item.type) }}
-        </span>
-        <i-ep-StarFilled v-if="item.is_favorite" class="fav-dot" aria-label="常用收藏" />
-        <time class="card-time" :title="fullTime">{{ compactTime }}</time>
-      </div>
+    <div v-if="!editingAlias" class="card-meta">
+      <span v-if="showTypeBadge" class="type-pill" :class="`type-${item.type}`">
+        {{ getTypeLabel(item.type) }}
+      </span>
+      <i-ep-StarFilled v-if="item.is_favorite" class="fav-dot" aria-label="常用收藏" />
+      <time class="card-time" :title="fullTime">{{ compactTime }}</time>
+    </div>
 
-      <div class="card-actions" @click.stop>
-        <button
-          type="button"
-          class="action-icon"
-          title="预览全文 (Space)"
-          aria-label="预览全文"
-          @click="emit('preview', item, $event)"
-        >
-          <i-ep-View />
-        </button>
-        <button
-          type="button"
-          class="action-icon"
-          :class="{ active: hasAlias }"
-          title="编辑备注 (F2)"
-          aria-label="编辑备注"
-          @click="emit('startEditAlias', item, $event)"
-        >
-          <i-ep-EditPen />
-        </button>
-        <button
-          type="button"
-          class="action-icon fav"
-          :class="{ active: item.is_favorite }"
-          :title="item.is_favorite ? '取消常用收藏' : '加入常用收藏'"
-          :aria-label="item.is_favorite ? '取消常用收藏' : '加入常用收藏'"
-          @click="emit('favorite', item, $event)"
-        >
-          <i-ep-StarFilled v-if="item.is_favorite" />
-          <i-ep-Star v-else />
-        </button>
-        <button
-          type="button"
-          class="action-icon danger"
-          title="删除 (Shift+Delete)"
-          aria-label="删除"
-          @click="emit('delete', item, $event)"
-        >
-          <i-ep-Delete />
-        </button>
-      </div>
+    <div v-if="!editingAlias" class="card-actions" @click.stop>
+      <button
+        type="button"
+        class="action-icon"
+        title="预览全文 (Space)"
+        aria-label="预览全文"
+        @click="emit('preview', item, $event)"
+      >
+        <i-ep-View />
+      </button>
+      <button
+        type="button"
+        class="action-icon"
+        :class="{ active: hasAlias }"
+        title="编辑备注 (F2)"
+        aria-label="编辑备注"
+        @click="emit('startEditAlias', item, $event)"
+      >
+        <i-ep-EditPen />
+      </button>
+      <button
+        type="button"
+        class="action-icon fav"
+        :class="{ active: item.is_favorite }"
+        :title="item.is_favorite ? '取消常用收藏' : '加入常用收藏'"
+        :aria-label="item.is_favorite ? '取消常用收藏' : '加入常用收藏'"
+        @click="emit('favorite', item, $event)"
+      >
+        <i-ep-StarFilled v-if="item.is_favorite" />
+        <i-ep-Star v-else />
+      </button>
+      <button
+        type="button"
+        class="action-icon danger"
+        title="删除 (Shift+Delete)"
+        aria-label="删除"
+        @click="emit('delete', item, $event)"
+      >
+        <i-ep-Delete />
+      </button>
     </div>
   </article>
 </template>
@@ -258,42 +256,52 @@ const handleCardClick = () => {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   min-height: 52px;
-  padding: 7px 10px 7px 6px;
-  border-radius: 9px;
+  padding: 8px 10px 8px 9px;
+  border-radius: 10px;
   border: 1px solid transparent;
-  background: var(--bg-tertiary);
+  background: transparent;
   cursor: pointer;
   user-select: none;
   transition:
     background-color 0.12s ease,
     border-color 0.12s ease;
 
-  &.favorite {
-    background: color-mix(in srgb, var(--favorite-bg) 55%, var(--bg-tertiary));
-    border-color: color-mix(in srgb, var(--favorite-border) 22%, transparent);
+  &::before {
+    content: "";
+    position: absolute;
+    left: 2px;
+    top: 11px;
+    bottom: 11px;
+    width: 2.5px;
+    border-radius: 999px;
+    background: transparent;
+    transition: background-color 0.12s ease;
   }
 
   &:hover {
     background: var(--bg-hover);
-    border-color: var(--border-medium);
   }
 
   &.focused {
     background: var(--bg-active);
-    border-color: var(--accent-primary);
+    border-color: var(--border-selected);
+
+    &::before {
+      background: var(--accent-primary);
+    }
   }
 
   &.is-editing {
     cursor: default;
-    border-color: var(--accent-primary);
     background: var(--bg-tertiary);
+    border-color: var(--accent-primary);
   }
 }
 
 .card-slot {
-  width: 16px;
+  width: 18px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -301,13 +309,24 @@ const handleCardClick = () => {
 }
 
 .slot-num {
-  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--bg-secondary);
+  font-size: 10.5px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--text-tertiary);
   line-height: 1;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
 
   .clip-card.focused & {
+    background: var(--accent-soft);
     color: var(--accent-primary);
   }
 }
@@ -323,9 +342,9 @@ const handleCardClick = () => {
   width: 40px;
   height: 40px;
   flex-shrink: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
-  border: 1px solid var(--border-light);
+  box-shadow: inset 0 0 0 1px var(--border-light);
   background: var(--bg-secondary);
   display: flex;
   align-items: center;
@@ -365,7 +384,7 @@ const handleCardClick = () => {
 .card-text {
   margin: 0;
   font-size: 12.5px;
-  line-height: 1.4;
+  line-height: 1.45;
   color: var(--text-primary);
   overflow: hidden;
   display: -webkit-box;
@@ -387,7 +406,7 @@ const handleCardClick = () => {
 
 .card-image-info {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
   min-width: 0;
 }
@@ -399,8 +418,11 @@ const handleCardClick = () => {
 }
 
 .image-dim {
-  font-size: 11.5px;
-  color: var(--text-tertiary);
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--bg-secondary);
+  font-size: 11px;
+  color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -417,9 +439,9 @@ const handleCardClick = () => {
 .alias-input {
   flex: 1;
   min-width: 0;
-  height: 26px;
+  height: 28px;
   padding: 0 8px;
-  border-radius: 6px;
+  border-radius: 7px;
   border: 1px solid var(--accent-primary);
   background: var(--bg-secondary);
   color: var(--text-primary);
@@ -435,11 +457,11 @@ const handleCardClick = () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   padding: 0;
   border: none;
-  border-radius: 6px;
+  border-radius: 7px;
   background: var(--bg-secondary);
   color: var(--text-secondary);
   cursor: pointer;
@@ -456,29 +478,23 @@ const handleCardClick = () => {
   }
 }
 
-.card-trail {
+.card-meta {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  min-width: 34px;
-}
-
-.card-meta {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  gap: 5px;
   color: var(--text-tertiary);
   font-size: 11px;
   white-space: nowrap;
+  transition: opacity 0.12s ease;
 }
 
 .type-pill {
   padding: 1px 5px;
-  border-radius: 4px;
+  border-radius: 5px;
   font-size: 10px;
   font-weight: 600;
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
 .fav-dot {
@@ -490,41 +506,55 @@ const handleCardClick = () => {
   font-variant-numeric: tabular-nums;
 }
 
+/* 悬浮操作胶囊：绝对定位不挤压正文宽度，键盘上下切换时文字零跳动 */
 .card-actions {
-  display: none;
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--bg-seg-active);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-seg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
 }
 
 .clip-card:hover .card-meta,
 .clip-card.focused .card-meta {
-  display: none;
+  opacity: 0;
 }
 
 .clip-card:hover .card-actions,
 .clip-card.focused .card-actions {
-  display: flex;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .action-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   padding: 0;
   border: none;
   border-radius: 6px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 12.5px;
   cursor: pointer;
   transition:
     background-color 0.12s ease,
     color 0.12s ease;
 
   &:hover {
-    background: color-mix(in srgb, var(--bg-primary) 70%, transparent);
+    background: var(--bg-hover);
     color: var(--text-primary);
   }
 
@@ -538,6 +568,7 @@ const handleCardClick = () => {
   }
 
   &.danger:hover {
+    background: color-mix(in srgb, var(--accent-danger) 12%, transparent);
     color: var(--accent-danger);
   }
 }

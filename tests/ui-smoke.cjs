@@ -43,6 +43,7 @@ app
       for (let i = 0; i < 50 && !(await run('!!document.querySelector(".clip-card")')); i++) {
         await sleep(100);
       }
+      await sleep(120);
 
       // 1. 主题与无横向溢出校验
       assert.equal(
