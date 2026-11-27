@@ -141,13 +141,11 @@ function initializeServices() {
   trayService = new TrayService(
     windowService,
     clipboardService,
-    shortcutService,
     path.join(process.env.VITE_PUBLIC as string, "tray-icon.png"),
   );
   trayService.createTray();
 
   clipboardService.setOnPausedChanged(() => trayService?.refreshMenu());
-  shortcutService.setOnShortcutChanged(() => trayService?.refreshMenu());
 }
 
 /** 版本与退出 IPC；配置/开机自启在 ConfigService */

@@ -1,17 +1,14 @@
 import { Tray, Menu, nativeImage, app } from "electron";
 import { WindowService } from "./window-service";
 import { ClipboardService } from "./clipboard-service";
-import { ShortcutService } from "./shortcut-service";
-import { formatShortcutForDisplay } from "@shared/shortcut";
 
-/** 系统托盘：左键切换浮窗，右键控制监听暂停、打开设置与退出 */
+/** 系统托盘：左键切换浮窗，右键精简为暂停/恢复、偏好设置与退出 */
 export class TrayService {
   private tray: Tray | null = null;
 
   constructor(
     private readonly windowService: WindowService,
     private readonly clipboardService: ClipboardService,
-    private readonly shortcutService: ShortcutService,
     private readonly iconPath: string,
   ) {}
 
@@ -39,34 +36,23 @@ export class TrayService {
 
     this.updateTooltip();
     const paused = this.clipboardService.isPaused();
-    const rawShortcut = this.shortcutService.getCurrentShortcut();
-    const shortcutLabel = rawShortcut ? formatShortcutForDisplay(rawShortcut).join("+") : "";
-    const openLabel = shortcutLabel ? `打开剪贴板（${shortcutLabel}）` : "打开剪贴板";
 
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: openLabel,
-        click: () => {
-          this.windowService.showPanel();
-        },
-      },
-      {
-        label: "暂停记录",
-        type: "checkbox",
-        checked: paused,
+        label: paused ? "恢复记录" : "暂停记录",
         click: () => {
           this.clipboardService.setPaused(!this.clipboardService.isPaused());
         },
       },
       {
-        label: "设置",
+        label: "偏好设置",
         click: () => {
           this.windowService.showSettings();
         },
       },
       { type: "separator" },
       {
-        label: "退出 MemoPaste",
+        label: "退出",
         click: () => {
           app.quit();
         },
