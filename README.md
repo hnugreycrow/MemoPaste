@@ -2,6 +2,12 @@
 
 一款基于 Electron + Vue 3 的极简单浮窗剪贴板工具，常驻系统托盘，随时快捷键呼出、呼出即搜、自动粘贴。
 
+## 界面预览
+
+| 浅色主题 | 深色主题 |
+| :------: | :------: |
+| <img src="./assets/light.png" alt="MemoPaste 浅色主题预览" width="320" /> | <img src="./assets/dark.png" alt="MemoPaste 深色主题预览" width="320" /> |
+
 ## 特性
 
 - **极简单浮窗**：无大主窗，开机/启动静默常驻托盘，全局快捷键（默认 `Alt+V`）在光标附近瞬时呼出
