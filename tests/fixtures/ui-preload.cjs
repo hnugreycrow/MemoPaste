@@ -95,7 +95,7 @@ const api = {
     getAll: async () => ({ ...config }),
   },
   app: {
-    getVersion: async () => "1.13.0-test",
+    getVersion: async () => "2.0.0-test",
     setOpenAtLogin: async (enabled) => {
       config.openAtLogin = !!enabled;
       return { success: true, openAtLogin: config.openAtLogin, applied: true };
