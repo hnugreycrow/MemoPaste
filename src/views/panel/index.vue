@@ -284,6 +284,11 @@ const handleRecordingChange = (recording: boolean) => {
   window.panel.setBlurHideSuppressed(recording);
 };
 
+const handleStageClick = () => {
+  if (recordingShortcut.value) return;
+  window.panel.hide();
+};
+
 const handleListScroll = () => {
   const el = listRef.value;
   if (!el || isLoadingMore.value) return;
@@ -489,7 +494,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="panel-shell">
+  <div class="panel-stage" @click.self="handleStageClick">
+    <div class="panel-shell">
     <InlineSettings
       v-if="view === 'settings'"
       @back="backToList"
@@ -654,10 +660,18 @@ onUnmounted(() => {
         {{ notice.text }}
       </div>
     </Transition>
+    </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
+.panel-stage {
+  width: 100%;
+  height: 100%;
+  padding: 16px 22px 28px;
+  background: transparent;
+}
+
 .panel-shell {
   position: relative;
   display: flex;
@@ -668,7 +682,9 @@ onUnmounted(() => {
   overflow: hidden;
   background: var(--bg-primary);
   border: 1px solid var(--border-light);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+  box-shadow:
+    0 10px 22px -4px rgba(24, 24, 38, 0.18),
+    0 3px 8px -2px rgba(24, 24, 38, 0.08);
 }
 
 .panel-header {

@@ -13,6 +13,12 @@ export { setAppIsQuitting } from "./app-quit-state";
 
 export const PANEL_WIDTH = 380;
 export const PANEL_HEIGHT = 520;
+/** 透明窗体外留白，供 CSS 柔和阴影完整渲染，避免 Windows 透明窗裁切出四角黑块 */
+export const SHADOW_PAD_X = 22;
+export const SHADOW_PAD_TOP = 16;
+export const SHADOW_PAD_BOTTOM = 28;
+export const WINDOW_WIDTH = PANEL_WIDTH + SHADOW_PAD_X * 2;
+export const WINDOW_HEIGHT = PANEL_HEIGHT + SHADOW_PAD_TOP + SHADOW_PAD_BOTTOM;
 
 /** 打开后短时间内忽略 blur，避免快捷键松键或点托盘瞬间的焦点抖动误关浮窗 */
 const BLUR_GRACE_MS = 180;
@@ -58,7 +64,7 @@ export class WindowService {
     }
   }
 
-  /** 将浮窗定位在光标附近，并夹紧在当前显示器工作区内 */
+  /** 将浮窗可视卡片定位在光标附近，并夹紧在当前显示器工作区内 */
   private positionNearCursor(): void {
     if (!this.panelWin || this.panelWin.isDestroyed()) return;
 
@@ -66,20 +72,21 @@ export class WindowService {
     const display = screen.getDisplayNearestPoint(cursor);
     const { x: areaX, y: areaY, width: areaW, height: areaH } = display.workArea;
 
-    let x = cursor.x + 12;
-    let y = cursor.y + 12;
+    // 先按可视卡片（PANEL_WIDTH × PANEL_HEIGHT）计算坐标，再减去阴影留白得到实际窗口左上角
+    let cardX = cursor.x + 12;
+    let cardY = cursor.y + 12;
 
-    if (x + PANEL_WIDTH > areaX + areaW) {
-      x = cursor.x - PANEL_WIDTH - 12;
+    if (cardX + PANEL_WIDTH > areaX + areaW) {
+      cardX = cursor.x - PANEL_WIDTH - 12;
     }
-    if (y + PANEL_HEIGHT > areaY + areaH) {
-      y = cursor.y - PANEL_HEIGHT - 12;
+    if (cardY + PANEL_HEIGHT > areaY + areaH) {
+      cardY = cursor.y - PANEL_HEIGHT - 12;
     }
 
-    x = Math.max(areaX, Math.min(x, areaX + areaW - PANEL_WIDTH));
-    y = Math.max(areaY, Math.min(y, areaY + areaH - PANEL_HEIGHT));
+    cardX = Math.max(areaX, Math.min(cardX, areaX + areaW - PANEL_WIDTH));
+    cardY = Math.max(areaY, Math.min(cardY, areaY + areaH - PANEL_HEIGHT));
 
-    this.panelWin.setPosition(Math.round(x), Math.round(y));
+    this.panelWin.setPosition(Math.round(cardX - SHADOW_PAD_X), Math.round(cardY - SHADOW_PAD_TOP));
   }
 
   /** 创建唯一常驻浮窗；startHidden=false 时首次加载完成后展示一次 */
@@ -87,10 +94,12 @@ export class WindowService {
     const startHidden = !!options?.startHidden;
 
     this.panelWin = new BrowserWindow({
-      width: PANEL_WIDTH,
-      height: PANEL_HEIGHT,
+      width: WINDOW_WIDTH,
+      height: WINDOW_HEIGHT,
       frame: false,
       transparent: true,
+      backgroundColor: "#00000000",
+      hasShadow: false,
       focusable: true,
       resizable: false,
       maximizable: false,
