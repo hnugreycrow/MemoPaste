@@ -225,7 +225,7 @@ const handleQuit = () => {
   border-radius: 7px;
   background: transparent;
   color: var(--text-primary);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.12s ease;
@@ -236,7 +236,7 @@ const handleQuit = () => {
 }
 
 .sub-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -284,13 +284,13 @@ const handleQuit = () => {
 }
 
 .row-label {
-  font-size: 12.5px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--text-primary);
 }
 
 .row-desc {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-tertiary);
   line-height: 1.4;
 }
@@ -335,7 +335,7 @@ const handleQuit = () => {
   &.active {
     background: var(--bg-seg-active);
     color: var(--accent-primary);
-    font-weight: 600;
+    font-weight: 500;
     box-shadow: var(--shadow-seg);
   }
 }
@@ -386,7 +386,7 @@ const handleQuit = () => {
 }
 
 .version-text {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
 }

@@ -35,13 +35,12 @@ app
 
     for (const theme of ["light", "dark"]) {
       const win = new BrowserWindow({
-        width: 424,
-        height: 564,
+        width: 380,
+        height: 520,
         show: false,
         frame: false,
-        transparent: true,
-        backgroundColor: "#00000000",
-        hasShadow: false,
+        backgroundColor: theme === "dark" ? "#16181d" : "#fbfbfd",
+        hasShadow: true,
         webPreferences: {
           backgroundThrottling: false,
           offscreen: true,

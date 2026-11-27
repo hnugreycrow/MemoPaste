@@ -104,8 +104,10 @@ function initializeServices() {
   );
 
   // 开机自启带 --hidden 时静默进托盘；手动启动时浮窗就绪后展示一次
+  const savedTheme = configService.get<"light" | "dark">("theme");
   windowService.createPanelWindow({
     startHidden: isLaunchedHiddenAtLogin(),
+    theme: savedTheme === "dark" ? "dark" : "light",
   });
 
   clipboardService = new ClipboardService(windowService);

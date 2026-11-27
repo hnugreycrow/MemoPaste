@@ -18,17 +18,14 @@ body,
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background: transparent;
+  background: var(--bg-primary);
   font-family:
-    "Segoe UI Variable",
     "Segoe UI",
+    "Microsoft YaHei",
     -apple-system,
     BlinkMacSystemFont,
     "PingFang SC",
-    "Microsoft YaHei UI",
-    "Microsoft YaHei",
     sans-serif;
-  -webkit-font-smoothing: antialiased;
   color: var(--text-primary);
 }
 
@@ -56,7 +53,10 @@ body,
   transition: background-color 0.2s ease;
 }
 
-button {
+button,
+input,
+textarea,
+select {
   font-family: inherit;
 }
 

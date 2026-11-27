@@ -284,11 +284,6 @@ const handleRecordingChange = (recording: boolean) => {
   window.panel.setBlurHideSuppressed(recording);
 };
 
-const handleStageClick = () => {
-  if (recordingShortcut.value) return;
-  window.panel.hide();
-};
-
 const handleListScroll = () => {
   const el = listRef.value;
   if (!el || isLoadingMore.value) return;
@@ -494,8 +489,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="panel-stage" @click.self="handleStageClick">
-    <div class="panel-shell">
+  <div class="panel-shell">
     <InlineSettings
       v-if="view === 'settings'"
       @back="backToList"
@@ -667,28 +661,18 @@ onUnmounted(() => {
         {{ notice.text }}
       </div>
     </Transition>
-    </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
-.panel-stage {
-  width: 100%;
-  height: 100%;
-  padding: 16px 22px 28px;
-  background: transparent;
-}
-
 .panel-shell {
   position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
   height: 100%;
-  border-radius: var(--radius-lg, 14px);
   overflow: hidden;
   background: var(--bg-primary);
-  box-shadow: var(--panel-shadow);
 }
 
 .panel-header {
@@ -733,7 +717,7 @@ onUnmounted(() => {
   border: none;
   background: transparent;
   color: var(--text-primary);
-  font-size: 13.5px;
+  font-size: 14px;
   outline: none;
 
   &::placeholder {
@@ -822,8 +806,8 @@ onUnmounted(() => {
   border-radius: 6px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 11.5px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 400;
   cursor: pointer;
   transition:
     background-color 0.14s ease,
@@ -837,13 +821,13 @@ onUnmounted(() => {
   &.active {
     background: var(--bg-seg-active);
     color: var(--accent-primary);
-    font-weight: 600;
+    font-weight: 500;
     box-shadow: var(--shadow-seg);
   }
 }
 
 .tab-count {
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
 
@@ -860,7 +844,7 @@ onUnmounted(() => {
   border-radius: 6px;
   background: transparent;
   color: var(--text-tertiary);
-  font-size: 11.5px;
+  font-size: 12px;
   cursor: pointer;
   transition:
     background-color 0.12s ease,
@@ -874,7 +858,7 @@ onUnmounted(() => {
   &.confirming {
     background: color-mix(in srgb, var(--accent-danger) 14%, transparent);
     color: var(--accent-danger);
-    font-weight: 600;
+    font-weight: 500;
   }
 
   &:disabled {
@@ -893,13 +877,13 @@ onUnmounted(() => {
   border-bottom: 1px solid var(--border-light);
   background: var(--favorite-bg);
   color: var(--favorite-text);
-  font-size: 11.5px;
+  font-size: 12px;
   cursor: pointer;
   text-align: left;
 }
 
 .resume-link {
-  font-weight: 600;
+  font-weight: 500;
   text-decoration: underline;
 }
 
@@ -911,15 +895,15 @@ onUnmounted(() => {
   border-bottom: 1px solid var(--border-light);
   background: color-mix(in srgb, var(--accent-danger) 12%, transparent);
   color: var(--accent-danger);
-  font-size: 11.5px;
+  font-size: 12px;
 }
 
 .retry-btn {
   border: none;
   background: transparent;
   color: inherit;
-  font-size: 11.5px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
   text-decoration: underline;
   cursor: pointer;
 }
@@ -945,7 +929,7 @@ onUnmounted(() => {
 
 .empty-text {
   margin: 0;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--text-tertiary);
 }
 
@@ -986,7 +970,7 @@ onUnmounted(() => {
     border-radius: 4px;
     border: 1px solid var(--border-light);
     background: var(--bg-tertiary);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-family: "Cascadia Mono", Consolas, ui-monospace, monospace;
     font-size: 10px;
     color: var(--text-secondary);
     line-height: 1;

@@ -329,8 +329,8 @@ const handleCardClick = () => {
   height: 18px;
   border-radius: 5px;
   background: var(--bg-secondary);
-  font-size: 10.5px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   color: var(--text-tertiary);
   line-height: 1;
@@ -395,9 +395,9 @@ const handleCardClick = () => {
 }
 
 .card-alias {
-  font-size: 12.5px;
-  font-weight: 600;
-  line-height: 1.3;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
   color: var(--favorite-text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -406,7 +406,7 @@ const handleCardClick = () => {
 
 .card-text {
   margin: 0;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.45;
   color: var(--text-primary);
   overflow: hidden;
@@ -417,13 +417,13 @@ const handleCardClick = () => {
 
   &.single-line {
     -webkit-line-clamp: 1;
-    font-size: 11.5px;
+    font-size: 12px;
     color: var(--text-secondary);
   }
 
   &.is-code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 11.5px;
+    font-family: "Cascadia Mono", Consolas, ui-monospace, monospace;
+    font-size: 12px;
   }
 }
 
@@ -435,7 +435,7 @@ const handleCardClick = () => {
 }
 
 .image-primary {
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 500;
   line-height: 1.35;
   color: var(--text-primary);
@@ -446,7 +446,7 @@ const handleCardClick = () => {
 }
 
 .image-sub {
-  font-size: 11.5px;
+  font-size: 12px;
   line-height: 1.35;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
@@ -518,8 +518,8 @@ const handleCardClick = () => {
 .type-pill {
   padding: 1px 5px;
   border-radius: 5px;
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 500;
   line-height: 1.35;
 }
 
@@ -573,7 +573,7 @@ const handleCardClick = () => {
   border-radius: 6px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 12.5px;
+  font-size: 13px;
   cursor: pointer;
   transition:
     background-color 0.12s ease,

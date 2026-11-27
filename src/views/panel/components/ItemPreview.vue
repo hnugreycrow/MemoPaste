@@ -125,7 +125,7 @@ const metaLabel = computed(() => {
   border-radius: 7px;
   background: transparent;
   color: var(--text-primary);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.12s ease;
@@ -144,10 +144,10 @@ const metaLabel = computed(() => {
 }
 
 .type-pill {
-  padding: 1.5px 6px;
+  padding: 1px 6px;
   border-radius: 5px;
-  font-size: 10.5px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 500;
   flex-shrink: 0;
 }
 
@@ -207,8 +207,8 @@ const metaLabel = computed(() => {
   border-radius: 8px;
   background: var(--favorite-bg);
   color: var(--favorite-text);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .alias-star {
@@ -249,7 +249,7 @@ const metaLabel = computed(() => {
   align-items: center;
   justify-content: center;
   min-height: 140px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--text-tertiary);
 }
 
@@ -275,13 +275,13 @@ const metaLabel = computed(() => {
   white-space: pre-wrap;
   word-break: break-word;
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.65;
   color: var(--text-primary);
   user-select: text;
 
   &.is-code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-family: "Cascadia Mono", Consolas, ui-monospace, monospace;
     font-size: 12px;
   }
 }
@@ -297,7 +297,7 @@ const metaLabel = computed(() => {
 }
 
 .footer-meta {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
 }
