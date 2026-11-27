@@ -1,63 +1,69 @@
-/* ===== Obsidian Mist 深色主题：深邃曜石 + 柔光靛蓝 ===== */
+/* ===== Warm Charcoal 深色主题：夜墨暖炭 + 琥珀暖光 ===== */
 :root.dark {
-  /* 背景层级 */
-  --bg-primary: #16181d;
-  --bg-secondary: #1e2028;
-  --bg-tertiary: #1c1e25;
-  --bg-elevated: #1b1d24;
-  --bg-hover: #232630;
-  --bg-active: #232940;
-  --bg-seg-active: #2c3142;
+  /* 背景层级：温润炭黑分层 */
+  --bg-primary: #191715;
+  --bg-header: linear-gradient(180deg, #1f1c19 0%, #191715 100%);
+  --bg-secondary: #221f1c;
+  --bg-tertiary: #23201c;
+  --bg-elevated: #1e1b18;
+  --bg-hover: #292521;
+  --bg-active: linear-gradient(90deg, rgba(224, 122, 84, 0.16) 0%, rgba(224, 122, 84, 0.05) 100%);
+  --bg-seg-active: #332d27;
 
-  /* 文本层级 */
-  --text-primary: #eceef4;
-  --text-secondary: #abb1c2;
-  --text-tertiary: #868ea1;
-  --text-inverse: #14161c;
+  /* 文本层级：暖羊皮纸白，夜间低眩光高可读 */
+  --text-primary: #f2ede6;
+  --text-secondary: #b8afa4;
+  --text-tertiary: #948a7e;
+  --text-inverse: #191715;
 
-  /* 发丝级边框 */
-  --border-light: rgba(255, 255, 255, 0.08);
-  --border-medium: rgba(255, 255, 255, 0.15);
-  --border-selected: rgba(110, 139, 255, 0.42);
-  --thumb-ring: rgba(255, 255, 255, 0.14);
+  /* 暖光发丝边框与顶部微光 */
+  --border-light: rgba(255, 240, 224, 0.08);
+  --border-medium: rgba(255, 240, 224, 0.15);
+  --border-selected: rgba(224, 122, 84, 0.38);
+  --thumb-ring: rgba(255, 240, 224, 0.14);
+  --top-highlight: inset 0 1px 0 rgba(255, 242, 226, 0.06);
+  --focus-bar-glow: 0 0 8px rgba(224, 122, 84, 0.5);
 
-  /* 主强调色：柔光靛蓝 */
-  --accent-primary: #6e8bff;
-  --accent-primary-hover: #829cff;
-  --accent-on-primary: #ffffff;
-  --accent-soft: rgba(110, 139, 255, 0.16);
-  --accent-secondary: #34d399;
-  --accent-danger: #f26c7d;
-  --accent-tertiary: #a78bfa;
-  --accent-quaternary: #e8b24b;
+  /* 主强调色：琥珀陶土暖光 */
+  --accent-primary: #e07a54;
+  --accent-primary-hover: #eb8c68;
+  --accent-on-primary: #fffdf9;
+  --accent-soft: rgba(224, 122, 84, 0.18);
+  --accent-secondary: #6bc9af;
+  --accent-danger: #ec7070;
+  --accent-tertiary: #b9a6ee;
+  --accent-quaternary: #f0bc5e;
 
   /* 常用收藏与搜索高亮 */
-  --favorite-bg: rgba(232, 178, 75, 0.14);
-  --favorite-border: #e8b24b;
-  --favorite-text: #f2c97d;
-  --search-mark-bg: rgba(234, 179, 8, 0.34);
+  --favorite-bg: rgba(240, 188, 94, 0.14);
+  --favorite-border: #f0bc5e;
+  --favorite-text: #f5ce85;
+  --search-mark-bg: rgba(235, 178, 58, 0.34);
 
-  /* 类型胶囊 */
-  --type-text-bg: rgba(110, 139, 255, 0.16);
-  --type-url-bg: rgba(52, 211, 153, 0.14);
-  --type-code-bg: rgba(167, 139, 250, 0.16);
-  --type-image-bg: rgba(96, 165, 250, 0.16);
-  --type-favorite-bg: rgba(232, 178, 75, 0.14);
+  /* 矿物颜料深色胶囊 */
+  --type-text-bg: rgba(224, 122, 84, 0.16);
+  --type-url-bg: rgba(107, 201, 175, 0.14);
+  --type-code-bg: rgba(185, 166, 238, 0.15);
+  --type-image-bg: rgba(139, 188, 232, 0.15);
+  --type-favorite-bg: rgba(240, 188, 94, 0.14);
 
-  --type-text-fg: #93abff;
-  --type-url-fg: #5eead4;
-  --type-code-fg: #c4b5fd;
-  --type-image-fg: #93c5fd;
+  --type-text-fg: #f09b7a;
+  --type-url-fg: #7ad6bc;
+  --type-code-fg: #c6b7f2;
+  --type-image-fg: #99c6ed;
 
-  --shadow-seg: 0 1px 3px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-seg:
+    0 1px 3px rgba(0, 0, 0, 0.38),
+    0 0 0 1px rgba(255, 240, 224, 0.06),
+    inset 0 1px 0 rgba(255, 242, 226, 0.08);
 }
 
 html.dark {
   ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.16);
+    background: rgba(255, 240, 224, 0.16);
 
     &:hover {
-      background: rgba(255, 255, 255, 0.28);
+      background: rgba(255, 240, 224, 0.28);
     }
   }
 }

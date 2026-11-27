@@ -39,7 +39,7 @@ app
         height: 520,
         show: false,
         frame: false,
-        backgroundColor: theme === "dark" ? "#16181d" : "#fbfbfd",
+        backgroundColor: theme === "dark" ? "#191715" : "#faf7f2",
         hasShadow: true,
         webPreferences: {
           backgroundThrottling: false,
@@ -117,17 +117,17 @@ app
 
       // 4. 预览全文 + 仅复制（验证写入完整长文本）
       await run(`document.querySelector('.action-icon[aria-label="预览全文"]').click()`);
-      await sleep(200);
+      await sleep(360);
       assert.ok(await run(`!!document.querySelector('.preview-view')`));
       await run(`document.querySelector('.preview-footer .btn.secondary').click()`);
-      await sleep(100);
+      await sleep(120);
       assert.ok((await run(`window.__test.snapshot().written`)).length > 2000);
       writeFileSync(
         path.join(output, `${theme}-preview.png`),
         (await win.webContents.capturePage()).toPNG(),
       );
       await run(`document.querySelector('.preview-view .back-btn').click()`);
-      await sleep(150);
+      await sleep(360);
 
       // 5. 暂停监听按钮 + 提示条
       await run(`document.querySelector('.header-btn[aria-label="暂停记录"]').click()`);
@@ -147,7 +147,7 @@ app
 
       // 7. 内嵌设置：主题保存失败回滚 + 正常切换
       await run(`document.querySelector('.header-btn[aria-label="打开设置"]').click()`);
-      await sleep(200);
+      await sleep(360);
       assert.ok(await run(`!!document.querySelector('.settings-view')`));
       assert.equal(await run(`!!document.querySelector('.retention-row')`), false);
       writeFileSync(
@@ -172,7 +172,7 @@ app
       );
 
       await run(`document.querySelector('.settings-view .back-btn').click()`);
-      await sleep(120);
+      await sleep(360);
       assert.ok(await run(`!!document.querySelector('.panel-list')`));
 
       win.destroy();

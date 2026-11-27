@@ -96,7 +96,7 @@ const handleQuit = () => {
         <div class="setting-row">
           <div class="row-info">
             <span class="row-label">外观主题</span>
-            <span class="row-desc">切换浅色瓷白或深色曜石</span>
+            <span class="row-desc">切换宣纸浅色或暖炭深色</span>
           </div>
           <div class="segmented" role="radiogroup" aria-label="外观主题">
             <button
@@ -166,6 +166,7 @@ const handleQuit = () => {
   gap: 8px;
   height: 46px;
   padding: 0 10px;
+  background: var(--bg-header);
   border-bottom: 1px solid var(--border-light);
   -webkit-app-region: drag;
 }
@@ -211,6 +212,7 @@ const handleQuit = () => {
   border-radius: 11px;
   border: 1px solid var(--border-light);
   background: var(--bg-tertiary);
+  box-shadow: var(--top-highlight);
   overflow: hidden;
 }
 

@@ -1,63 +1,69 @@
-/* ===== Porcelain Slate 浅色主题：温润瓷白 + 晴空靛蓝 ===== */
+/* ===== Warm Paper 浅色主题：宣纸暖白 + 陶土朱砂墨 ===== */
 :root.light {
-  /* 背景层级 */
-  --bg-primary: #fbfbfd;
-  --bg-secondary: #f2f4f8;
-  --bg-tertiary: #ffffff;
-  --bg-elevated: #f6f7fb;
-  --bg-hover: #f1f3f8;
-  --bg-active: #eef2ff;
-  --bg-seg-active: #ffffff;
+  /* 背景层级：手账纸温润分层 */
+  --bg-primary: #faf7f2;
+  --bg-header: linear-gradient(180deg, #fdfbf7 0%, #faf7f2 100%);
+  --bg-secondary: #efeae0;
+  --bg-tertiary: #fffdf9;
+  --bg-elevated: #f4efe6;
+  --bg-hover: #f2ece2;
+  --bg-active: linear-gradient(90deg, rgba(201, 100, 66, 0.11) 0%, rgba(201, 100, 66, 0.04) 100%);
+  --bg-seg-active: #fffdf9;
 
-  /* 文本层级 */
-  --text-primary: #181a20;
-  --text-secondary: #5a6070;
-  --text-tertiary: #8e95a5;
-  --text-inverse: #ffffff;
+  /* 文本层级：暖墨色系 */
+  --text-primary: #24201c;
+  --text-secondary: #635b52;
+  --text-tertiary: #8f8579;
+  --text-inverse: #fffdf9;
 
-  /* 发丝级边框 */
-  --border-light: rgba(15, 23, 42, 0.08);
-  --border-medium: rgba(15, 23, 42, 0.15);
-  --border-selected: rgba(79, 110, 247, 0.34);
-  --thumb-ring: rgba(0, 0, 0, 0.08);
+  /* 暖棕发丝边框与光线高光 */
+  --border-light: rgba(54, 42, 28, 0.08);
+  --border-medium: rgba(54, 42, 28, 0.15);
+  --border-selected: rgba(201, 100, 66, 0.3);
+  --thumb-ring: rgba(54, 42, 28, 0.1);
+  --top-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --focus-bar-glow: 0 0 6px rgba(201, 100, 66, 0.28);
 
-  /* 主强调色：冷静靛蓝 */
-  --accent-primary: #4f6ef7;
-  --accent-primary-hover: #3f5de3;
-  --accent-on-primary: #ffffff;
-  --accent-soft: rgba(79, 110, 247, 0.11);
-  --accent-secondary: #0f766e;
-  --accent-danger: #e1495b;
-  --accent-tertiary: #6d28d9;
-  --accent-quaternary: #d98a1a;
+  /* 主强调色：温润陶土橙 */
+  --accent-primary: #c96442;
+  --accent-primary-hover: #b55434;
+  --accent-on-primary: #fffdf9;
+  --accent-soft: rgba(201, 100, 66, 0.12);
+  --accent-secondary: #2f7a67;
+  --accent-danger: #cf4647;
+  --accent-tertiary: #6b55a8;
+  --accent-quaternary: #d48a1e;
 
-  /* 常用收藏与搜索高亮 */
-  --favorite-bg: rgba(217, 138, 26, 0.1);
-  --favorite-border: #d98a1a;
-  --favorite-text: #9a5b0a;
-  --search-mark-bg: rgba(250, 204, 21, 0.42);
+  /* 常用收藏与便签高亮 */
+  --favorite-bg: rgba(212, 138, 30, 0.11);
+  --favorite-border: #d48a1e;
+  --favorite-text: #8f5612;
+  --search-mark-bg: rgba(238, 186, 62, 0.4);
 
-  /* 类型胶囊（低饱和克制配色） */
-  --type-text-bg: rgba(79, 110, 247, 0.1);
-  --type-url-bg: rgba(15, 118, 110, 0.1);
-  --type-code-bg: rgba(109, 40, 217, 0.1);
-  --type-image-bg: rgba(29, 78, 216, 0.1);
-  --type-favorite-bg: rgba(217, 138, 26, 0.12);
+  /* 矿物颜料低饱和类型胶囊 */
+  --type-text-bg: rgba(201, 100, 66, 0.1);
+  --type-url-bg: rgba(47, 122, 103, 0.1);
+  --type-code-bg: rgba(107, 85, 168, 0.1);
+  --type-image-bg: rgba(58, 110, 165, 0.1);
+  --type-favorite-bg: rgba(212, 138, 30, 0.12);
 
-  --type-text-fg: #3f5de3;
-  --type-url-fg: #0f766e;
-  --type-code-fg: #6d28d9;
-  --type-image-fg: #1d4ed8;
+  --type-text-fg: #b55434;
+  --type-url-fg: #266b59;
+  --type-code-fg: #5f4a99;
+  --type-image-fg: #2f5f94;
 
-  --shadow-seg: 0 1px 2px rgba(15, 23, 42, 0.09), 0 0 0 1px rgba(15, 23, 42, 0.04);
+  --shadow-seg:
+    0 1px 2px rgba(54, 42, 28, 0.08),
+    0 0 0 1px rgba(54, 42, 28, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 html.light {
   ::-webkit-scrollbar-thumb {
-    background: rgba(15, 23, 42, 0.16);
+    background: rgba(54, 42, 28, 0.16);
 
     &:hover {
-      background: rgba(15, 23, 42, 0.28);
+      background: rgba(54, 42, 28, 0.28);
     }
   }
 }

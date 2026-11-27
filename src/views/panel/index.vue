@@ -30,6 +30,27 @@ const now = ref(new Date());
 
 const searchInputRef = ref<HTMLInputElement | null>(null);
 const listRef = ref<HTMLElement | null>(null);
+const tabRefs = ref<Record<string, HTMLElement | null>>({});
+const tabSliderStyle = ref<{ transform: string; width: string; opacity: string }>({
+  transform: "translateX(0px)",
+  width: "0px",
+  opacity: "0",
+});
+
+const setTabRef = (key: PanelTabFilter, el: unknown) => {
+  tabRefs.value[key] = el instanceof HTMLElement ? el : null;
+};
+
+const updateTabSlider = async () => {
+  await nextTick();
+  const activeEl = tabRefs.value[activeFilter.value];
+  if (!activeEl) return;
+  tabSliderStyle.value = {
+    transform: `translateX(${activeEl.offsetLeft}px)`,
+    width: `${activeEl.offsetWidth}px`,
+    opacity: "1",
+  };
+};
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -89,6 +110,16 @@ const scrollFocusedIntoView = () => {
   const el = list.querySelector<HTMLElement>(`[data-index="${focusedIndex.value}"]`);
   el?.scrollIntoView({ block: "nearest" });
 };
+
+watch(
+  [activeFilter, typeCounts, view],
+  () => {
+    if (view.value === "list") {
+      void updateTabSlider();
+    }
+  },
+  { deep: true },
+);
 
 watch(
   () => clipboardData.value.map((item) => item.id),
@@ -276,7 +307,13 @@ const backToList = () => {
   window.panel.setBlurHideSuppressed(false);
   previewItem.value = null;
   view.value = "list";
-  void focusSearchInput();
+};
+
+const handleViewEnter = () => {
+  if (view.value === "list") {
+    void updateTabSlider();
+    void focusSearchInput();
+  }
 };
 
 const handleRecordingChange = (recording: boolean) => {
@@ -455,6 +492,7 @@ onMounted(async () => {
     clipboardStore.refreshCounts(),
     clipboardStore.syncPaused(),
   ]);
+  await updateTabSlider();
   await focusSearchInput();
 
   removeShownListener = window.panel.onShown((payload) => {
@@ -490,166 +528,184 @@ onUnmounted(() => {
 
 <template>
   <div class="panel-shell">
-    <InlineSettings
-      v-if="view === 'settings'"
-      @back="backToList"
-      @feedback="showNotice($event.type, $event.text)"
-      @recording-change="handleRecordingChange"
-    />
+    <Transition name="view-fade" mode="out-in" @enter="handleViewEnter">
+      <InlineSettings
+        v-if="view === 'settings'"
+        key="settings"
+        @back="backToList"
+        @feedback="showNotice($event.type, $event.text)"
+        @recording-change="handleRecordingChange"
+      />
 
-    <ItemPreview
-      v-else-if="view === 'preview' && previewItem"
-      :item="previewItem"
-      :loading="previewLoading"
-      @back="backToList"
-      @paste="handlePaste"
-      @copy="handleCopyOnly"
-      @favorite="handleFavorite"
-      @delete="handleDelete"
-    />
+      <ItemPreview
+        v-else-if="view === 'preview' && previewItem"
+        key="preview"
+        :item="previewItem"
+        :loading="previewLoading"
+        @back="backToList"
+        @paste="handlePaste"
+        @copy="handleCopyOnly"
+        @favorite="handleFavorite"
+        @delete="handleDelete"
+      />
 
-    <template v-else>
-      <header class="panel-header">
-        <div class="search-box">
-          <i-ep-Search class="search-icon" aria-hidden="true" />
-          <input
-            ref="searchInputRef"
-            v-model="searchText"
-            class="search-input"
-            type="text"
-            placeholder="搜索内容或备注…"
-            aria-label="搜索剪贴板内容或备注"
-            @input="handleSearchInput"
-          />
+      <div v-else key="list" class="list-view">
+        <header class="panel-header">
+          <div class="search-box">
+            <i-ep-Search class="search-icon" aria-hidden="true" />
+            <input
+              ref="searchInputRef"
+              v-model="searchText"
+              class="search-input"
+              type="text"
+              placeholder="搜索内容或备注…"
+              aria-label="搜索剪贴板内容或备注"
+              @input="handleSearchInput"
+            />
+            <button
+              v-if="searchText"
+              type="button"
+              class="search-clear"
+              title="清空搜索 (Esc)"
+              aria-label="清空搜索"
+              @click="clearSearch"
+            >
+              <i-ep-Close />
+            </button>
+          </div>
+
           <button
-            v-if="searchText"
             type="button"
-            class="search-clear"
-            title="清空搜索 (Esc)"
-            aria-label="清空搜索"
-            @click="clearSearch"
+            class="header-btn"
+            :class="{ paused: isPaused }"
+            :title="isPaused ? '已暂停记录，点击恢复' : '暂停记录剪贴板'"
+            :aria-label="isPaused ? '恢复记录' : '暂停记录'"
+            :aria-pressed="isPaused"
+            @click="handleTogglePaused"
           >
-            <i-ep-Close />
+            <i-ep-VideoPlay v-if="isPaused" />
+            <i-ep-VideoPause v-else />
+          </button>
+
+          <button
+            type="button"
+            class="header-btn"
+            title="设置"
+            aria-label="打开设置"
+            @click="openSettings"
+          >
+            <i-ep-Setting />
+          </button>
+        </header>
+
+        <div class="filter-bar">
+          <div class="tab-group" role="tablist" aria-label="记录分类">
+            <span class="tab-slider" :style="tabSliderStyle" aria-hidden="true" />
+            <button
+              v-for="tab in tabs"
+              :key="tab.key"
+              :ref="(el) => setTabRef(tab.key, el)"
+              type="button"
+              role="tab"
+              class="tab-btn"
+              :class="{ active: activeFilter === tab.key }"
+              :aria-selected="activeFilter === tab.key"
+              @click="selectTab(tab.key)"
+            >
+              <span>{{ tab.label }}</span>
+              <span class="tab-count">{{ tabCount(tab.key) }}</span>
+            </button>
+          </div>
+
+          <button
+            v-if="activeFilter !== 'favorite'"
+            type="button"
+            class="clear-btn"
+            :class="{ confirming: confirmingClear }"
+            :disabled="nonFavoriteCount === 0"
+            :title="confirmingClear ? '再次点击确认清空非收藏历史' : '清空非收藏历史'"
+            @click="handleClearClick"
+          >
+            {{ confirmingClear ? "确认清空？" : "清空" }}
           </button>
         </div>
 
-        <button
-          type="button"
-          class="header-btn"
-          :class="{ paused: isPaused }"
-          :title="isPaused ? '已暂停记录，点击恢复' : '暂停记录剪贴板'"
-          :aria-label="isPaused ? '恢复记录' : '暂停记录'"
-          :aria-pressed="isPaused"
-          @click="handleTogglePaused"
-        >
-          <i-ep-VideoPlay v-if="isPaused" />
-          <i-ep-VideoPause v-else />
+        <button v-if="isPaused" type="button" class="paused-strip" @click="handleTogglePaused">
+          <span>剪贴板监听已暂停，新复制不会记录</span>
+          <span class="resume-link">恢复</span>
         </button>
 
-        <button
-          type="button"
-          class="header-btn"
-          title="设置"
-          aria-label="打开设置"
-          @click="openSettings"
-        >
-          <i-ep-Setting />
-        </button>
-      </header>
-
-      <div class="filter-bar">
-        <div class="tab-group" role="tablist" aria-label="记录分类">
+        <div v-if="historyError" class="error-strip">
+          <span>{{ historyError }}</span>
           <button
-            v-for="tab in tabs"
-            :key="tab.key"
             type="button"
-            role="tab"
-            class="tab-btn"
-            :class="{ active: activeFilter === tab.key }"
-            :aria-selected="activeFilter === tab.key"
-            @click="selectTab(tab.key)"
+            class="retry-btn"
+            @click="clipboardStore.loadClipboardHistory(1, false)"
           >
-            <span>{{ tab.label }}</span>
-            <span class="tab-count">{{ tabCount(tab.key) }}</span>
+            重试
           </button>
         </div>
 
-        <button
-          v-if="activeFilter !== 'favorite'"
-          type="button"
-          class="clear-btn"
-          :class="{ confirming: confirmingClear }"
-          :disabled="nonFavoriteCount === 0"
-          :title="confirmingClear ? '再次点击确认清空非收藏历史' : '清空非收藏历史'"
-          @click="handleClearClick"
+        <div
+          ref="listRef"
+          class="panel-list"
+          role="listbox"
+          aria-label="剪贴板历史列表"
+          @scroll="handleListScroll"
         >
-          {{ confirmingClear ? "确认清空？" : "清空" }}
-        </button>
-      </div>
+          <div v-if="!hasItems && !isLoadingMore" class="empty-state">
+            <svg class="empty-glyph" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+              <rect
+                x="6"
+                y="5"
+                width="20"
+                height="22"
+                rx="4"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+              <path
+                d="M11 12h10M11 17h7M11 22h5"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            <p class="empty-text">{{ emptyMessage }}</p>
+          </div>
 
-      <button
-        v-if="isPaused"
-        type="button"
-        class="paused-strip"
-        @click="handleTogglePaused"
-      >
-        <span>剪贴板监听已暂停，新复制不会记录</span>
-        <span class="resume-link">恢复</span>
-      </button>
+          <template v-else>
+            <ClipCard
+              v-for="(item, index) in clipboardData"
+              :key="item.id"
+              :item="item"
+              :index="index"
+              :focused="index === focusedIndex"
+              :keyword="clipboardStore.searchKeyword"
+              :editing-alias="editingAliasId === item.id"
+              :now="now"
+              @paste="handlePaste"
+              @focus="focusedIndex = $event"
+              @favorite="handleFavorite"
+              @delete="handleDelete"
+              @preview="openPreview"
+              @start-edit-alias="startEditAlias"
+              @commit-alias="commitAlias"
+              @cancel-alias="cancelAlias"
+            />
 
-      <div v-if="historyError" class="error-strip">
-        <span>{{ historyError }}</span>
-        <button
-          type="button"
-          class="retry-btn"
-          @click="clipboardStore.loadClipboardHistory(1, false)"
-        >
-          重试
-        </button>
-      </div>
-
-      <div
-        ref="listRef"
-        class="panel-list"
-        role="listbox"
-        aria-label="剪贴板历史列表"
-        @scroll="handleListScroll"
-      >
-        <div v-if="!hasItems && !isLoadingMore" class="empty-state">
-          <p class="empty-text">{{ emptyMessage }}</p>
+            <div v-if="isLoadingMore" class="list-footer">加载中…</div>
+          </template>
         </div>
 
-        <template v-else>
-          <ClipCard
-            v-for="(item, index) in clipboardData"
-            :key="item.id"
-            :item="item"
-            :index="index"
-            :focused="index === focusedIndex"
-            :keyword="clipboardStore.searchKeyword"
-            :editing-alias="editingAliasId === item.id"
-            :now="now"
-            @paste="handlePaste"
-            @focus="focusedIndex = $event"
-            @favorite="handleFavorite"
-            @delete="handleDelete"
-            @preview="openPreview"
-            @start-edit-alias="startEditAlias"
-            @commit-alias="commitAlias"
-            @cancel-alias="cancelAlias"
-          />
-
-          <div v-if="isLoadingMore" class="list-footer">加载中…</div>
-        </template>
+        <footer class="panel-footer" aria-hidden="true">
+          <span class="hint-item"><kbd>↵</kbd> 粘贴</span>
+          <span class="hint-item"><kbd>Space</kbd> 预览</span>
+          <span class="hint-item"><kbd>F2</kbd> 备注</span>
+          <span class="hint-item"><kbd>Alt</kbd>+<kbd>1-9</kbd> 秒贴</span>
+        </footer>
       </div>
-
-      <footer class="panel-footer" aria-hidden="true">
-        <span class="hint-item"><kbd>↵</kbd> 粘贴</span>
-        <span class="hint-item"><kbd>Space</kbd> 预览</span>
-        <span class="hint-item"><kbd>F2</kbd> 备注</span>
-        <span class="hint-item"><kbd>Alt</kbd>+<kbd>1-9</kbd> 秒贴</span>
-      </footer>
-    </template>
+    </Transition>
 
     <Transition name="toast">
       <div
@@ -673,16 +729,55 @@ onUnmounted(() => {
   height: 100%;
   overflow: hidden;
   background: var(--bg-primary);
+  box-shadow: var(--top-highlight);
+}
+
+.list-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .panel-header {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
   height: 46px;
   padding: 0 10px 0 14px;
+  background: var(--bg-header);
   border-bottom: 1px solid var(--border-light);
   -webkit-app-region: drag;
+
+  /* 聚焦搜索时底部浮现极细腻的陶土暖光线 */
+  &::after {
+    content: "";
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: -1px;
+    height: 1.5px;
+    border-radius: 999px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--accent-primary) 28%,
+      var(--accent-primary) 72%,
+      transparent 100%
+    );
+    opacity: 0;
+    transform: scaleX(0.3);
+    transition:
+      opacity 0.2s var(--ease-out),
+      transform 0.26s var(--ease-out);
+    pointer-events: none;
+  }
+
+  &:focus-within::after {
+    opacity: 0.7;
+    transform: scaleX(1);
+  }
 }
 
 .search-box,
@@ -763,12 +858,17 @@ onUnmounted(() => {
   font-size: 15px;
   cursor: pointer;
   transition:
-    background-color 0.12s ease,
-    color 0.12s ease;
+    background-color 0.14s ease,
+    color 0.14s ease,
+    transform 0.14s var(--ease-spring);
 
   &:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
+  }
+
+  &:active {
+    transform: scale(0.9);
   }
 
   &.paused {
@@ -788,6 +888,7 @@ onUnmounted(() => {
 }
 
 .tab-group {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -796,7 +897,25 @@ onUnmounted(() => {
   background: var(--bg-secondary);
 }
 
+/* 弹性滑动胶囊指示器 */
+.tab-slider {
+  position: absolute;
+  top: 2px;
+  left: 0;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--bg-seg-active);
+  box-shadow: var(--shadow-seg);
+  pointer-events: none;
+  transition:
+    transform 0.24s var(--ease-spring),
+    width 0.22s var(--ease-out),
+    opacity 0.15s ease;
+}
+
 .tab-btn {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -809,20 +928,15 @@ onUnmounted(() => {
   font-size: 12px;
   font-weight: 400;
   cursor: pointer;
-  transition:
-    background-color 0.14s ease,
-    color 0.14s ease,
-    box-shadow 0.14s ease;
+  transition: color 0.16s ease;
 
   &:hover:not(.active) {
     color: var(--text-primary);
   }
 
   &.active {
-    background: var(--bg-seg-active);
     color: var(--accent-primary);
     font-weight: 500;
-    box-shadow: var(--shadow-seg);
   }
 }
 
@@ -921,10 +1035,19 @@ onUnmounted(() => {
 .empty-state {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   padding: 24px 16px;
   text-align: center;
+}
+
+.empty-glyph {
+  width: 30px;
+  height: 30px;
+  color: var(--accent-primary);
+  opacity: 0.45;
 }
 
 .empty-text {
@@ -1009,16 +1132,43 @@ onUnmounted(() => {
   }
 }
 
+.view-fade-enter-active,
+.view-fade-leave-active {
+  transition:
+    opacity 0.14s var(--ease-out),
+    transform 0.16s var(--ease-out);
+}
+
+.view-fade-enter-from {
+  opacity: 0;
+  transform: translateY(5px);
+}
+
+.view-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
 .toast-enter-active,
 .toast-leave-active {
   transition:
     opacity 0.16s ease,
-    transform 0.16s ease;
+    transform 0.18s var(--ease-spring);
 }
 
 .toast-enter-from,
 .toast-leave-to {
   opacity: 0;
   transform: translate(-50%, 6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-slider,
+  .panel-header::after,
+  .header-btn,
+  .view-fade-enter-active,
+  .view-fade-leave-active {
+    transition: none;
+  }
 }
 </style>

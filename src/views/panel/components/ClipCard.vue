@@ -188,10 +188,13 @@ const handleCardClick = () => {
 
       <template v-else>
         <div v-if="hasAlias" class="card-alias" :title="item.alias ?? undefined">
-          <template v-for="(part, idx) in aliasParts" :key="`a-${idx}`">
-            <mark v-if="part.match">{{ part.text }}</mark>
-            <span v-else>{{ part.text }}</span>
-          </template>
+          <span class="alias-pin" aria-hidden="true" />
+          <span class="alias-label">
+            <template v-for="(part, idx) in aliasParts" :key="`a-${idx}`">
+              <mark v-if="part.match">{{ part.text }}</mark>
+              <span v-else>{{ part.text }}</span>
+            </template>
+          </span>
         </div>
 
         <div v-if="isImage" class="card-image-info">
@@ -278,23 +281,33 @@ const handleCardClick = () => {
   cursor: pointer;
   user-select: none;
   transition:
-    background-color 0.12s ease,
-    border-color 0.12s ease;
+    background-color 0.14s ease,
+    border-color 0.14s ease,
+    transform 0.12s var(--ease-out);
 
   &::before {
     content: "";
     position: absolute;
     left: 2px;
-    top: 11px;
-    bottom: 11px;
-    width: 2.5px;
+    top: 10px;
+    bottom: 10px;
+    width: 3px;
     border-radius: 999px;
-    background: transparent;
-    transition: background-color 0.12s ease;
+    background: var(--accent-primary);
+    box-shadow: var(--focus-bar-glow);
+    opacity: 0;
+    transform: scaleY(0.25);
+    transition:
+      opacity 0.14s ease,
+      transform 0.22s var(--ease-spring);
   }
 
   &:hover {
     background: var(--bg-hover);
+  }
+
+  &:active:not(.is-editing) {
+    transform: scale(0.99);
   }
 
   &.focused {
@@ -302,7 +315,8 @@ const handleCardClick = () => {
     border-color: var(--border-selected);
 
     &::before {
-      background: var(--accent-primary);
+      opacity: 1;
+      transform: scaleY(1);
     }
   }
 
@@ -395,10 +409,25 @@ const handleCardClick = () => {
 }
 
 .card-alias {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-size: 13px;
   font-weight: 500;
   line-height: 1.35;
   color: var(--favorite-text);
+  min-width: 0;
+}
+
+.alias-pin {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--favorite-border);
+  flex-shrink: 0;
+}
+
+.alias-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -532,12 +561,12 @@ const handleCardClick = () => {
   font-variant-numeric: tabular-nums;
 }
 
-/* 悬浮操作胶囊：绝对定位不挤压正文宽度，键盘上下切换时文字零跳动 */
+/* 悬浮操作胶囊：绝对定位不挤压正文宽度，带轻柔滑入与渐显 */
 .card-actions {
   position: absolute;
   right: 7px;
   top: 50%;
-  transform: translateY(-50%);
+  transform: translate(5px, -50%);
   display: flex;
   align-items: center;
   gap: 1px;
@@ -548,7 +577,9 @@ const handleCardClick = () => {
   box-shadow: var(--shadow-seg);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.12s ease;
+  transition:
+    opacity 0.14s var(--ease-out),
+    transform 0.18s var(--ease-out);
 }
 
 .clip-card:hover .card-meta,
@@ -559,6 +590,7 @@ const handleCardClick = () => {
 .clip-card:hover .card-actions,
 .clip-card.focused .card-actions {
   opacity: 1;
+  transform: translate(0, -50%);
   pointer-events: auto;
 }
 
@@ -577,18 +609,27 @@ const handleCardClick = () => {
   cursor: pointer;
   transition:
     background-color 0.12s ease,
-    color 0.12s ease;
+    color 0.12s ease,
+    transform 0.14s var(--ease-spring);
 
   &:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
   }
 
+  &:active {
+    transform: scale(0.88);
+  }
+
   &.active {
     color: var(--accent-primary);
   }
 
-  &.fav.active,
+  &.fav.active {
+    color: var(--favorite-border);
+    animation: star-pop 0.3s var(--ease-spring);
+  }
+
   &.fav:hover {
     color: var(--favorite-border);
   }
@@ -596,6 +637,28 @@ const handleCardClick = () => {
   &.danger:hover {
     background: color-mix(in srgb, var(--accent-danger) 12%, transparent);
     color: var(--accent-danger);
+  }
+}
+
+@keyframes star-pop {
+  0% {
+    transform: scale(0.75);
+  }
+  55% {
+    transform: scale(1.24);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clip-card,
+  .clip-card::before,
+  .card-actions,
+  .action-icon {
+    transition: none;
+    animation: none;
   }
 }
 </style>

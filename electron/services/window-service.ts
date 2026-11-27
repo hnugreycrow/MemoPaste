@@ -88,7 +88,7 @@ export class WindowService {
     theme?: "light" | "dark";
   }): BrowserWindow {
     const startHidden = !!options?.startHidden;
-    const backgroundColor = options?.theme === "dark" ? "#16181d" : "#fbfbfd";
+    const backgroundColor = options?.theme === "dark" ? "#191715" : "#faf7f2";
 
     this.panelWin = new BrowserWindow({
       width: PANEL_WIDTH,

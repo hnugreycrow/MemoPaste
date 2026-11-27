@@ -106,6 +106,7 @@ const metaLabel = computed(() => {
   gap: 8px;
   height: 46px;
   padding: 0 10px;
+  background: var(--bg-header);
   border-bottom: 1px solid var(--border-light);
   -webkit-app-region: drag;
 }
@@ -242,6 +243,7 @@ const metaLabel = computed(() => {
   border-radius: 10px;
   border: 1px solid var(--border-light);
   background: var(--bg-tertiary);
+  box-shadow: var(--top-highlight);
 }
 
 .preview-status {
@@ -318,7 +320,12 @@ const metaLabel = computed(() => {
   border: 1px solid transparent;
   transition:
     background-color 0.12s ease,
-    border-color 0.12s ease;
+    border-color 0.12s ease,
+    transform 0.12s var(--ease-out);
+
+  &:active {
+    transform: scale(0.97);
+  }
 
   &.secondary {
     background: var(--bg-tertiary);
