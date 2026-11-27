@@ -1,13 +1,3 @@
-export interface WindowControls {
-  minimize: () => void;
-  maximize: () => void;
-  close: () => void;
-  isMaximized: () => Promise<boolean>;
-  onMaximizeChange: (callback: (isMaximized: boolean) => void) => () => void;
-  /** 主窗 vs 面板：决定透明背景、是否弹更新等 */
-  getRole: () => Promise<"main" | "panel">;
-}
-
 export interface ClipboardItem {
   id: number;
   type: string;
@@ -17,6 +7,8 @@ export interface ClipboardItem {
   timestamp: Date;
   size: string;
   is_favorite?: boolean;
+  /** 常用片段备注名（可为空） */
+  alias?: string | null;
   content_hash?: string | null;
   file_path?: string | null;
   thumb_path?: string | null;
@@ -50,11 +42,13 @@ export type PasteResult = { status: "sent" | "copied" | "failed" | "busy" };
 export interface ClipboardAPI {
   /** 按历史 id 写回系统剪贴板（文本或图片） */
   write: (id: number) => Promise<boolean>;
-  startWatching: () => Promise<void>;
-  stopWatching: () => Promise<void>;
+  /** 按 id 写入剪贴板、隐藏面板、归还前台焦点并模拟粘贴 */
+  pasteAndHide: (id: number) => Promise<PasteResult>;
+  getPaused: () => Promise<boolean>;
+  setPaused: (paused: boolean) => Promise<boolean>;
   /** 主进程入库后通知刷新（无内容载荷） */
   onChanged: (callback: () => void) => () => void;
-  saveItem: (item: ClipboardItem) => Promise<SaveClipboardResult | null>;
+  onPausedChanged: (callback: (paused: boolean) => void) => () => void;
   deleteItem: (id: number) => Promise<boolean>;
   clearAll: () => Promise<boolean>;
   clearExceptFavorites: () => Promise<number>;
@@ -66,37 +60,21 @@ export interface ClipboardAPI {
   ) => Promise<ClipboardHistoryResult>;
   /** 按 id 取全文（列表 getHistory 只含预览） */
   getItem: (id: number) => Promise<ClipboardItem | null>;
-  /** 按 id 写入剪贴板、隐藏面板并模拟粘贴到原窗口 */
-  pasteAndHide: (id: number) => Promise<PasteResult>;
   setFavorite: (id: number, isFavorite: boolean) => Promise<boolean>;
+  setAlias: (id: number, alias: string | null) => Promise<boolean>;
   getCounts: () => Promise<TypeCounts>;
 }
 
 export type ThemeMode = "light" | "dark";
 
 /** 与主进程 config 白名单一致；未知键会被拒绝 */
-export type ConfigKey =
-  | "theme"
-  | "shortcut"
-  | "minimizeToTray"
-  | "openAtLogin"
-  | "dataRetentionDays"
-  | "version"
-  | "autoCheckUpdate"
-  | "clipboardListRatio";
+export type ConfigKey = "theme" | "shortcut" | "openAtLogin" | "dataRetentionDays";
 
 export interface AppConfig {
   theme: ThemeMode;
   shortcut: string;
-  minimizeToTray: boolean;
   openAtLogin: boolean;
   dataRetentionDays: number;
-  version?: string;
-  /** 启动时是否自动检查更新 */
-  autoCheckUpdate: boolean;
-  clipboardListRatio: number;
-  /** 上次自动检查时间戳（仅主进程读写，不在渲染白名单） */
-  lastUpdateCheckAt?: number;
 }
 
 export interface ConfigAPI {
@@ -105,35 +83,15 @@ export interface ConfigAPI {
   getAll: () => Promise<AppConfig>;
 }
 
-/** 跨窗口主题同步（替代裸露 ipcRenderer） */
-export interface ThemeAPI {
-  broadcast: (theme: ThemeMode) => void;
-  onChanged: (callback: (theme: ThemeMode) => void) => () => void;
-}
-
-export type PanelNavAction = "up" | "down" | "enter";
+export type PanelShownPayload = {
+  view: "list" | "settings";
+};
 
 export interface PanelControls {
   hide: () => void;
-  openMain: () => void;
-  onShown: (callback: () => void) => () => void;
-  /** 面板不抢焦点，↑↓/Enter 由主进程全局快捷键转发 */
-  onNav: (callback: (action: PanelNavAction) => void) => () => void;
-}
-
-export interface UpdateStatus {
-  status: string;
-  source: "auto" | "manual" | "download" | "install";
-  checkedAt: number;
-  data?: any;
-}
-
-export interface UpdateControls {
-  getUpdateStatus: () => Promise<UpdateStatus>;
-  checkForUpdates: () => Promise<any>;
-  downloadUpdate: () => Promise<boolean | { error: any }>;
-  installUpdate: () => Promise<boolean>;
-  onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void;
+  /** 打开内嵌确认框或录制快捷键时临时抑制失焦隐藏 */
+  setBlurHideSuppressed: (suppressed: boolean) => void;
+  onShown: (callback: (payload: PanelShownPayload) => void) => () => void;
 }
 
 export interface OpenAtLoginResult {
@@ -148,6 +106,7 @@ export interface AppAPI {
   getVersion: () => Promise<string>;
   /** 写配置；打包后才同步系统登录项 */
   setOpenAtLogin: (enabled: boolean) => Promise<OpenAtLoginResult>;
+  quit: () => void;
 }
 
 export interface ShortcutUpdateResult {
@@ -159,8 +118,4 @@ export interface ShortcutUpdateResult {
 export interface ShortcutAPI {
   get: () => Promise<string | null>;
   update: (shortcut: string) => Promise<ShortcutUpdateResult>;
-}
-
-export interface ShellAPI {
-  openExternal: (url: string) => Promise<boolean>;
 }

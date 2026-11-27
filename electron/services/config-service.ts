@@ -7,12 +7,8 @@ import { applyOpenAtLogin, syncOpenAtLoginFromSystem } from "../utils/login-item
 const CONFIG_KEYS = new Set<ConfigKey>([
   "theme",
   "shortcut",
-  "minimizeToTray",
   "openAtLogin",
   "dataRetentionDays",
-  "version",
-  "autoCheckUpdate",
-  "clipboardListRatio",
 ]);
 
 function isConfigKey(key: unknown): key is ConfigKey {
@@ -25,16 +21,11 @@ function validateConfigValue(key: ConfigKey, value: unknown): boolean {
     case "theme":
       return value === "light" || value === "dark";
     case "shortcut":
-    case "version":
       return typeof value === "string";
-    case "minimizeToTray":
     case "openAtLogin":
-    case "autoCheckUpdate":
       return typeof value === "boolean";
     case "dataRetentionDays":
       return typeof value === "number" && Number.isInteger(value) && value > 0;
-    case "clipboardListRatio":
-      return typeof value === "number" && Number.isFinite(value) && value > 0 && value < 1;
     default:
       return false;
   }
@@ -48,13 +39,9 @@ export class ConfigService {
     this.store = new Store<AppConfig>({
       defaults: {
         theme: "light",
-        shortcut: "Alt+Shift+C",
-        minimizeToTray: false,
+        shortcut: "Alt+V",
         openAtLogin: false,
-        dataRetentionDays: 1,
-        version: "1.0.0",
-        autoCheckUpdate: true,
-        clipboardListRatio: 0.40,
+        dataRetentionDays: 7,
       },
       name: "config",
     });
@@ -64,7 +51,6 @@ export class ConfigService {
     this.store.set(config);
   }
 
-  /** 主进程可读写全部 AppConfig 键（含 lastUpdateCheckAt）；渲染进程经 IPC 白名单限制 */
   public get<T>(key: keyof AppConfig): T {
     return this.store.get(key) as T;
   }

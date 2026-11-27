@@ -8,6 +8,7 @@ import {
   getClipboardHistory,
   getClipboardItemById,
   setFavoriteStatus,
+  setClipboardItemAlias,
   getClipboardCounts,
 } from "../database/clipboard";
 import { simulatePaste } from "../utils/simulate-paste";
@@ -20,24 +21,52 @@ import type { WindowService } from "./window-service";
 const require = createRequire(import.meta.url);
 const clipboardEvent = require("clipboard-event");
 
-/** 系统剪贴板监听、历史 IPC，以及面板选中后的自动粘贴 */
+type PanelWindowController = Pick<WindowService, "hidePanel" | "restorePanel"> & {
+  hideAndRestoreFocus?: () => void;
+};
+
+/** 系统剪贴板监听、暂停控制、历史 IPC，以及浮窗选中后的自动粘贴 */
 export class ClipboardService {
-  private windowService: WindowService | null = null;
+  private windowService: PanelWindowController | null = null;
   /** 上次已处理内容指纹：文本为原文，图片为 `img:${hash}` */
   private lastFingerprint: string = "";
   private isWatching: boolean = false;
+  /** 隐私暂停：暂停期间忽略所有剪贴板变更，恢复时跳过暂停期间残留内容 */
+  private paused: boolean = false;
+  private onPausedChanged: ((paused: boolean) => void) | null = null;
   private debounceTimer: NodeJS.Timeout | null = null;
   /** clipboard-event 一次粘贴常连发多次；合并后再处理 */
   private readonly DEBOUNCE_DELAY = 100;
   /** 自动粘贴进行中：忽略剪贴板监听，避免把自身写入再记一条 */
   private isAutoPasting = false;
 
-  constructor(_mainWindow: BrowserWindow, windowService?: WindowService) {
+  constructor(windowService?: PanelWindowController) {
     this.windowService = windowService ?? null;
     // 启动时的剪贴板尚未入库，不能提前标记为已处理。
     this.registerIpcHandlers();
     // 不依赖渲染进程挂载；托盘静默启动也能持续入库
     this.startWatching();
+  }
+
+  public setOnPausedChanged(listener: ((paused: boolean) => void) | null): void {
+    this.onPausedChanged = listener;
+  }
+
+  public isPaused(): boolean {
+    return this.paused;
+  }
+
+  public setPaused(nextPaused: boolean): boolean {
+    const value = !!nextPaused;
+    if (this.paused === value) return this.paused;
+    this.paused = value;
+    if (!this.paused) {
+      // 恢复监听时记录当前剪贴板指纹，防止暂停期间复制的敏感内容在恢复后被补录
+      this.lastFingerprint = this.readCurrentFingerprint();
+    }
+    this.notifyPausedChanged();
+    this.onPausedChanged?.(this.paused);
+    return this.paused;
   }
 
   private readCurrentFingerprint(): string {
@@ -48,7 +77,7 @@ export class ClipboardService {
     const image = clipboard.readImage();
     if (!image.isEmpty()) {
       const png = image.toPNG();
-      // 仅用于启动指纹，不落盘；用长度+头字节近似即可，正式入库仍走 storeClipboardImage
+      // 仅用于指纹近似，不落盘；正式入库仍走 storeClipboardImage
       return `img:boot:${png.length}:${png.subarray(0, 32).toString("hex")}`;
     }
     return "";
@@ -62,9 +91,17 @@ export class ClipboardService {
     }
   }
 
+  private notifyPausedChanged(): void {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send("clipboard-paused-changed", this.paused);
+      }
+    }
+  }
+
   /** 将系统剪贴板当前内容写入历史（文本优先，否则图片） */
   private captureClipboardChange(): void {
-    if (this.isAutoPasting) return;
+    if (this.isAutoPasting || this.paused) return;
 
     const text = clipboard.readText();
     if (text && text.trim() !== "") {
@@ -145,8 +182,7 @@ export class ClipboardService {
     });
 
     /**
-     * 快捷面板选中项：按 id 写入剪贴板 → 隐藏面板 → 模拟 Ctrl+V
-     * 依赖面板不抢焦点，原输入框仍可接收按键
+     * 浮窗选中项：按 id 写入剪贴板 → 隐藏浮窗并恢复原前景窗口焦点 → 模拟 Ctrl+V
      */
     ipcMain.handle("clipboard-paste-and-hide", async (_, id: number): Promise<PasteResult> => {
       if (this.isAutoPasting) return { status: "busy" };
@@ -155,7 +191,11 @@ export class ClipboardService {
         if (!this.writeItemToClipboard(id)) {
           return { status: "failed" };
         }
-        this.windowService?.hidePanel();
+        if (this.windowService?.hideAndRestoreFocus) {
+          this.windowService.hideAndRestoreFocus();
+        } else {
+          this.windowService?.hidePanel();
+        }
         try {
           await simulatePaste();
         } catch (error) {
@@ -173,19 +213,16 @@ export class ClipboardService {
       }
     });
 
-    ipcMain.handle("clipboard-watch-start", () => {
-      return this.startWatching();
+    ipcMain.handle("clipboard-get-paused", () => {
+      return this.paused;
     });
 
-    ipcMain.handle("clipboard-watch-stop", () => {
-      return this.stopWatching();
+    ipcMain.handle("clipboard-set-paused", (_, paused: unknown) => {
+      return this.setPaused(!!paused);
     });
 
-    ipcMain.handle("clipboard-save-item", (_, item) => {
-      return saveClipboardItem(item);
-    });
-
-    ipcMain.handle("clipboard-delete-item", (_, id) => {
+    ipcMain.handle("clipboard-delete-item", (_, id: unknown) => {
+      if (typeof id !== "number" || !Number.isInteger(id)) return false;
       return deleteClipboardItem(id);
     });
 
@@ -204,7 +241,7 @@ export class ClipboardService {
       },
     );
 
-    /** 详情用全文；列表 get-history 只带预览 */
+    /** 预览用全文；列表 get-history 只带预览 */
     ipcMain.handle("clipboard-get-item", (_, id: number) => {
       const row = getClipboardItemById(id);
       if (!row) return null;
@@ -214,8 +251,15 @@ export class ClipboardService {
       };
     });
 
-    ipcMain.handle("clipboard-set-favorite", (_, id, isFavorite) => {
-      return setFavoriteStatus(id, isFavorite);
+    ipcMain.handle("clipboard-set-favorite", (_, id: unknown, isFavorite: unknown) => {
+      if (typeof id !== "number" || !Number.isInteger(id)) return false;
+      return setFavoriteStatus(id, !!isFavorite);
+    });
+
+    ipcMain.handle("clipboard-set-alias", (_, id: unknown, alias: unknown) => {
+      if (typeof id !== "number" || !Number.isInteger(id)) return false;
+      if (alias !== null && typeof alias !== "string") return false;
+      return setClipboardItemAlias(id, alias);
     });
 
     ipcMain.handle("clipboard-get-counts", () => {
@@ -274,6 +318,7 @@ export class ClipboardService {
       clearTimeout(this.debounceTimer);
       this.debounceTimer = null;
     }
+    this.onPausedChanged = null;
     this.windowService = null;
   }
 }
