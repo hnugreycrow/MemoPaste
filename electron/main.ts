@@ -142,7 +142,7 @@ function initializeServices() {
     windowService,
     clipboardService,
     shortcutService,
-    path.join(process.env.VITE_PUBLIC as string, "icon.png"),
+    path.join(process.env.VITE_PUBLIC as string, "tray-icon.png"),
   );
   trayService.createTray();
 
