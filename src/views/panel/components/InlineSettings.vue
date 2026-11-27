@@ -13,7 +13,15 @@ const shortcut = ref("Alt+V");
 const openAtLogin = ref(false);
 const appVersion = ref("–");
 const saving = ref<Record<string, boolean>>({});
+const booping = ref(false);
 const appIconUrl = `${import.meta.env.BASE_URL}icon.png`;
+
+const handleMascotBoop = () => {
+  booping.value = false;
+  requestAnimationFrame(() => {
+    booping.value = true;
+  });
+};
 
 const theme = computed(() => themeService.currentTheme.value);
 
@@ -148,7 +156,17 @@ const handleQuit = () => {
 
     <footer class="settings-footer">
       <div class="brand-badge">
-        <img class="brand-icon" :src="appIconUrl" alt="" draggable="false" />
+        <button
+          type="button"
+          class="brand-btn"
+          :class="{ booping }"
+          title="MemoPaste"
+          aria-label="MemoPaste 图标彩蛋"
+          @click="handleMascotBoop"
+          @animationend="booping = false"
+        >
+          <img class="brand-icon" :src="appIconUrl" alt="" draggable="false" />
+        </button>
         <span class="version-text">MemoPaste v{{ appVersion }}</span>
       </div>
       <button type="button" class="quit-btn" @click="handleQuit">退出应用</button>
@@ -344,17 +362,65 @@ const handleQuit = () => {
 .brand-badge {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   min-width: 0;
 }
 
-.brand-icon {
-  width: 20px;
-  height: 20px;
-  border-radius: 5px;
-  display: block;
+.brand-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
   flex-shrink: 0;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14);
+  transition: transform 0.18s var(--ease-spring);
+
+  &:hover {
+    transform: scale(1.08) rotate(-4deg);
+  }
+
+  &.booping {
+    animation: mascot-boop 0.48s var(--ease-spring);
+  }
+}
+
+.brand-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: block;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
+}
+
+@keyframes mascot-boop {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  20% {
+    transform: scale(0.88, 1.1) rotate(-8deg);
+  }
+  50% {
+    transform: scale(1.22, 1.14) translateY(-4px) rotate(7deg);
+  }
+  78% {
+    transform: scale(0.96, 1.03) rotate(-3deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-btn {
+    transition: none;
+
+    &.booping {
+      animation: none;
+    }
+  }
 }
 
 .version-text {
