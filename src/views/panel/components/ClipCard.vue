@@ -8,6 +8,7 @@ const props = defineProps<{
   item: ClipboardItem;
   index: number;
   focused: boolean;
+  altActive?: boolean;
   keyword: string;
   editingAlias: boolean;
   now: Date;
@@ -141,6 +142,7 @@ const handleContextMenu = (e: MouseEvent) => {
       <span
         v-if="shortcutDigit !== null"
         class="slot-num"
+        :class="{ 'alt-active': altActive }"
         :title="`Alt + ${shortcutDigit} 直接粘贴`"
       >
         {{ shortcutDigit }}
@@ -367,11 +369,22 @@ const handleContextMenu = (e: MouseEvent) => {
   line-height: 1;
   transition:
     background-color 0.12s ease,
-    color 0.12s ease;
+    color 0.12s ease,
+    transform 0.14s var(--ease-spring),
+    box-shadow 0.14s ease;
 
   .clip-card.focused & {
     background: var(--accent-soft);
     color: var(--accent-primary);
+  }
+
+  &.alt-active,
+  .clip-card.focused &.alt-active {
+    background: var(--accent-primary);
+    color: var(--accent-on-primary, #fff);
+    font-weight: 600;
+    transform: scale(1.08);
+    box-shadow: 0 1px 4px color-mix(in srgb, var(--accent-primary) 35%, transparent);
   }
 }
 

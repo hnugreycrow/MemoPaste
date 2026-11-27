@@ -30,6 +30,7 @@ const notice = ref<{ type: "success" | "error"; text: string } | null>(null);
 const now = ref(new Date());
 const appIconUrl = `${import.meta.env.BASE_URL}icon.png`;
 const actionMenu = ref<{ item: ClipboardItem; x: number; y: number } | null>(null);
+const altPressed = ref(false);
 
 const shellRef = ref<HTMLElement | null>(null);
 const searchInputRef = ref<HTMLInputElement | null>(null);
@@ -488,6 +489,18 @@ const handleKeyDown = (e: KeyboardEvent) => {
   }
 
   // 主列表态键盘流
+  if (
+    e.key === "Alt" &&
+    !e.ctrlKey &&
+    !e.metaKey &&
+    !e.shiftKey &&
+    !actionMenu.value &&
+    editingAliasId.value === null
+  ) {
+    altPressed.value = true;
+    return;
+  }
+
   if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
     const match = /^Digit([1-9])$/.exec(e.code);
     if (match) {
@@ -495,6 +508,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
       const target = clipboardData.value[idx];
       if (target) {
         e.preventDefault();
+        altPressed.value = false;
         void handlePaste(target);
       }
       return;
@@ -585,8 +599,19 @@ const handleKeyDown = (e: KeyboardEvent) => {
   }
 };
 
+const handleKeyUp = (e: KeyboardEvent) => {
+  if (e.key === "Alt" || !e.altKey) {
+    altPressed.value = false;
+  }
+};
+
+const handleWindowBlur = () => {
+  altPressed.value = false;
+};
+
 const handlePanelShown = async (payload: PanelShownPayload) => {
   now.value = new Date();
+  altPressed.value = false;
   resetClearConfirm();
   actionMenu.value = null;
   editingAliasId.value = null;
@@ -625,6 +650,8 @@ const scheduleRefresh = () => {
 
 onMounted(async () => {
   window.addEventListener("keydown", handleKeyDown);
+  window.addEventListener("keyup", handleKeyUp);
+  window.addEventListener("blur", handleWindowBlur);
 
   await Promise.all([
     clipboardStore.loadClipboardHistory(1, false),
@@ -653,6 +680,8 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener("keydown", handleKeyDown);
+  window.removeEventListener("keyup", handleKeyUp);
+  window.removeEventListener("blur", handleWindowBlur);
   removeShownListener?.();
   removeChangedListener?.();
   removePausedListener?.();
@@ -810,6 +839,7 @@ onUnmounted(() => {
               :item="item"
               :index="index"
               :focused="index === focusedIndex"
+              :alt-active="altPressed"
               :keyword="clipboardStore.searchKeyword"
               :editing-alias="editingAliasId === item.id"
               :now="now"
@@ -830,9 +860,9 @@ onUnmounted(() => {
 
         <footer class="panel-footer" aria-hidden="true">
           <span class="hint-item"><kbd>↵</kbd> 粘贴</span>
-          <span class="hint-item"><kbd>Shift</kbd>+<kbd>↵</kbd> {{ secondaryHintLabel }}</span>
+          <span class="hint-item"><kbd>Shift+↵</kbd> {{ secondaryHintLabel }}</span>
+          <span class="hint-item" :class="{ active: altPressed }"><kbd>Alt+1-9</kbd> 速贴</span>
           <span class="hint-item"><kbd>Space</kbd> 预览</span>
-          <span class="hint-item"><kbd>F2</kbd> 备注</span>
         </footer>
       </div>
     </Transition>
@@ -1240,9 +1270,9 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   height: 30px;
-  padding: 0 12px;
+  padding: 0 10px;
   border-top: 1px solid var(--border-light);
   background: var(--bg-elevated);
   color: var(--text-tertiary);
@@ -1256,6 +1286,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 3px;
   white-space: nowrap;
+  transition: color 0.12s ease;
 
   kbd {
     display: inline-flex;
@@ -1271,6 +1302,20 @@ onUnmounted(() => {
     font-size: 10px;
     color: var(--text-secondary);
     line-height: 1;
+    transition:
+      background-color 0.12s ease,
+      border-color 0.12s ease,
+      color 0.12s ease;
+  }
+
+  &.active {
+    color: var(--accent-primary);
+
+    kbd {
+      border-color: var(--accent-primary);
+      background: var(--accent-soft);
+      color: var(--accent-primary);
+    }
   }
 }
 

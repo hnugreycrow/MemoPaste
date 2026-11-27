@@ -163,13 +163,26 @@ app
       await sleep(120);
       assert.equal(await run(`window.__test.snapshot().singleLinePastedId`), 1);
 
-      // 切换焦点到链接卡片与图片卡片，校验动态底栏提示
+      // 切换焦点到链接卡片与图片卡片，校验动态底栏提示 + Alt 亮标联动
       await run(`document.querySelector('.clip-card[data-id="3"]').dispatchEvent(new MouseEvent('mouseenter'))`);
       await sleep(60);
-      assert.ok((await run(`document.querySelector('.panel-footer')?.textContent || ''`)).includes("打开"));
+      const urlFooterText = await run(`document.querySelector('.panel-footer')?.textContent || ''`);
+      assert.ok(urlFooterText.includes("打开"));
+      assert.ok(urlFooterText.includes("Alt+1-9"));
       await run(`document.querySelector('.clip-card[data-id="4"]').dispatchEvent(new MouseEvent('mouseenter'))`);
       await sleep(60);
       assert.ok((await run(`document.querySelector('.panel-footer')?.textContent || ''`)).includes("另存为"));
+
+      await run(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt', altKey: true }))`);
+      await sleep(80);
+      assert.equal(await run(`document.querySelectorAll('.slot-num.alt-active').length`), 5);
+      writeFileSync(
+        path.join(output, `${theme}-alt-hint.png`),
+        (await win.webContents.capturePage()).toPNG(),
+      );
+      await run(`window.dispatchEvent(new KeyboardEvent('keyup', { key: 'Alt', altKey: false }))`);
+      await sleep(60);
+      assert.equal(await run(`document.querySelectorAll('.slot-num.alt-active').length`), 0);
 
       // 5. 暂停监听按钮 + 提示条
       await run(`document.querySelector('.header-btn[aria-label="暂停记录"]').click()`);
