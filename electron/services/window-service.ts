@@ -1,233 +1,228 @@
-import { BrowserWindow, screen, app } from "electron";
+import { BrowserWindow, screen } from "electron";
 import path from "node:path";
-import { ConfigService } from "./config-service";
-import { PanelWindowManager } from "./panel-window-manager";
 import { registerWindowIpcHandlers } from "./window-ipc";
-import { isAppQuitting, setAppIsQuitting } from "./app-quit-state";
-import { uninstallOutsideClickHook } from "../utils/outside-click-hook";
+import { isAppQuitting } from "./app-quit-state";
+import {
+  captureForegroundWindow,
+  readNativeHandle,
+  restoreForegroundWindow,
+  type ForegroundWindowHandle,
+} from "../utils/foreground-window";
 
 export { setAppIsQuitting } from "./app-quit-state";
 
+export const PANEL_WIDTH = 380;
+export const PANEL_HEIGHT = 520;
+
+/** 打开后短时间内忽略 blur，避免快捷键松键或点托盘瞬间的焦点抖动误关浮窗 */
+const BLUR_GRACE_MS = 180;
+
+export type PanelShownPayload = {
+  view: "list" | "settings";
+};
+
 /**
- * 窗口管理服务（门面）
- * - 主窗口：完整管理界面
- * - 快捷面板：委托 PanelWindowManager
+ * 单浮窗管理服务
+ * - 唯一常驻隐藏浮窗（focusable: true），支持呼出即搜与内嵌设置
+ * - 呼出前记录原前台窗口句柄，粘贴隐藏时归还焦点
+ * - 失焦自动隐藏，支持在录制快捷键/弹窗时临时抑制
  */
 export class WindowService {
-  private win: BrowserWindow | null = null;
-  private readonly preloadPath: string;
-  private readonly publicPath: string;
-  private readonly rendererPath: string;
-  private readonly devServerUrl: string | undefined;
-  private configService: ConfigService;
-  private panel: PanelWindowManager;
+  private panelWin: BrowserWindow | null = null;
+  private previousForegroundHwnd: ForegroundWindowHandle | null = null;
+  private shownAt = 0;
+  private suppressBlurHide = false;
+  private ipcRegistered = false;
 
   constructor(
-    preloadPath: string,
-    publicPath: string,
-    rendererPath: string,
-    configService: ConfigService,
-    devServerUrl?: string,
-  ) {
-    this.preloadPath = preloadPath;
-    this.publicPath = publicPath;
-    this.rendererPath = rendererPath;
-    this.devServerUrl = devServerUrl;
-    this.configService = configService;
-    this.panel = new PanelWindowManager(preloadPath, publicPath, (win, hashPath) =>
-      this.loadRenderer(win, hashPath),
-    );
-  }
+    private readonly preloadPath: string,
+    private readonly publicPath: string,
+    private readonly rendererPath: string,
+    private readonly devServerUrl?: string,
+  ) {}
 
-  /**
-   * 智能自适应主窗口尺寸：设计稿基准 + 屏幕比例上限 + 绝对上限
-   */
-  private calculateSmartWindowSize(): {
-    width: number;
-    height: number;
-    x?: number;
-    y?: number;
-  } {
-    const primaryDisplay = screen.getPrimaryDisplay();
-    const {
-      width: screenWidth,
-      height: screenHeight,
-      x: screenX,
-      y: screenY,
-    } = primaryDisplay.workArea;
-
-    const minWidth = 800;
-    const minHeight = 600;
-    const baseWidth = 1000;
-    const baseHeight = 700;
-    const absoluteMaxWidth = 1280;
-    const absoluteMaxHeight = 900;
-    const screenRatioCap = 0.9;
-
-    const maxWidth = Math.min(Math.floor(screenWidth * screenRatioCap), absoluteMaxWidth);
-    const maxHeight = Math.min(Math.floor(screenHeight * screenRatioCap), absoluteMaxHeight);
-
-    const finalWidth = Math.max(minWidth, Math.min(baseWidth, maxWidth));
-    const finalHeight = Math.max(minHeight, Math.min(baseHeight, maxHeight));
-
-    const x = Math.floor(screenX + (screenWidth - finalWidth) / 2);
-    const y = Math.floor(screenY + (screenHeight - finalHeight) / 2);
-
-    return {
-      width: finalWidth,
-      height: finalHeight,
-      x,
-      y,
-    };
-  }
-
-  /** 加载渲染页；hashPath 用于区分主窗口与面板路由（hash history） */
-  private loadRenderer(win: BrowserWindow, hashPath?: string): void {
+  private loadRenderer(win: BrowserWindow): void {
     if (this.devServerUrl) {
-      const url = hashPath ? `${this.devServerUrl}#${hashPath}` : this.devServerUrl;
-      win.loadURL(url);
+      win.loadURL(this.devServerUrl);
     } else {
-      const options = hashPath ? { hash: hashPath } : undefined;
-      win.loadFile(path.join(this.rendererPath, "index.html"), options);
+      win.loadFile(path.join(this.rendererPath, "index.html"));
     }
   }
 
-  /**
-   * 创建主窗口
-   * @param options.startHidden 登录启动时为 true，ready-to-show 后不自动显示
-   */
-  public createWindow(options?: { startHidden?: boolean }): BrowserWindow {
-    const startHidden = !!options?.startHidden;
-    const { width, height } = this.calculateSmartWindowSize();
+  private getSelfHandle(): ForegroundWindowHandle | null {
+    if (!this.panelWin || this.panelWin.isDestroyed()) return null;
+    try {
+      return readNativeHandle(this.panelWin.getNativeWindowHandle());
+    } catch {
+      return null;
+    }
+  }
 
-    this.win = new BrowserWindow({
-      width,
-      height,
-      minWidth: 800,
-      minHeight: 600,
+  /** 将浮窗定位在光标附近，并夹紧在当前显示器工作区内 */
+  private positionNearCursor(): void {
+    if (!this.panelWin || this.panelWin.isDestroyed()) return;
+
+    const cursor = screen.getCursorScreenPoint();
+    const display = screen.getDisplayNearestPoint(cursor);
+    const { x: areaX, y: areaY, width: areaW, height: areaH } = display.workArea;
+
+    let x = cursor.x + 12;
+    let y = cursor.y + 12;
+
+    if (x + PANEL_WIDTH > areaX + areaW) {
+      x = cursor.x - PANEL_WIDTH - 12;
+    }
+    if (y + PANEL_HEIGHT > areaY + areaH) {
+      y = cursor.y - PANEL_HEIGHT - 12;
+    }
+
+    x = Math.max(areaX, Math.min(x, areaX + areaW - PANEL_WIDTH));
+    y = Math.max(areaY, Math.min(y, areaY + areaH - PANEL_HEIGHT));
+
+    this.panelWin.setPosition(Math.round(x), Math.round(y));
+  }
+
+  /** 创建唯一常驻浮窗（不透明窗体，保留系统原生阴影、Win11 圆角与 ClearType 字体） */
+  public createPanelWindow(options?: {
+    startHidden?: boolean;
+    theme?: "light" | "dark";
+  }): BrowserWindow {
+    const startHidden = !!options?.startHidden;
+    const backgroundColor = options?.theme === "dark" ? "#191715" : "#faf7f2";
+
+    this.panelWin = new BrowserWindow({
+      width: PANEL_WIDTH,
+      height: PANEL_HEIGHT,
       frame: false,
-      icon: path.join(this.publicPath, "icon.png"),
+      backgroundColor,
+      hasShadow: true,
+      roundedCorners: true,
+      focusable: true,
+      resizable: false,
+      maximizable: false,
+      minimizable: false,
+      fullscreenable: false,
+      skipTaskbar: true,
+      alwaysOnTop: true,
       show: false,
+      icon: path.join(this.publicPath, "icon.png"),
       webPreferences: {
         preload: this.preloadPath,
-        // 渲染进程据此区分主窗/面板（透明背景、更新弹窗等），无需等 IPC
-        additionalArguments: ["--window-role=main"],
       },
     });
 
-    registerWindowIpcHandlers({
-      getMainWindow: () => this.win,
-      getPanelWindow: () => this.panel.getWindow(),
-      hidePanel: () => this.hidePanel(),
-      showAndFocus: () => this.showAndFocus(),
-    });
-    this.loadRenderer(this.win);
+    if (!this.ipcRegistered) {
+      registerWindowIpcHandlers({
+        hidePanel: () => this.hidePanel(),
+        setBlurHideSuppressed: (suppressed) => this.setBlurHideSuppressed(suppressed),
+      });
+      this.ipcRegistered = true;
+    }
 
-    this.win.once("ready-to-show", () => {
+    this.loadRenderer(this.panelWin);
+
+    this.panelWin.once("ready-to-show", () => {
       if (!startHidden) {
-        this.win?.show();
+        this.showPanel();
       }
     });
 
-    this.win.on("maximize", () => {
-      this.win?.webContents.send("window-maximize-changed", true);
+    this.panelWin.on("blur", () => {
+      if (this.suppressBlurHide) return;
+      if (Date.now() - this.shownAt < BLUR_GRACE_MS) return;
+      this.hidePanel();
     });
 
-    this.win.on("unmaximize", () => {
-      this.win?.webContents.send("window-maximize-changed", false);
-    });
-
-    // 唯一关主窗策略：点 × / Alt+F4 / IPC 都走 close；托盘退出前会置 appIsQuitting
-    this.win.on("close", (event) => {
-      if (isAppQuitting()) return;
-      if (this.configService.get<boolean>("minimizeToTray")) {
+    // 关闭操作仅隐藏，应用退出统一由托盘/设置退出按钮触发
+    this.panelWin.on("close", (event) => {
+      if (!isAppQuitting()) {
         event.preventDefault();
-        this.win?.hide();
+        this.hidePanel();
       }
     });
 
-    // 用户主动关闭主窗口且未开「关闭到托盘」时：清理面板并退出，避免后台常驻
-    this.win.on("closed", () => {
-      this.win = null;
-      if (isAppQuitting()) return;
-      setAppIsQuitting(true);
-      uninstallOutsideClickHook();
-      this.panel.unregisterShortcuts();
-      this.panel.destroy();
-      app.quit();
-    });
-
-    return this.win;
-  }
-
-  public createPanelWindow(): BrowserWindow {
-    return this.panel.create();
-  }
-
-  public showAndFocus(): void {
-    if (!this.win) return;
-
-    if (this.win.isMinimized()) {
-      this.win.restore();
-    }
-    if (!this.win.isVisible()) {
-      this.win.show();
-    }
-    this.win.focus();
-  }
-
-  public getWindow(): BrowserWindow | null {
-    return this.win;
+    return this.panelWin;
   }
 
   public getPanelWindow(): BrowserWindow | null {
-    return this.panel.getWindow();
+    return this.panelWin;
   }
 
-  public showWindow(): void {
-    if (this.win) {
-      this.win.show();
-      this.win.focus();
+  public setBlurHideSuppressed(suppressed: boolean): void {
+    this.suppressBlurHide = !!suppressed;
+  }
+
+  public showPanel(options?: { preserveState?: boolean; view?: "list" | "settings" }): void {
+    if (!this.panelWin || this.panelWin.isDestroyed()) {
+      this.createPanelWindow({ startHidden: true });
     }
-  }
+    if (!this.panelWin || this.panelWin.isDestroyed()) return;
 
-  public hideWindow(): void {
-    if (this.win) {
-      this.win.hide();
-    }
-  }
+    const preserveState = !!options?.preserveState;
+    const view = options?.view ?? "list";
 
-  public minimizeWindow(): void {
-    if (this.win) {
-      this.win.minimize();
-    }
-  }
-
-  public toggleWindow(): void {
-    if (this.win) {
-      if (this.win.isVisible()) {
-        this.win.hide();
-      } else {
-        this.win.show();
-        this.win.focus();
+    if (!this.panelWin.isVisible()) {
+      const captured = captureForegroundWindow(this.getSelfHandle());
+      if (captured !== null) {
+        this.previousForegroundHwnd = captured;
       }
     }
+
+    if (!preserveState) {
+      this.positionNearCursor();
+    }
+
+    this.suppressBlurHide = false;
+    this.panelWin.setAlwaysOnTop(true, "pop-up-menu");
+    this.shownAt = Date.now();
+    this.panelWin.show();
+    this.panelWin.focus();
+
+    if (!preserveState || options?.view) {
+      const payload: PanelShownPayload = { view };
+      this.panelWin.webContents.send("panel-shown", payload);
+    }
   }
 
-  public showPanel(): void {
-    this.panel.show();
+  public showSettings(): void {
+    this.showPanel({ view: "settings" });
+  }
+
+  public restorePanel(): void {
+    this.showPanel({ preserveState: true });
   }
 
   public hidePanel(): void {
-    this.panel.hide();
+    this.suppressBlurHide = false;
+    if (this.panelWin && !this.panelWin.isDestroyed() && this.panelWin.isVisible()) {
+      this.panelWin.hide();
+    }
+  }
+
+  /** 隐藏浮窗并将前台焦点交还给呼出前的目标窗口，供自动模拟粘贴使用 */
+  public hideAndRestoreFocus(): void {
+    this.hidePanel();
+    restoreForegroundWindow(this.previousForegroundHwnd);
   }
 
   public togglePanel(): void {
-    this.panel.toggle();
+    if (!this.panelWin || this.panelWin.isDestroyed()) {
+      this.createPanelWindow({ startHidden: true });
+    }
+    if (this.panelWin?.isVisible()) {
+      this.hidePanel();
+    } else {
+      this.showPanel();
+    }
   }
 
   public dispose(): void {
-    this.panel.destroy();
-    this.win = null;
+    this.previousForegroundHwnd = null;
+    if (this.panelWin && !this.panelWin.isDestroyed()) {
+      this.panelWin.removeAllListeners("close");
+      this.panelWin.removeAllListeners("blur");
+      this.panelWin.destroy();
+    }
+    this.panelWin = null;
   }
 }

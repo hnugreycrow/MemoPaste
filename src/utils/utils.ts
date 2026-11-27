@@ -25,27 +25,23 @@ const isSameDay = (a: Date, b: Date) =>
   a.getMonth() === b.getMonth() &&
   a.getDate() === b.getDate();
 
-export const formatTimeOfDay = (timestamp: Date) => {
-  const d = new Date(timestamp);
-  const h = d.getHours().toString().padStart(2, "0");
-  const m = d.getMinutes().toString().padStart(2, "0");
-  return `${h}:${m}`;
-};
-
 /**
- * 列表相对时间：今天 HH:mm / 昨天 / 今年 M月D日 / 更早 YYYY/M/D
+ * 紧凑相对时间：刚刚 / Nm / Nh / 昨天 / M/D / YYYY/M/D
  */
-export const formatRelativeTime = (timestamp: Date) => {
+export const formatCompactTime = (timestamp: Date, now: Date = new Date()) => {
   const d = new Date(timestamp);
-  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  if (diffMs >= 0 && diffMs < 60_000) return "刚刚";
+  if (diffMs >= 0 && diffMs < 3_600_000) return `${Math.floor(diffMs / 60_000)}m`;
+  if (isSameDay(d, now) && diffMs >= 0) return `${Math.floor(diffMs / 3_600_000)}h`;
+
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-
-  if (isSameDay(d, today)) return formatTimeOfDay(d);
   if (isSameDay(d, yesterday)) return "昨天";
+
   if (d.getFullYear() === now.getFullYear()) {
-    return `${d.getMonth() + 1}月${d.getDate()}日`;
+    return `${d.getMonth() + 1}/${d.getDate()}`;
   }
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
 };

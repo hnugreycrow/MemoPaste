@@ -1,140 +1,69 @@
-/* ===== ClipMint 浅色主题：薄荷绿底 + 薰衣草紫主色 ===== */
+/* ===== Warm Paper 浅色主题：宣纸暖白 + 陶土朱砂墨 ===== */
 :root.light {
-  /* Element Plus */
-  --el-color-primary-rgb: 139, 109, 232;
-  --el-color-primary: #8b6de8;
+  /* 背景层级：手账纸温润分层 */
+  --bg-primary: #faf7f2;
+  --bg-header: linear-gradient(180deg, #fdfbf7 0%, #faf7f2 100%);
+  --bg-secondary: #efeae0;
+  --bg-tertiary: #fffdf9;
+  --bg-elevated: #f4efe6;
+  --bg-hover: #f2ece2;
+  --bg-active: linear-gradient(90deg, rgba(201, 100, 66, 0.11) 0%, rgba(201, 100, 66, 0.04) 100%);
+  --bg-seg-active: #fffdf9;
 
-  --el-bg-color: #f7fbfa;
-  --el-bg-color-overlay: #ffffff;
-  --el-bg-color-page: #f4f8f6;
+  /* 文本层级：暖墨色系 */
+  --text-primary: #24201c;
+  --text-secondary: #635b52;
+  --text-tertiary: #8f8579;
+  --text-inverse: #fffdf9;
 
-  --el-text-color-primary: #2a2438;
-  --el-text-color-regular: #5c566e;
-  --el-text-color-secondary: #8f889e;
+  /* 暖棕发丝边框与光线高光 */
+  --border-light: rgba(54, 42, 28, 0.08);
+  --border-medium: rgba(54, 42, 28, 0.15);
+  --border-selected: rgba(201, 100, 66, 0.3);
+  --thumb-ring: rgba(54, 42, 28, 0.1);
+  --top-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --focus-bar-glow: 0 0 6px rgba(201, 100, 66, 0.28);
 
-  --el-border-color: #d5e8e1;
-  --el-border-color-light: #e2f0eb;
-  --el-border-color-lighter: #eef7f3;
+  /* 主强调色：温润陶土橙 */
+  --accent-primary: #c96442;
+  --accent-primary-hover: #b55434;
+  --accent-on-primary: #fffdf9;
+  --accent-soft: rgba(201, 100, 66, 0.12);
+  --accent-secondary: #2f7a67;
+  --accent-danger: #cf4647;
+  --accent-tertiary: #6b55a8;
+  --accent-quaternary: #d48a1e;
 
-  --el-fill-color: #eaf4f0;
-  --el-fill-color-light: #f3faf7;
-  --el-fill-color-blank: #ffffff;
+  /* 常用收藏与便签高亮 */
+  --favorite-bg: rgba(212, 138, 30, 0.11);
+  --favorite-border: #d48a1e;
+  --favorite-text: #8f5612;
+  --search-mark-bg: rgba(238, 186, 62, 0.4);
 
-  --el-mask-color: rgba(42, 36, 56, 0.45);
-  --el-mask-color-extra-light: rgba(42, 36, 56, 0.05);
+  /* 矿物颜料低饱和类型胶囊 */
+  --type-text-bg: rgba(201, 100, 66, 0.1);
+  --type-url-bg: rgba(47, 122, 103, 0.1);
+  --type-code-bg: rgba(107, 85, 168, 0.1);
+  --type-image-bg: rgba(58, 110, 165, 0.1);
+  --type-favorite-bg: rgba(212, 138, 30, 0.12);
 
-  /* 背景：薄荷绿洗色 */
-  --bg-primary: #f4f8f6;
-  --bg-secondary: #eaf4f0; /* 侧栏 */
-  --bg-tertiary: #ffffff;
-  --bg-hover: #ede4ff;
-  --bg-active: #e8deff;
+  --type-text-fg: #b55434;
+  --type-url-fg: #266b59;
+  --type-code-fg: #5f4a99;
+  --type-image-fg: #2f5f94;
 
-  --list-bg: #f7fbfa;
-  --detail-bg: #f3f8f6;
-  --setting-card-bg: #f7fbfa;
-
-  /* 文本 */
-  --text-primary: #2a2438;
-  --text-secondary: #5c566e;
-  --text-tertiary: #8f889e;
-  --text-inverse: #ffffff;
-
-  /* 边框 */
-  --border-light: #d5e8e1;
-  --border-medium: #c2d9d0;
-
-  /* 强调色：薰衣草紫主色 */
-  --accent-primary: #8b6de8;
-  --accent-primary-hover: #7a5ad9;
-  --accent-on-primary: #ffffff;
-  --accent-secondary: #3db88a; /* 薄荷绿辅色 */
-  --accent-danger: #e45d7a;
-  --accent-tertiary: #9b7aef;
-  --accent-quaternary: #e0a14a;
-
-  --gradient-active-start: #8b6de8;
-  --gradient-active-end: #a78bfa;
-
-  --favorite-bg: rgba(224, 161, 74, 0.1);
-  --favorite-border: #e0a14a;
-
-  --type-text-bg: rgba(139, 109, 232, 0.12);
-  --type-url-bg: rgba(61, 184, 138, 0.12);
-  --type-code-bg: rgba(245, 108, 108, 0.16);
-  --type-image-bg: rgba(64, 140, 230, 0.12);
-  --type-favorite-bg: rgba(224, 161, 74, 0.12);
-
-  --type-text-fg: #7a5ad9;
-  --type-url-fg: #2f9e74;
-  --type-code-fg: #F56C6C;
-  --type-image-fg: #3a7fd4;
-
-  --radius-sm: 7px;
-  --radius-md: 11px;
-  --radius-lg: 14px;
-  --shadow-soft: 0 2px 12px rgba(139, 109, 232, 0.07);
-  --shadow-lift: 0 6px 18px rgba(61, 184, 138, 0.1);
+  --shadow-seg:
+    0 1px 2px rgba(54, 42, 28, 0.08),
+    0 0 0 1px rgba(54, 42, 28, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
-/* ClipMint：侧栏淡薄荷洗色 + 品牌区轻渐变 */
 html.light {
-  .nav-sidebar {
-    background:
-      radial-gradient(ellipse 120% 60% at 50% 100%, rgba(139, 109, 232, 0.08), transparent 55%),
-      linear-gradient(180deg, #eef8f4 0%, #eaf4f0 45%, #e8f2f6 100%);
-  }
-
-  .brand-logo {
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-soft);
-  }
-
-  .nav-item,
-  .util-item {
-    border-radius: var(--radius-md);
-
-    &.active {
-      background: color-mix(in srgb, var(--accent-primary) 25%, white);
-      color: var(--accent-primary);
-      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-primary) 28%, transparent);
-    }
-  }
-
-  .content-item {
-    border-radius: var(--radius-md);
-
-    &:hover {
-      box-shadow: var(--shadow-soft);
-    }
-
-    &.active {
-      background: var(--bg-active);
-      box-shadow:
-        inset 0 0 0 1px color-mix(in srgb, var(--accent-primary) 28%, transparent),
-        var(--shadow-soft);
-    }
-  }
-
-  .filter-segment-item {
-    border-radius: var(--radius-sm);
-
-    &.active {
-      background: color-mix(in srgb, var(--accent-primary) 18%, white);
-      border-color: color-mix(in srgb, var(--accent-primary) 30%, transparent);
-      color: var(--accent-primary);
-    }
-  }
-
-  .detail-text {
-    border-radius: var(--radius-md);
-  }
-
   ::-webkit-scrollbar-thumb {
-    background: color-mix(in srgb, var(--accent-primary) 25%, var(--border-light));
+    background: rgba(54, 42, 28, 0.16);
 
     &:hover {
-      background: color-mix(in srgb, var(--accent-primary) 40%, var(--border-medium));
+      background: rgba(54, 42, 28, 0.28);
     }
   }
 }

@@ -1,59 +1,59 @@
 import { Tray, Menu, nativeImage, app } from "electron";
 import { WindowService } from "./window-service";
+import { ClipboardService } from "./clipboard-service";
 
-/** 系统托盘：快捷面板 / 主窗入口，以及真正退出 */
+/** 系统托盘：左键切换浮窗，右键精简为暂停/恢复、偏好设置与退出 */
 export class TrayService {
   private tray: Tray | null = null;
-  private readonly windowService: WindowService;
-  private readonly iconPath: string;
 
-  constructor(windowService: WindowService, iconPath: string) {
-    this.windowService = windowService;
-    this.iconPath = iconPath;
-  }
+  constructor(
+    private readonly windowService: WindowService,
+    private readonly clipboardService: ClipboardService,
+    private readonly iconPath: string,
+  ) {}
 
   public createTray(): Tray {
     const icon = nativeImage.createFromPath(this.iconPath);
     this.tray = new Tray(icon);
-    this.tray.setToolTip(`MemoPaste v${app.getVersion()}`);
-
-    this.updateContextMenu();
+    this.updateTooltip();
+    this.refreshMenu();
 
     this.tray.on("click", () => {
-      this.windowService.toggleWindow();
+      this.windowService.togglePanel();
     });
 
     return this.tray;
   }
 
-  private updateContextMenu(): void {
+  private updateTooltip(): void {
+    if (!this.tray) return;
+    const pausedSuffix = this.clipboardService.isPaused() ? "（已暂停记录）" : "";
+    this.tray.setToolTip(`MemoPaste v${app.getVersion()}${pausedSuffix}`);
+  }
+
+  public refreshMenu(): void {
     if (!this.tray) return;
 
-    // 面板与主窗分开入口，避免「显示主窗口」误当成打开面板
+    this.updateTooltip();
+    const paused = this.clipboardService.isPaused();
+
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: "打开快捷面板",
+        label: paused ? "恢复记录" : "暂停记录",
         click: () => {
-          this.windowService.showPanel();
+          this.clipboardService.setPaused(!this.clipboardService.isPaused());
         },
       },
       {
-        label: "显示主窗口",
+        label: "偏好设置",
         click: () => {
-          this.windowService.showWindow();
-        },
-      },
-      {
-        label: "隐藏主窗口",
-        click: () => {
-          this.windowService.hideWindow();
+          this.windowService.showSettings();
         },
       },
       { type: "separator" },
       {
         label: "退出",
         click: () => {
-          // before-quit 会置 appIsQuitting，避免被「关闭到托盘」拦截
           app.quit();
         },
       },

@@ -75,3 +75,28 @@ export const TYPE_LABELS: Record<string, string> = {
 export const getTypeLabel = (type: string) => {
   return TYPE_LABELS[type] || "文本";
 };
+
+/** 将多行文本压成干净的单行（合并换行与连续空白），用于「去换行粘贴」 */
+export const collapseToSingleLine = (content: string): string => {
+  if (!content) return "";
+  const collapsed = content
+    .replace(/\r\n|\r|\n/g, " ")
+    .replace(/[ \t\f\v]+/g, " ")
+    .trim();
+  return collapsed || content.replace(/\r\n|\r|\n/g, " ");
+};
+
+/** 校验并规范化可安全外链打开的 URL（仅允许 http / https，自动补齐 www. 前缀） */
+export const normalizeSafeExternalUrl = (raw: string): string | null => {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const candidate = /^www\./i.test(trimmed) ? `https://${trimmed}` : trimmed;
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    if (!parsed.hostname) return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+};

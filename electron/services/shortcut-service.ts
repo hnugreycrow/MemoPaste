@@ -10,17 +10,22 @@ export type ShortcutUpdateResult = {
 };
 
 /**
- * 快捷键服务：注册 / 更新全局快捷键（切换快捷面板）
+ * 快捷键服务：注册 / 更新全局快捷键（切换浮窗）
  */
 export class ShortcutService {
   private windowService: WindowService;
   private configService: ConfigService;
   private currentShortcut: string | null = null;
+  private onShortcutChanged: ((shortcut: string) => void) | null = null;
 
   constructor(windowService: WindowService, configService: ConfigService) {
     this.windowService = windowService;
     this.configService = configService;
     this.registerIpcHandlers();
+  }
+
+  public setOnShortcutChanged(listener: ((shortcut: string) => void) | null): void {
+    this.onShortcutChanged = listener;
   }
 
   private registerIpcHandlers(): void {
@@ -71,6 +76,7 @@ export class ShortcutService {
     }
 
     this.configService.set("shortcut", newShortcut);
+    this.onShortcutChanged?.(newShortcut);
     return { success: true, shortcut: newShortcut };
   }
 
@@ -112,5 +118,6 @@ export class ShortcutService {
   public dispose(): void {
     globalShortcut.unregisterAll();
     this.currentShortcut = null;
+    this.onShortcutChanged = null;
   }
 }

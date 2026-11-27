@@ -8,14 +8,19 @@ import { deleteImageFiles } from "../services/image-storage";
 const require = createRequire(import.meta.url);
 const BetterSqlite3 = require("better-sqlite3");
 
+/** 备注名最大长度（字符） */
+const MAX_ALIAS_LENGTH = 60;
+
 /** SQLite 行：timestamp 存 ISO 字符串；is_favorite 为 0/1 */
 export type ClipboardRow = {
+  searchPreview?: string;
   id: number;
   content: string;
   type: string;
   timestamp: string;
   size: string | null;
   is_favorite: number;
+  alias: string | null;
   content_hash: string | null;
   file_path: string | null;
   thumb_path: string | null;
@@ -28,6 +33,7 @@ export type ClipboardItemInput = {
   timestamp: Date | string;
   size?: string;
   is_favorite?: boolean;
+  alias?: string | null;
   content_hash?: string | null;
   file_path?: string | null;
   thumb_path?: string | null;
@@ -56,6 +62,13 @@ function requireDb(): SqliteDatabase {
   return db;
 }
 
+function normalizeAlias(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  return trimmed.slice(0, MAX_ALIAS_LENGTH);
+}
+
 /**
  * 清空/删后若不重置 sqlite_sequence，新 id 会一直增大。
  * 列表与调试更习惯从较小 id 续号，故按当前 MAX(id) 回写序列。
@@ -69,14 +82,10 @@ function resetIdSequence(): void {
 
   if (maxId > 0) {
     database
-      .prepare(
-        `UPDATE sqlite_sequence SET seq = ? WHERE name = 'clipboard_items'`,
-      )
+      .prepare(`UPDATE sqlite_sequence SET seq = ? WHERE name = 'clipboard_items'`)
       .run(maxId);
   } else {
-    database
-      .prepare(`DELETE FROM sqlite_sequence WHERE name = 'clipboard_items'`)
-      .run();
+    database.prepare(`DELETE FROM sqlite_sequence WHERE name = 'clipboard_items'`).run();
   }
 }
 
@@ -96,6 +105,9 @@ function migrateClipboardSchema(database: SqliteDatabase): void {
   }
   if (!tableHasColumn(database, "thumb_path")) {
     database.exec(`ALTER TABLE clipboard_items ADD COLUMN thumb_path TEXT`);
+  }
+  if (!tableHasColumn(database, "alias")) {
+    database.exec(`ALTER TABLE clipboard_items ADD COLUMN alias TEXT`);
   }
 
   // 列表/筛选常用路径；IF NOT EXISTS 可重复执行
@@ -148,6 +160,7 @@ export function initDatabase(_isDevelopment = false) {
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
         size VARCHAR(10),
         is_favorite BOOLEAN DEFAULT 0,
+        alias TEXT,
         content_hash TEXT,
         file_path TEXT,
         thumb_path TEXT
@@ -182,35 +195,32 @@ export type SaveClipboardResult = {
   is_favorite: boolean;
 };
 
-/** 文本按 content 去重；图片按 content_hash 去重。已存在则更新时间置顶，并合并收藏标记 */
-export function saveClipboardItem(
-  item: ClipboardItemInput,
-): SaveClipboardResult | null {
+/** 文本按 content 去重；图片按 content_hash 去重。已存在则更新时间置顶，并合并收藏标记与备注名 */
+export function saveClipboardItem(item: ClipboardItemInput): SaveClipboardResult | null {
   try {
     const database = requireDb();
     const timestamp =
-      item.timestamp instanceof Date
-        ? item.timestamp.toISOString()
-        : item.timestamp;
+      item.timestamp instanceof Date ? item.timestamp.toISOString() : item.timestamp;
 
     const contentHash = item.content_hash ?? null;
     const filePath = item.file_path ?? null;
     const thumbPath = item.thumb_path ?? null;
+    const incomingAlias = normalizeAlias(item.alias);
 
     return database.transaction(() => {
-      type DupRow = { id: number; is_favorite: number };
+      type DupRow = { id: number; is_favorite: number; alias: string | null };
       const duplicates: DupRow[] =
         item.type === "image" && contentHash
           ? (database
               .prepare(
-                `SELECT id, is_favorite FROM clipboard_items
+                `SELECT id, is_favorite, alias FROM clipboard_items
                  WHERE content_hash = ?
                  ORDER BY timestamp DESC, id DESC`,
               )
               .all(contentHash) as DupRow[])
           : (database
               .prepare(
-                `SELECT id, is_favorite FROM clipboard_items
+                `SELECT id, is_favorite, alias FROM clipboard_items
                  WHERE content = ? AND (type IS NULL OR type != 'image')
                  ORDER BY timestamp DESC, id DESC`,
               )
@@ -218,13 +228,15 @@ export function saveClipboardItem(
 
       if (duplicates.length > 0) {
         const keep = duplicates[0];
-        // 任一副本曾收藏则保留收藏
+        // 任一副本曾收藏或有备注名则保留
         const isFavorite = duplicates.some((row) => !!row.is_favorite) ? 1 : 0;
+        const keptAlias =
+          incomingAlias ?? duplicates.find((row) => !!row.alias)?.alias ?? null;
 
         database
           .prepare(
             `UPDATE clipboard_items
-             SET type = ?, timestamp = ?, size = ?, is_favorite = ?,
+             SET type = ?, timestamp = ?, size = ?, is_favorite = ?, alias = ?,
                  content = ?, content_hash = ?, file_path = ?, thumb_path = ?
              WHERE id = ?`,
           )
@@ -233,6 +245,7 @@ export function saveClipboardItem(
             timestamp,
             item.size ?? null,
             isFavorite,
+            keptAlias,
             item.content,
             contentHash,
             filePath,
@@ -262,8 +275,8 @@ export function saveClipboardItem(
       const result = database
         .prepare(
           `INSERT INTO clipboard_items
-           (content, type, timestamp, size, is_favorite, content_hash, file_path, thumb_path)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+           (content, type, timestamp, size, is_favorite, alias, content_hash, file_path, thumb_path)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           item.content,
@@ -271,6 +284,7 @@ export function saveClipboardItem(
           timestamp,
           item.size ?? null,
           isFavorite,
+          incomingAlias,
           contentHash,
           filePath,
           thumbPath,
@@ -305,9 +319,7 @@ export function deleteClipboardItem(id: number | string) {
     const database = requireDb();
     return database.transaction(() => {
       const row = database
-        .prepare(
-          `SELECT file_path, thumb_path FROM clipboard_items WHERE id = ?`,
-        )
+        .prepare(`SELECT file_path, thumb_path FROM clipboard_items WHERE id = ?`)
         .get(id) as { file_path: string | null; thumb_path: string | null } | undefined;
 
       database.prepare(`DELETE FROM clipboard_items WHERE id = ?`).run(id);
@@ -455,18 +467,26 @@ export function getClipboardHistory(
 
     const trimmedKeyword = (keyword || "").trim();
     if (trimmedKeyword) {
-      whereClauses.push("content LIKE ? COLLATE NOCASE ESCAPE '\\'");
-      filterParams.push(`%${escapeLike(trimmedKeyword)}%`);
+      const pattern = `%${escapeLike(trimmedKeyword)}%`;
+      whereClauses.push(
+        "(content LIKE ? COLLATE NOCASE ESCAPE '\\' OR alias LIKE ? COLLATE NOCASE ESCAPE '\\')",
+      );
+      filterParams.push(pattern, pattern);
     }
 
     const whereSql =
       whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
+    const previewStart = "max(1, instr(lower(content), lower(?)) - 16)";
+    const searchColumn = trimmedKeyword
+      ? `, CASE WHEN instr(lower(content), lower(?)) > 0 THEN (CASE WHEN ${previewStart} > 1 THEN '…' ELSE '' END || substr(content, ${previewStart}, max(200, length(?) + 120)) || CASE WHEN length(content) >= ${previewStart} + max(200, length(?) + 120) THEN '…' ELSE '' END) ELSE substr(content, 1, ${LIST_CONTENT_PREVIEW_LEN}) END AS searchPreview`
+      : "";
+    const previewParams = trimmedKeyword ? Array(6).fill(trimmedKeyword) : [];
     const selectQuery = `
       SELECT id,
              substr(content, 1, ${LIST_CONTENT_PREVIEW_LEN}) AS content,
-             type, timestamp, size, is_favorite,
-             content_hash, file_path, thumb_path
+             type, timestamp, size, is_favorite, alias,
+             content_hash, file_path, thumb_path ${searchColumn}
       FROM clipboard_items
       ${whereSql}
       ORDER BY timestamp DESC, id DESC LIMIT ? OFFSET ?
@@ -483,7 +503,7 @@ export function getClipboardHistory(
 
     const items = database
       .prepare(selectQuery)
-      .all(...filterParams, pageSize, offset) as ClipboardRow[];
+      .all(...previewParams, ...filterParams, pageSize, offset) as ClipboardRow[];
 
     return {
       items,
@@ -493,12 +513,7 @@ export function getClipboardHistory(
     };
   } catch (error) {
     console.error("Failed to get clipboard history:", error);
-    return {
-      items: [] as ClipboardRow[],
-      total: 0,
-      page,
-      pageSize,
-    };
+    throw error;
   }
 }
 
@@ -510,6 +525,20 @@ export function setFavoriteStatus(id: number | string, isFavorite: boolean) {
     return true;
   } catch (error) {
     console.error("Failed to update favorite status:", error);
+    return false;
+  }
+}
+
+/** 设置或清空条目的备注名（用于常用片段快速识别与检索） */
+export function setClipboardItemAlias(id: number | string, alias: string | null) {
+  try {
+    const normalized = normalizeAlias(alias);
+    const result = requireDb()
+      .prepare(`UPDATE clipboard_items SET alias = ? WHERE id = ?`)
+      .run(normalized, id);
+    return result.changes > 0;
+  } catch (error) {
+    console.error("Failed to update clipboard item alias:", error);
     return false;
   }
 }

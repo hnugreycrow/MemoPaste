@@ -1,28 +1,14 @@
 /// <reference types="vite/client" />
 
-import type {
-  WindowControls,
-  ClipboardAPI,
-  ConfigAPI,
-  UpdateControls,
-  PanelControls,
-  AppAPI,
-  ShortcutAPI,
-  ShellAPI,
-  ThemeAPI,
-} from "./utils/type";
+import type { ClipboardAPI, ConfigAPI, PanelControls, AppAPI, ShortcutAPI } from "./utils/type";
 
 declare global {
   interface Window {
-    windowControls: WindowControls;
     clipboard: ClipboardAPI;
     config: ConfigAPI;
-    theme: ThemeAPI;
-    updater: UpdateControls;
     panel: PanelControls;
     app: AppAPI;
     shortcut: ShortcutAPI;
-    shell: ShellAPI;
   }
 }
 

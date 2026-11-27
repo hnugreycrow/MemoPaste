@@ -1,8 +1,5 @@
 /**
- * 模拟系统粘贴（不抢焦点场景）
- *
- * 面板以 focusable:false + showInactive 显示时，原输入框仍持有编辑焦点，
- * 因此只需向系统输入流注入 Ctrl+V / Cmd+V，无需 SetForegroundWindow。
+ * 模拟系统粘贴（单浮窗隐藏并归还前景焦点后注入 Ctrl+V / Cmd+V）
  *
  * Windows 使用 koffi 调用 user32.SendInput，避免拉起 PowerShell 触发安全软件拦截。
  */
@@ -104,7 +101,7 @@ function sendKeys(events: ReturnType<typeof makeKey>[]): void {
 
 /**
  * 松开可能仍被系统视为按下的修饰键。
- * 用 Alt/Shift 等全局快捷键唤起面板后，残留修饰键会导致 Ctrl+V 变成别的组合键。
+ * 用 Alt+1~9 等快捷键触发粘贴时，残留 Alt 会导致 Ctrl+V 变成 Ctrl+Alt+V。
  */
 function releaseModifiers(): void {
   sendKeys([
@@ -126,19 +123,19 @@ function sendCtrlV(): void {
 }
 
 /**
- * 模拟粘贴到当前持有编辑焦点的控件。
- * 调用方应先写入剪贴板并隐藏面板。
+ * 模拟粘贴到目标前景窗口。
+ * 调用方应先写入剪贴板、隐藏浮窗并恢复原窗口焦点。
  */
 export async function simulatePaste(): Promise<void> {
   if (process.platform === "win32") {
     releaseModifiers();
-    // 等修饰键抬起与面板隐藏落定，再发 Ctrl+V，否则易变成 Alt/Shift+V
-    await delay(30);
+    // 等待窗口隐藏与前景焦点切换落定，再发 Ctrl+V
+    await delay(45);
     sendCtrlV();
     return;
   }
 
-  await delay(30);
+  await delay(45);
 
   if (process.platform === "darwin") {
     await execFileAsync("osascript", [
@@ -148,10 +145,9 @@ export async function simulatePaste(): Promise<void> {
     return;
   }
 
-  // Linux：依赖 xdotool
   try {
     await execFileAsync("xdotool", ["key", "ctrl+v"]);
   } catch {
-    console.warn("当前环境不支持自动粘贴（需要 xdotool）");
+    throw new Error("当前环境不支持自动粘贴（需要 xdotool）");
   }
 }
