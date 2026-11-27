@@ -145,10 +145,11 @@ app
         (await run(`document.querySelector('.panel-toast')?.textContent || ''`)).includes("Ctrl+V"),
       );
 
-      // 7. 内嵌设置：主题与保留天数保存失败回滚 + 正常保存
+      // 7. 内嵌设置：主题保存失败回滚 + 正常切换
       await run(`document.querySelector('.header-btn[aria-label="打开设置"]').click()`);
       await sleep(200);
       assert.ok(await run(`!!document.querySelector('.settings-view')`));
+      assert.equal(await run(`!!document.querySelector('.retention-row')`), false);
       writeFileSync(
         path.join(output, `${theme}-settings.png`),
         (await win.webContents.capturePage()).toPNG(),
@@ -162,16 +163,13 @@ app
       assert.equal(await run(`window.__test.snapshot().config.theme`), theme);
 
       await run(
-        `window.__test.failSave(false, true); document.querySelectorAll('.retention-row .seg-btn')[3].click()`,
+        `window.__test.failSave(false); document.querySelectorAll('.settings-view [aria-label="外观主题"] .seg-btn')[${otherThemeIndex}].click()`,
       );
       await sleep(100);
-      assert.equal(await run(`window.__test.snapshot().config.dataRetentionDays`), 7);
-
-      await run(
-        `window.__test.failSave(false); document.querySelectorAll('.retention-row .seg-btn')[3].click()`,
+      assert.equal(
+        await run(`window.__test.snapshot().config.theme`),
+        theme === "light" ? "dark" : "light",
       );
-      await sleep(100);
-      assert.equal(await run(`window.__test.snapshot().config.dataRetentionDays`), 30);
 
       await run(`document.querySelector('.settings-view .back-btn').click()`);
       await sleep(120);

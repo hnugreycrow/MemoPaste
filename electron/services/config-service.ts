@@ -4,12 +4,7 @@ import type { AppConfig, ConfigKey } from "../../src/utils/type";
 import { applyOpenAtLogin, syncOpenAtLoginFromSystem } from "../utils/login-item";
 
 /** 渲染进程可读写的配置键；未列入的 key 一律拒绝，避免任意落盘 */
-const CONFIG_KEYS = new Set<ConfigKey>([
-  "theme",
-  "shortcut",
-  "openAtLogin",
-  "dataRetentionDays",
-]);
+const CONFIG_KEYS = new Set<ConfigKey>(["theme", "shortcut", "openAtLogin"]);
 
 function isConfigKey(key: unknown): key is ConfigKey {
   return typeof key === "string" && CONFIG_KEYS.has(key as ConfigKey);
@@ -24,8 +19,6 @@ function validateConfigValue(key: ConfigKey, value: unknown): boolean {
       return typeof value === "string";
     case "openAtLogin":
       return typeof value === "boolean";
-    case "dataRetentionDays":
-      return typeof value === "number" && Number.isInteger(value) && value > 0;
     default:
       return false;
   }
@@ -41,7 +34,6 @@ export class ConfigService {
         theme: "light",
         shortcut: "Alt+V",
         openAtLogin: false,
-        dataRetentionDays: 7,
       },
       name: "config",
     });

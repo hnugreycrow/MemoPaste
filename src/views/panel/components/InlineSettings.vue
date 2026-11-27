@@ -11,23 +11,18 @@ const emit = defineEmits<{
 
 const shortcut = ref("Alt+V");
 const openAtLogin = ref(false);
-const dataRetentionDays = ref(7);
 const appVersion = ref("–");
 const saving = ref<Record<string, boolean>>({});
-
-const retentionOptions = [1, 3, 7, 30];
 
 const theme = computed(() => themeService.currentTheme.value);
 
 onMounted(async () => {
   try {
-    const [login, days, version] = await Promise.all([
+    const [login, version] = await Promise.all([
       window.config.get<boolean>("openAtLogin"),
-      window.config.get<number>("dataRetentionDays"),
       window.app.getVersion(),
     ]);
     openAtLogin.value = login ?? false;
-    dataRetentionDays.value = days ?? 7;
     if (version) appVersion.value = version;
   } catch (error) {
     console.error("加载设置失败:", error);
@@ -66,24 +61,6 @@ const handleOpenAtLoginToggle = async () => {
     emit("feedback", { type: "error", text: `开机自启设置失败：${error}` });
   } finally {
     saving.value.openAtLogin = false;
-  }
-};
-
-const handleRetentionChange = async (days: number) => {
-  if (saving.value.dataRetentionDays || days === dataRetentionDays.value) return;
-  const previous = dataRetentionDays.value;
-  dataRetentionDays.value = days;
-  saving.value.dataRetentionDays = true;
-  try {
-    if (!(await window.config.set("dataRetentionDays", days))) {
-      throw new Error("保存失败");
-    }
-    emit("feedback", { type: "success", text: `非收藏历史将保留 ${days} 天` });
-  } catch {
-    dataRetentionDays.value = previous;
-    emit("feedback", { type: "error", text: "保留天数保存失败" });
-  } finally {
-    saving.value.dataRetentionDays = false;
   }
 };
 
@@ -165,28 +142,7 @@ const handleQuit = () => {
         </div>
       </div>
 
-      <div class="settings-group">
-        <div class="setting-row retention-row">
-          <div class="row-info">
-            <span class="row-label">自动清理</span>
-            <span class="row-desc">启动时清理超时非收藏记录，常用收藏不受影响</span>
-          </div>
-          <div class="segmented" role="radiogroup" aria-label="历史保留天数">
-            <button
-              v-for="days in retentionOptions"
-              :key="days"
-              type="button"
-              class="seg-btn"
-              :class="{ active: dataRetentionDays === days }"
-              role="radio"
-              :aria-checked="dataRetentionDays === days"
-              @click="handleRetentionChange(days)"
-            >
-              {{ days }}天
-            </button>
-          </div>
-        </div>
-      </div>
+      <p class="retention-note">非收藏历史 24 小时后自动清理，常用收藏永久保留。</p>
     </div>
 
     <footer class="settings-footer">
@@ -268,12 +224,6 @@ const handleQuit = () => {
   & + & {
     border-top: 1px solid var(--border-light);
   }
-
-  &.retention-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-  }
 }
 
 .row-info {
@@ -302,10 +252,6 @@ const handleQuit = () => {
   border-radius: 8px;
   background: var(--bg-secondary);
   flex-shrink: 0;
-
-  .retention-row & {
-    width: 100%;
-  }
 }
 
 .seg-btn {
@@ -323,10 +269,6 @@ const handleQuit = () => {
     background-color 0.14s ease,
     color 0.14s ease,
     box-shadow 0.14s ease;
-
-  .retention-row & {
-    flex: 1;
-  }
 
   &:hover:not(.active) {
     color: var(--text-primary);
@@ -374,6 +316,14 @@ const handleQuit = () => {
   .toggle-switch.checked & {
     transform: translateX(16px);
   }
+}
+
+.retention-note {
+  margin: 0;
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
 }
 
 .settings-footer {

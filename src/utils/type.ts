@@ -68,13 +68,12 @@ export interface ClipboardAPI {
 export type ThemeMode = "light" | "dark";
 
 /** 与主进程 config 白名单一致；未知键会被拒绝 */
-export type ConfigKey = "theme" | "shortcut" | "openAtLogin" | "dataRetentionDays";
+export type ConfigKey = "theme" | "shortcut" | "openAtLogin";
 
 export interface AppConfig {
   theme: ThemeMode;
   shortcut: string;
   openAtLogin: boolean;
-  dataRetentionDays: number;
 }
 
 export interface ConfigAPI {

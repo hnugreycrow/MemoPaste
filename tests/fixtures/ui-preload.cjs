@@ -8,7 +8,6 @@ const config = {
   theme: mode,
   shortcut: "Alt+V",
   openAtLogin: false,
-  dataRetentionDays: 7,
 };
 let rows = [
   {

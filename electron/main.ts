@@ -49,8 +49,29 @@ let trayService: TrayService | null = null;
 let clipboardService: ClipboardService | null = null;
 let shortcutService: ShortcutService | null = null;
 let configService: ConfigService | null = null;
+let cleanupTimer: ReturnType<typeof setInterval> | null = null;
+
+/** 非收藏历史固定保留 1 天（24 小时），启动时及每小时定时清理 */
+const RETENTION_DAYS = 1;
+const CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
+
+function runExpiredCleanup() {
+  const clearedCount = clearExpiredClipboardItems(RETENTION_DAYS);
+  if (clearedCount > 0) {
+    console.log(`Cleared ${clearedCount} expired clipboard items`);
+    const panelWin = windowService?.getPanelWindow();
+    if (panelWin && !panelWin.isDestroyed()) {
+      panelWin.webContents.send("clipboard-changed");
+    }
+  }
+}
 
 function disposeServices() {
+  if (cleanupTimer) {
+    clearInterval(cleanupTimer);
+    cleanupTimer = null;
+  }
+
   closeDatabase();
 
   if (clipboardService) {
@@ -92,9 +113,8 @@ app.on("activate", () => {
 function initializeServices() {
   configService = new ConfigService();
 
-  const retentionDays = configService.get<number>("dataRetentionDays");
-  const clearedCount = clearExpiredClipboardItems(retentionDays);
-  console.log(`Cleared ${clearedCount} expired clipboard items on startup`);
+  runExpiredCleanup();
+  cleanupTimer = setInterval(runExpiredCleanup, CLEANUP_INTERVAL_MS);
 
   windowService = new WindowService(
     path.join(__dirname, "preload.mjs"),
