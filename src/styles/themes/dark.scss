@@ -2,49 +2,13 @@
 :root.dark {
   --favorite-text: #d8bf86;
   --search-mark-bg: #675325;
-  /* Element Plus */
-  --el-color-primary-rgb: 181, 160, 239;
-  --el-color-primary: var(--accent-primary);
-  --el-color-primary-light-3: color-mix(in srgb, var(--accent-primary) 70%, var(--bg-primary));
-  --el-color-primary-light-5: color-mix(in srgb, var(--accent-primary) 50%, var(--bg-primary));
-  --el-color-primary-light-7: color-mix(in srgb, var(--accent-primary) 30%, var(--bg-primary));
-  --el-color-primary-light-8: color-mix(in srgb, var(--accent-primary) 20%, var(--bg-primary));
-  --el-color-primary-light-9: color-mix(in srgb, var(--accent-primary) 10%, var(--bg-primary));
-  --el-color-primary-dark-2: var(--accent-primary-hover);
 
-  --el-bg-color: var(--list-bg);
-  --el-bg-color-overlay: var(--bg-tertiary);
-  --el-bg-color-page: var(--bg-primary);
-
-  --el-text-color-primary: var(--text-primary);
-  --el-text-color-regular: var(--text-secondary);
-  --el-text-color-secondary: var(--text-tertiary);
-  --el-text-color-placeholder: var(--text-tertiary);
-
-  --el-border-color: var(--border-light);
-  --el-border-color-light: var(--border-light);
-  --el-border-color-lighter: #292a34;
-
-  --el-fill-color: var(--bg-hover);
-  --el-fill-color-light: var(--bg-tertiary);
-  --el-fill-color-lighter: var(--list-bg);
-  --el-fill-color-extra-light: var(--bg-primary);
-  --el-fill-color-blank: var(--list-bg);
-
-  --el-mask-color: rgba(12, 13, 18, 0.78);
-  --el-mask-color-extra-light: rgba(12, 13, 18, 0.35);
-
-  /* 背景：窗口 / 列表 / 阅读区域按亮度分层 */
+  /* 背景：窗口 / 卡片按亮度分层 */
   --bg-primary: #14151a;
-  --bg-secondary: #14151a;
+  --bg-secondary: #1b1c23;
   --bg-tertiary: #20212a;
   --bg-hover: #272832;
   --bg-active: #302b43;
-  --bg-inset: #191a21;
-
-  --list-bg: #1b1c23;
-  --detail-bg: #20212a;
-  --setting-card-bg: #1b1c23;
 
   /* 固定灰白色，避免透明文字随背景变化而失去对比度 */
   --text-primary: #e8e8ef;
@@ -66,9 +30,6 @@
   --accent-tertiary: #b8a5e6;
   --accent-quaternary: #d8bf86;
 
-  --gradient-active-start: var(--accent-primary);
-  --gradient-active-end: var(--accent-primary-hover);
-
   --favorite-bg: #2c2821;
   --favorite-border: #d8bf86;
 
@@ -87,125 +48,13 @@
   --radius-md: 11px;
   --radius-lg: 14px;
   --shadow-soft: 0 2px 14px rgba(0, 0, 0, 0.28);
-  --shadow-lift: 0 8px 22px rgba(0, 0, 0, 0.3);
-  --main-shadow: 0 0 0 1px var(--border-light), 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
-/* 表面以明暗区分层级，紫色集中在交互状态 */
 html.dark {
-  .nav-sidebar {
-    background: var(--bg-secondary);
-  }
-
-  .app-header,
-  .titlebar {
-    background: var(--bg-primary);
-  }
-
-  .close-btn:hover .el-icon {
-    color: var(--text-inverse);
-  }
-
-  .nav-item,
-  .util-item {
-    border-radius: var(--radius-md);
-
-    &.active {
-      background: var(--bg-active);
-      color: var(--accent-primary);
-      box-shadow: inset 0 0 0 1px var(--border-selected);
-
-      .nav-count {
-        color: var(--text-secondary);
-      }
-    }
-  }
-
-  .content-item {
-    border-radius: var(--radius-md);
-
-    &:hover {
-      background: var(--bg-hover);
-    }
-
-    &:has(> .clipboard-item-select:focus-visible) {
-      outline-color: var(--accent-primary);
-    }
-
-    &.active {
-      background: var(--bg-active);
-      box-shadow: none;
-
-      &::before {
-        background: var(--accent-primary);
-      }
-    }
-  }
-
-  .filter-segment-item {
-    border-radius: var(--radius-sm);
-
-    &.active {
-      background: var(--bg-active);
-      border-color: var(--border-selected);
-      color: var(--accent-primary);
-
-      .filter-count {
-        color: var(--text-secondary);
-      }
-    }
-  }
-
-  .filter-segment-item {
-    &:focus-visible {
-      outline: 2px solid var(--accent-primary);
-      outline-offset: -2px;
-    }
-  }
-
-  .segment.active {
+  .tab-btn.active {
     background: var(--bg-active);
-    color: var(--text-primary);
-  }
-
-  .theme-option.active .theme-preview {
-    border-color: var(--accent-primary);
-  }
-
-  .clip-card:hover,
-  .clip-card.favorite:hover {
-    background: var(--bg-hover);
-    border-color: var(--border-medium);
-  }
-
-  .clip-card.focused,
-  .clip-card.favorite.focused {
-    background: var(--bg-active);
-    border-color: var(--accent-primary);
-  }
-
-  .detail-panel {
-    background: var(--detail-bg);
-  }
-
-  .detail-text {
-    border-radius: var(--radius-md);
-    border-color: var(--border-light);
-    background: var(--bg-inset);
-  }
-
-  .detail-reading .code-block {
-    background: var(--bg-inset);
-    border-color: color-mix(in srgb, var(--border-light) 55%, var(--bg-inset));
-  }
-
-  .search-input .el-input__wrapper {
-    background: var(--bg-inset);
-  }
-
-  .hljs-comment,
-  .hljs-quote {
-    color: var(--text-tertiary);
+    border-color: var(--border-selected);
+    color: var(--accent-primary);
   }
 
   .panel-shell {

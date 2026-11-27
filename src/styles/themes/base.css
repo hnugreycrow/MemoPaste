@@ -1,20 +1,11 @@
 :root {
-  --clip-card-height: 68px;
-  --clip-title-size: 13px;
-  --clip-meta-size: 12px;
-  --shortcut-size: 11px;
   --search-mark-bg: #f4de8b;
   --favorite-text: #906018;
-  /* ===== 全局通用变量（所有主题共享） ===== */
-  /* 布局尺寸 */
-  --nav-width: 64px;
-  --header-height: 40px;
-  --list-max-width: 640px;
 
   /* 圆角阶梯（主题可覆盖） */
   --radius-sm: 6px;
   --radius-md: 10px;
-  --radius-lg: 12px;
+  --radius-lg: 14px;
   --radius-pill: 999px;
 
   /* 柔和投影默认值 */

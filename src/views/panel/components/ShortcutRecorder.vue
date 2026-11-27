@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { onMounted } from "vue";
+import { onMounted, watch } from "vue";
 import { useShortcutRecorder } from "../composables/useShortcutRecorder";
 
 const shortcut = defineModel<string>("shortcut", { required: true });
+
+const emit = defineEmits<{
+  feedback: [payload: { type: "success" | "error"; text: string }];
+  recordingChange: [recording: boolean];
+}>();
 
 const {
   captureEl,
@@ -14,8 +19,14 @@ const {
   onBlur,
   onKeyDown,
   onKeyUp,
-} = useShortcutRecorder(shortcut, async (next) => {
-  return window.shortcut.update(next);
+} = useShortcutRecorder(
+  shortcut,
+  async (next) => window.shortcut.update(next),
+  (type, text) => emit("feedback", { type, text }),
+);
+
+watch(isRecording, (val) => {
+  emit("recordingChange", val);
 });
 
 onMounted(async () => {
@@ -69,7 +80,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 6px;
+  gap: 4px;
   flex-shrink: 0;
   max-width: 100%;
 }
@@ -78,19 +89,17 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-width: 180px;
-  min-height: 40px;
-  padding: 6px 14px;
-  border-radius: 10px;
+  gap: 5px;
+  min-width: 120px;
+  min-height: 32px;
+  padding: 4px 10px;
+  border-radius: 8px;
   border: 1.5px dashed var(--border-medium);
   background: var(--bg-tertiary);
   cursor: pointer;
   transition:
-    border-color 0.18s ease,
-    background-color 0.18s ease,
-    box-shadow 0.18s ease;
-  flex-shrink: 0;
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 
   &:hover {
     border-color: var(--accent-primary);
@@ -99,29 +108,23 @@ onMounted(async () => {
   &.recording {
     border-style: solid;
     border-color: var(--accent-primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 18%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 20%, transparent);
   }
 
   &.invalid {
-    border-color: var(--el-color-danger, #f56c6c);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--el-color-danger, #f56c6c) 18%, transparent);
-  }
-
-  &:focus-visible {
-    outline: none;
-    border-color: var(--accent-primary);
+    border-color: var(--accent-danger);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-danger) 20%, transparent);
   }
 }
 
 .shortcut-record-tip {
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.3;
   color: var(--text-tertiary);
   text-align: right;
-  max-width: 220px;
 
   &.error {
-    color: var(--el-color-danger, #f56c6c);
+    color: var(--accent-danger);
   }
 }
 
@@ -129,38 +132,22 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  height: 26px;
-  padding: 0 8px;
-  border-radius: 6px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 5px;
   border: 1px solid var(--border-medium);
   background: var(--bg-secondary);
   box-shadow: 0 1px 0 var(--border-medium);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1;
 }
 
 .shortcut-hint {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-tertiary);
-}
-
-@media (max-width: 720px) {
-  .shortcut-capture-wrap,
-  .shortcut-capture {
-    width: 100%;
-  }
-
-  .shortcut-capture-wrap {
-    align-items: stretch;
-  }
-
-  .shortcut-record-tip {
-    text-align: left;
-    max-width: none;
-  }
 }
 </style>

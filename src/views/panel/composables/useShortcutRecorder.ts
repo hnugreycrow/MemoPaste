@@ -31,6 +31,7 @@ export type ShortcutCommitResult = {
 export function useShortcutRecorder(
   shortcut: Ref<string>,
   commit: (next: string) => Promise<ShortcutCommitResult>,
+  onFeedback?: (type: "success" | "error", text: string) => void,
 ) {
   /** 录制中的按键预览（规范化片段，如 CommandOrControl、A） */
   const tempKeys = ref<string[]>([]);
@@ -82,13 +83,6 @@ export function useShortcutRecorder(
     stopRecording();
   };
 
-  /**
-   * 录制 keydown：即时预览 + 校验反馈，不在此处提交。
-   * - Esc：取消
-   * - 仅修饰键：引导继续按普通键
-   * - 不支持的普通键 / 弱组合 / 黑名单：标红提示，保持录制
-   * - 合法组合：提示松开确认
-   */
   const onKeyDown = (e: KeyboardEvent) => {
     if (!isRecording.value) return;
 
@@ -132,10 +126,6 @@ export function useShortcutRecorder(
     recordHint.value = "松开按键以确认";
   };
 
-  /**
-   * 录制 keyup：仅在预览合法时提交。
-   * 修饰键抬起不提交，便于先按 Ctrl 再按字母。
-   */
   const onKeyUp = async (e: KeyboardEvent) => {
     if (!isRecording.value) return;
     if (e.key === "Escape") return;
@@ -166,16 +156,16 @@ export function useShortcutRecorder(
       captureEl.value?.blur();
       if (!result?.success) {
         shortcut.value = result?.shortcut || previous;
-        ElMessage.error(`快捷键设置失败: ${result?.error ?? "未知错误"}`);
+        onFeedback?.("error", `快捷键设置失败：${result?.error ?? "未知错误"}`);
       } else {
         shortcut.value = result.shortcut ?? newShortcut;
-        ElMessage.success("快捷键设置成功");
+        onFeedback?.("success", "快捷键已更新");
       }
     } catch (error) {
       shortcut.value = previous;
       stopRecording();
       captureEl.value?.blur();
-      ElMessage.error(`快捷键设置失败: ${error}`);
+      onFeedback?.("error", `快捷键设置失败：${error}`);
     }
   };
 

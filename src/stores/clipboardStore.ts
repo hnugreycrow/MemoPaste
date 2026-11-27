@@ -1,11 +1,14 @@
 import { defineStore } from "pinia";
-import { ClipboardItem, SaveClipboardResult, TypeCounts } from "@/utils/type";
+import type { ClipboardItem, TypeCounts } from "@/utils/type";
 
 export type StoreActionResult = {
   ok: boolean;
   favorited?: boolean;
   deletedCount?: number;
+  paused?: boolean;
 };
+
+export type PanelTabFilter = "all" | "favorite" | "image";
 
 const emptyCounts = (): TypeCounts => ({
   all: 0,
@@ -19,8 +22,8 @@ const emptyCounts = (): TypeCounts => ({
 export const useClipboardStore = defineStore("clipboard", {
   state: () => ({
     clipboardData: [] as ClipboardItem[],
-    activeFilter: "all" as string,
-    pageSize: 10,
+    activeFilter: "all" as PanelTabFilter,
+    pageSize: 20,
     currentPage: 1,
     totalItems: 0,
     isLoadingMore: false,
@@ -28,6 +31,7 @@ export const useClipboardStore = defineStore("clipboard", {
     searchKeyword: "" as string,
     historyRequestId: 0,
     historyError: "",
+    isPaused: false,
   }),
 
   actions: {
@@ -40,10 +44,29 @@ export const useClipboardStore = defineStore("clipboard", {
       }
     },
 
+    async syncPaused() {
+      try {
+        this.isPaused = await window.clipboard.getPaused();
+      } catch (error) {
+        console.error("读取暂停状态失败:", error);
+      }
+    },
+
+    async togglePaused(): Promise<StoreActionResult> {
+      const next = !this.isPaused;
+      try {
+        this.isPaused = await window.clipboard.setPaused(next);
+        return { ok: true, paused: this.isPaused };
+      } catch (error) {
+        console.error("切换暂停状态失败:", error);
+        return { ok: false };
+      }
+    },
+
     async loadClipboardHistory(
       page = 1,
       append = false,
-      type?: string,
+      type?: PanelTabFilter,
       keyword?: string,
       preserveRange = false,
     ): Promise<StoreActionResult> {
@@ -106,6 +129,8 @@ export const useClipboardStore = defineStore("clipboard", {
           const processedHistory = history.map((item) => ({
             ...item,
             timestamp: new Date(item.timestamp),
+            is_favorite: !!item.is_favorite,
+            alias: item.alias ?? null,
           }));
 
           this.clipboardData =
@@ -126,6 +151,15 @@ export const useClipboardStore = defineStore("clipboard", {
       }
     },
 
+    setFilter(filter: PanelTabFilter) {
+      if (this.activeFilter === filter) return;
+      this.activeFilter = filter;
+      this.clipboardData = [];
+      this.totalItems = 0;
+      this.currentPage = 1;
+      void this.loadClipboardHistory(1, false, filter);
+    },
+
     setSearchKeyword(keyword: string) {
       const next = (keyword || "").trim();
       if (next === this.searchKeyword) return;
@@ -142,15 +176,6 @@ export const useClipboardStore = defineStore("clipboard", {
       await this.refreshCounts();
     },
 
-    async saveClipboardItem(item: ClipboardItem): Promise<SaveClipboardResult | null> {
-      try {
-        return await window.clipboard.saveItem(item);
-      } catch (error) {
-        console.error("保存剪贴板项目出错:", error);
-        return null;
-      }
-    },
-
     async deleteItem(itemOrId: ClipboardItem | number, event?: Event): Promise<StoreActionResult> {
       event?.stopPropagation();
       const id = typeof itemOrId === "number" ? itemOrId : itemOrId.id;
@@ -164,9 +189,9 @@ export const useClipboardStore = defineStore("clipboard", {
         const index = this.clipboardData.findIndex((item) => item.id === id);
         if (index !== -1) {
           this.clipboardData.splice(index, 1);
-          this.totalItems -= 1;
+          this.totalItems = Math.max(0, this.totalItems - 1);
         }
-        this.refreshCounts();
+        void this.refreshCounts();
         return { ok: true };
       } catch (error) {
         console.error("删除出错:", error);
@@ -211,7 +236,7 @@ export const useClipboardStore = defineStore("clipboard", {
       void this.loadClipboardHistory(this.currentPage + 1, true);
     },
 
-    /** 详情用全文；列表项 content 可能只是预览 */
+    /** 预览用全文；列表项 content 可能只是预览 */
     async fetchItemById(id: number): Promise<ClipboardItem | null> {
       try {
         const item = await window.clipboard.getItem(id);
@@ -220,6 +245,7 @@ export const useClipboardStore = defineStore("clipboard", {
           ...item,
           timestamp: new Date(item.timestamp),
           is_favorite: !!item.is_favorite,
+          alias: item.alias ?? null,
         };
       } catch (error) {
         console.error("按 id 加载剪贴板项失败:", error);
@@ -248,10 +274,38 @@ export const useClipboardStore = defineStore("clipboard", {
           // 补齐已加载页，避免取消收藏后跳过下一页边界上的记录。
           await this.loadClipboardHistory(1, false, undefined, undefined, true);
         }
-        this.refreshCounts();
+        void this.refreshCounts();
         return { ok: true, favorited: newStatus };
       } catch (error) {
         console.error("设置收藏状态出错:", error);
+        return { ok: false };
+      }
+    },
+
+    /** 设置备注名；设置非空备注且尚未收藏时，顺带设为常用收藏以长期保留 */
+    async setItemAlias(item: ClipboardItem, rawAlias: string): Promise<StoreActionResult> {
+      const normalized = rawAlias.trim().slice(0, 60) || null;
+      try {
+        const success = await window.clipboard.setAlias(item.id, normalized);
+        if (!success) return { ok: false };
+
+        let favorited = !!item.is_favorite;
+        if (normalized && !favorited) {
+          const favOk = await window.clipboard.setFavorite(item.id, true);
+          if (favOk) favorited = true;
+        }
+
+        item.alias = normalized;
+        item.is_favorite = favorited;
+        const listed = this.clipboardData.find((row) => row.id === item.id);
+        if (listed && listed !== item) {
+          listed.alias = normalized;
+          listed.is_favorite = favorited;
+        }
+        void this.refreshCounts();
+        return { ok: true, favorited };
+      } catch (error) {
+        console.error("设置备注名失败:", error);
         return { ok: false };
       }
     },
