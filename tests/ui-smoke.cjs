@@ -110,6 +110,20 @@ app
       assert.equal(await run(`document.querySelectorAll('.clip-card').length`), 1);
       assert.equal(await run(`document.querySelector('.card-alias mark')?.textContent`), "发票");
 
+      // 3.5 空状态看板娘图标校验
+      await run(`(() => {
+        const el = document.querySelector('.search-input');
+        el.value = '__no_match_keyword__';
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      })()`);
+      await sleep(300);
+      assert.equal(await run(`document.querySelectorAll('.clip-card').length`), 0);
+      assert.ok(await run(`document.querySelector('.empty-mascot')?.naturalWidth > 0`));
+      writeFileSync(
+        path.join(output, `${theme}-empty.png`),
+        (await win.webContents.capturePage()).toPNG(),
+      );
+
       // 清空搜索
       await run(`document.querySelector('.search-clear').click()`);
       await sleep(250);
@@ -150,6 +164,7 @@ app
       await sleep(360);
       assert.ok(await run(`!!document.querySelector('.settings-view')`));
       assert.equal(await run(`!!document.querySelector('.retention-row')`), false);
+      assert.ok(await run(`document.querySelector('.brand-icon')?.naturalWidth > 0`));
       writeFileSync(
         path.join(output, `${theme}-settings.png`),
         (await win.webContents.capturePage()).toPNG(),

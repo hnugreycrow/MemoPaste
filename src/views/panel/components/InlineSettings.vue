@@ -13,6 +13,7 @@ const shortcut = ref("Alt+V");
 const openAtLogin = ref(false);
 const appVersion = ref("–");
 const saving = ref<Record<string, boolean>>({});
+const appIconUrl = `${import.meta.env.BASE_URL}icon.png`;
 
 const theme = computed(() => themeService.currentTheme.value);
 
@@ -146,7 +147,10 @@ const handleQuit = () => {
     </div>
 
     <footer class="settings-footer">
-      <span class="version-text">MemoPaste v{{ appVersion }}</span>
+      <div class="brand-badge">
+        <img class="brand-icon" :src="appIconUrl" alt="" draggable="false" />
+        <span class="version-text">MemoPaste v{{ appVersion }}</span>
+      </div>
       <button type="button" class="quit-btn" @click="handleQuit">退出应用</button>
     </footer>
   </section>
@@ -335,6 +339,22 @@ const handleQuit = () => {
   padding: 10px 14px;
   border-top: 1px solid var(--border-light);
   background: var(--bg-elevated);
+}
+
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.brand-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  display: block;
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14);
 }
 
 .version-text {

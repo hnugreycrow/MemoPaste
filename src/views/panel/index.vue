@@ -27,6 +27,7 @@ const recordingShortcut = ref(false);
 const confirmingClear = ref(false);
 const notice = ref<{ type: "success" | "error"; text: string } | null>(null);
 const now = ref(new Date());
+const appIconUrl = `${import.meta.env.BASE_URL}icon.png`;
 
 const searchInputRef = ref<HTMLInputElement | null>(null);
 const listRef = ref<HTMLElement | null>(null);
@@ -657,23 +658,7 @@ onUnmounted(() => {
           @scroll="handleListScroll"
         >
           <div v-if="!hasItems && !isLoadingMore" class="empty-state">
-            <svg class="empty-glyph" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-              <rect
-                x="6"
-                y="5"
-                width="20"
-                height="22"
-                rx="4"
-                stroke="currentColor"
-                stroke-width="1.5"
-              />
-              <path
-                d="M11 12h10M11 17h7M11 22h5"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-              />
-            </svg>
+            <img class="empty-mascot" :src="appIconUrl" alt="" draggable="false" />
             <p class="empty-text">{{ emptyMessage }}</p>
           </div>
 
@@ -1073,16 +1058,18 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   padding: 24px 16px;
   text-align: center;
 }
 
-.empty-glyph {
-  width: 30px;
-  height: 30px;
-  color: var(--accent-primary);
-  opacity: 0.45;
+.empty-mascot {
+  width: 56px;
+  height: 56px;
+  border-radius: 13px;
+  display: block;
+  opacity: 0.94;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .empty-text {
