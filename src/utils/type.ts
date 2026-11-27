@@ -39,11 +39,22 @@ export interface TypeCounts {
 
 export type PasteResult = { status: "sent" | "copied" | "failed" | "busy" };
 
+export type SaveImageResult = {
+  status: "saved" | "canceled" | "failed";
+  filePath?: string;
+};
+
 export interface ClipboardAPI {
   /** 按历史 id 写回系统剪贴板（文本或图片） */
   write: (id: number) => Promise<boolean>;
   /** 按 id 写入剪贴板、隐藏面板、归还前台焦点并模拟粘贴 */
   pasteAndHide: (id: number) => Promise<PasteResult>;
+  /** 按 id 去换行压成单行后粘贴 */
+  pasteSingleLineAndHide: (id: number) => Promise<PasteResult>;
+  /** 按 id 打开历史链接 */
+  openUrl: (id: number) => Promise<boolean>;
+  /** 按 id 将图片另存为本地文件 */
+  saveImage: (id: number) => Promise<SaveImageResult>;
   getPaused: () => Promise<boolean>;
   setPaused: (paused: boolean) => Promise<boolean>;
   /** 主进程入库后通知刷新（无内容载荷） */

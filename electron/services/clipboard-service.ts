@@ -1,5 +1,6 @@
-import { clipboard, ipcMain, BrowserWindow, nativeImage } from "electron";
+import { clipboard, ipcMain, BrowserWindow, nativeImage, dialog, shell } from "electron";
 import { createRequire } from "node:module";
+import fs from "node:fs";
 import {
   saveClipboardItem,
   deleteClipboardItem,
@@ -12,9 +13,15 @@ import {
   getClipboardCounts,
 } from "../database/clipboard";
 import { simulatePaste } from "../utils/simulate-paste";
+import { isSensitiveClipboardContent } from "../utils/clipboard-privacy";
 import { storeClipboardImage, resolveImageAbsolutePath } from "./image-storage";
-import { getContentType, formatSize } from "@shared/content-type";
-import type { PasteResult } from "../../src/utils/type";
+import {
+  getContentType,
+  formatSize,
+  collapseToSingleLine,
+  normalizeSafeExternalUrl,
+} from "@shared/content-type";
+import type { PasteResult, SaveImageResult } from "../../src/utils/type";
 import type { WindowService } from "./window-service";
 
 // clipboard-event 为 CJS；主进程是 ESM，用 createRequire 加载
@@ -23,9 +30,19 @@ const clipboardEvent = require("clipboard-event");
 
 type PanelWindowController = Pick<WindowService, "hidePanel" | "restorePanel"> & {
   hideAndRestoreFocus?: () => void;
+  getPanelWindow?: () => BrowserWindow | null;
+  setBlurHideSuppressed?: (suppressed: boolean) => void;
 };
 
-/** 系统剪贴板监听、暂停控制、历史 IPC，以及浮窗选中后的自动粘贴 */
+function sanitizeFileName(raw: string): string {
+  return raw
+    .replace(/[<>:"/\\|?*]/g, "_")
+    .replace(/\s+/g, "-")
+    .slice(0, 48)
+    .replace(/^-+|-+$/g, "");
+}
+
+/** 系统剪贴板监听、隐私跳过、暂停控制、历史 IPC，以及浮窗选中后的自动粘贴与轻加工 */
 export class ClipboardService {
   private windowService: PanelWindowController | null = null;
   /** 上次已处理内容指纹：文本为原文，图片为 `img:${hash}` */
@@ -99,9 +116,14 @@ export class ClipboardService {
     }
   }
 
-  /** 将系统剪贴板当前内容写入历史（文本优先，否则图片） */
+  /** 将系统剪贴板当前内容写入历史（文本优先，否则图片；自动跳过敏感/密码管理器内容） */
   private captureClipboardChange(): void {
     if (this.isAutoPasting || this.paused) return;
+
+    if (isSensitiveClipboardContent()) {
+      this.lastFingerprint = this.readCurrentFingerprint();
+      return;
+    }
 
     const text = clipboard.readText();
     if (text && text.trim() !== "") {
@@ -176,40 +198,124 @@ export class ClipboardService {
     return true;
   }
 
+  private async hideAndSimulatePaste(): Promise<PasteResult> {
+    if (this.windowService?.hideAndRestoreFocus) {
+      this.windowService.hideAndRestoreFocus();
+    } else {
+      this.windowService?.hidePanel();
+    }
+    try {
+      await simulatePaste();
+    } catch (error) {
+      // 内容已在剪贴板；按键失败时用户仍可手动粘贴
+      console.error("自动粘贴按键失败:", error);
+      this.windowService?.restorePanel();
+      return { status: "copied" };
+    }
+    return { status: "sent" };
+  }
+
   private registerIpcHandlers(): void {
-    ipcMain.handle("clipboard-write", (_, id: number) => {
+    ipcMain.handle("clipboard-write", (_, id: unknown) => {
+      if (typeof id !== "number" || !Number.isInteger(id)) return false;
       return this.writeItemToClipboard(id);
     });
 
-    /**
-     * 浮窗选中项：按 id 写入剪贴板 → 隐藏浮窗并恢复原前景窗口焦点 → 模拟 Ctrl+V
-     */
-    ipcMain.handle("clipboard-paste-and-hide", async (_, id: number): Promise<PasteResult> => {
+    /** 浮窗选中项：按 id 写入剪贴板 → 隐藏浮窗并恢复原前景窗口焦点 → 模拟 Ctrl+V */
+    ipcMain.handle("clipboard-paste-and-hide", async (_, id: unknown): Promise<PasteResult> => {
+      if (typeof id !== "number" || !Number.isInteger(id)) return { status: "failed" };
       if (this.isAutoPasting) return { status: "busy" };
       this.isAutoPasting = true;
       try {
         if (!this.writeItemToClipboard(id)) {
           return { status: "failed" };
         }
-        if (this.windowService?.hideAndRestoreFocus) {
-          this.windowService.hideAndRestoreFocus();
-        } else {
-          this.windowService?.hidePanel();
-        }
-        try {
-          await simulatePaste();
-        } catch (error) {
-          // 内容已在剪贴板；按键失败时用户仍可手动粘贴
-          console.error("自动粘贴按键失败:", error);
-          this.windowService?.restorePanel();
-          return { status: "copied" };
-        }
-        return { status: "sent" };
+        return await this.hideAndSimulatePaste();
       } catch (error) {
         console.error("写入剪贴板失败:", error);
         return { status: "failed" };
       } finally {
         this.isAutoPasting = false;
+      }
+    });
+
+    /** 去换行单行粘贴（合并换行与连续空白，仅适用于非图片记录） */
+    ipcMain.handle("clipboard-paste-single-line", async (_, id: unknown): Promise<PasteResult> => {
+      if (typeof id !== "number" || !Number.isInteger(id)) return { status: "failed" };
+      if (this.isAutoPasting) return { status: "busy" };
+      this.isAutoPasting = true;
+      try {
+        const row = getClipboardItemById(id);
+        if (!row || row.type === "image") {
+          return { status: "failed" };
+        }
+        const singleLine = collapseToSingleLine(row.content);
+        clipboard.writeText(singleLine);
+        this.lastFingerprint = `text:${singleLine}`;
+        return await this.hideAndSimulatePaste();
+      } catch (error) {
+        console.error("去换行粘贴失败:", error);
+        return { status: "failed" };
+      } finally {
+        this.isAutoPasting = false;
+      }
+    });
+
+    /** 在系统默认浏览器中打开历史链接（主进程按 id 取原文并校验 http/https） */
+    ipcMain.handle("clipboard-open-url", async (_, id: unknown): Promise<boolean> => {
+      if (typeof id !== "number" || !Number.isInteger(id)) return false;
+      const row = getClipboardItemById(id);
+      if (!row || row.type === "image") return false;
+      const safeUrl = normalizeSafeExternalUrl(row.content);
+      if (!safeUrl) return false;
+      try {
+        this.windowService?.hidePanel();
+        await shell.openExternal(safeUrl);
+        return true;
+      } catch (error) {
+        console.error("打开外部链接失败:", error);
+        return false;
+      }
+    });
+
+    /** 将图片历史另存为本地 PNG 文件 */
+    ipcMain.handle("clipboard-save-image", async (_, id: unknown): Promise<SaveImageResult> => {
+      if (typeof id !== "number" || !Number.isInteger(id)) return { status: "failed" };
+      const row = getClipboardItemById(id);
+      if (!row || row.type !== "image" || !row.file_path) return { status: "failed" };
+
+      const absPath = resolveImageAbsolutePath(row.file_path);
+      if (!absPath || !fs.existsSync(absPath)) {
+        return { status: "failed" };
+      }
+
+      const defaultBase =
+        (row.alias ? sanitizeFileName(row.alias) : "") ||
+        `MemoPaste-${new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)}`;
+
+      this.windowService?.setBlurHideSuppressed?.(true);
+      try {
+        const parentWin = this.windowService?.getPanelWindow?.() ?? undefined;
+        const options = {
+          title: "另存为图片",
+          defaultPath: `${defaultBase}.png`,
+          filters: [{ name: "PNG 图片", extensions: ["png"] }],
+        };
+        const result = parentWin
+          ? await dialog.showSaveDialog(parentWin, options)
+          : await dialog.showSaveDialog(options);
+
+        if (result.canceled || !result.filePath) {
+          return { status: "canceled" };
+        }
+
+        await fs.promises.copyFile(absPath, result.filePath);
+        return { status: "saved", filePath: result.filePath };
+      } catch (error) {
+        console.error("另存为图片失败:", error);
+        return { status: "failed" };
+      } finally {
+        this.windowService?.setBlurHideSuppressed?.(false);
       }
     });
 

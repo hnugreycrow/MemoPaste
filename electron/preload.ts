@@ -30,6 +30,12 @@ contextBridge.exposeInMainWorld("clipboard", {
   write: (id: number) => ipcRenderer.invoke("clipboard-write", id),
   /** 按 id 写入剪贴板、隐藏面板、归还前台焦点并模拟粘贴 */
   pasteAndHide: (id: number) => ipcRenderer.invoke("clipboard-paste-and-hide", id),
+  /** 按 id 去换行合并为单行后写入剪贴板、隐藏面板并模拟粘贴 */
+  pasteSingleLineAndHide: (id: number) => ipcRenderer.invoke("clipboard-paste-single-line", id),
+  /** 在系统浏览器中打开指定记录的链接 */
+  openUrl: (id: number) => ipcRenderer.invoke("clipboard-open-url", id),
+  /** 将指定图片记录另存为本地 PNG 文件 */
+  saveImage: (id: number) => ipcRenderer.invoke("clipboard-save-image", id),
   getPaused: () => ipcRenderer.invoke("clipboard-get-paused"),
   setPaused: (paused: boolean) => ipcRenderer.invoke("clipboard-set-paused", paused),
   onChanged: (callback: () => void) => {

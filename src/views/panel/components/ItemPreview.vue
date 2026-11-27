@@ -11,12 +11,16 @@ const props = defineProps<{
 const emit = defineEmits<{
   back: [];
   paste: [item: ClipboardItem];
+  pasteSingleLine: [item: ClipboardItem];
+  openUrl: [item: ClipboardItem];
+  saveImage: [item: ClipboardItem];
   copy: [item: ClipboardItem];
   favorite: [item: ClipboardItem, event: Event];
   delete: [item: ClipboardItem, event: Event];
 }>();
 
 const isImage = computed(() => props.item.type === "image");
+const isUrl = computed(() => props.item.type === "url");
 const imageSrc = computed(() =>
   isImage.value ? clipimgUrl(props.item.file_path || props.item.thumb_path) : "",
 );
@@ -25,6 +29,22 @@ const metaLabel = computed(() => {
   const len = props.item.content?.length ?? 0;
   return `${len} 字符`;
 });
+
+const secondaryActionLabel = computed(() => {
+  if (isImage.value) return "另存为";
+  if (isUrl.value) return "打开链接";
+  return "去换行";
+});
+
+const handleSecondaryAction = () => {
+  if (isImage.value) {
+    emit("saveImage", props.item);
+  } else if (isUrl.value) {
+    emit("openUrl", props.item);
+  } else {
+    emit("pasteSingleLine", props.item);
+  }
+};
 </script>
 
 <template>
@@ -85,8 +105,31 @@ const metaLabel = computed(() => {
     <footer class="preview-footer">
       <span class="footer-meta">{{ metaLabel }}</span>
       <div class="footer-btns">
-        <button type="button" class="btn secondary" @click="emit('copy', item)">仅复制</button>
-        <button type="button" class="btn primary" @click="emit('paste', item)">粘贴 (Enter)</button>
+        <button
+          type="button"
+          class="btn secondary"
+          data-action="secondary"
+          title="Shift + Enter"
+          @click="handleSecondaryAction"
+        >
+          {{ secondaryActionLabel }}
+        </button>
+        <button
+          type="button"
+          class="btn secondary"
+          data-action="copy"
+          @click="emit('copy', item)"
+        >
+          仅复制
+        </button>
+        <button
+          type="button"
+          class="btn primary"
+          data-action="paste"
+          @click="emit('paste', item)"
+        >
+          粘贴
+        </button>
       </div>
     </footer>
   </section>
@@ -312,10 +355,11 @@ const metaLabel = computed(() => {
 
 .btn {
   height: 30px;
-  padding: 0 12px;
+  padding: 0 10px;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
   border: 1px solid transparent;
   transition:

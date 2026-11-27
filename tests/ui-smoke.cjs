@@ -129,11 +129,15 @@ app
       await sleep(250);
       assert.equal(await run(`document.querySelectorAll('.clip-card').length`), 5);
 
-      // 4. 预览全文 + 仅复制（验证写入完整长文本）
+      // 4. 预览全文 + 仅复制（验证写入完整长文本） + 快捷轻加工按钮
       await run(`document.querySelector('.action-icon[aria-label="预览全文"]').click()`);
       await sleep(360);
       assert.ok(await run(`!!document.querySelector('.preview-view')`));
-      await run(`document.querySelector('.preview-footer .btn.secondary').click()`);
+      assert.equal(
+        await run(`document.querySelector('.preview-footer [data-action="secondary"]')?.textContent?.trim()`),
+        "去换行",
+      );
+      await run(`document.querySelector('.preview-footer [data-action="copy"]').click()`);
       await sleep(120);
       assert.ok((await run(`window.__test.snapshot().written`)).length > 2000);
       writeFileSync(
@@ -142,6 +146,30 @@ app
       );
       await run(`document.querySelector('.preview-view .back-btn').click()`);
       await sleep(360);
+
+      // 4.5 「更多操作」弹出菜单 + 动态底栏提示
+      await run(`document.querySelector('.clip-card[data-id="1"] .action-icon[aria-label="更多操作"]').click()`);
+      await sleep(140);
+      assert.ok(await run(`!!document.querySelector('.action-menu')`));
+      assert.equal(
+        await run(`document.querySelector('.action-menu .menu-item.accent .menu-label')?.textContent?.trim()`),
+        "去换行粘贴",
+      );
+      writeFileSync(
+        path.join(output, `${theme}-menu.png`),
+        (await win.webContents.capturePage()).toPNG(),
+      );
+      await run(`document.querySelector('.action-menu .menu-item.accent').click()`);
+      await sleep(120);
+      assert.equal(await run(`window.__test.snapshot().singleLinePastedId`), 1);
+
+      // 切换焦点到链接卡片与图片卡片，校验动态底栏提示
+      await run(`document.querySelector('.clip-card[data-id="3"]').dispatchEvent(new MouseEvent('mouseenter'))`);
+      await sleep(60);
+      assert.ok((await run(`document.querySelector('.panel-footer')?.textContent || ''`)).includes("打开"));
+      await run(`document.querySelector('.clip-card[data-id="4"]').dispatchEvent(new MouseEvent('mouseenter'))`);
+      await sleep(60);
+      assert.ok((await run(`document.querySelector('.panel-footer')?.textContent || ''`)).includes("另存为"));
 
       // 5. 暂停监听按钮 + 提示条
       await run(`document.querySelector('.header-btn[aria-label="暂停记录"]').click()`);

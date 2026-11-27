@@ -67,6 +67,9 @@ let throwSave = false;
 let pasted = "sent";
 let paused = false;
 let written = "";
+let singleLinePastedId = null;
+let openedUrlId = null;
+let savedImageId = null;
 let hideCount = 0;
 
 function computeCounts() {
@@ -159,6 +162,18 @@ const api = {
       return true;
     },
     pasteAndHide: async () => ({ status: pasted }),
+    pasteSingleLineAndHide: async (id) => {
+      singleLinePastedId = id;
+      return { status: pasted };
+    },
+    openUrl: async (id) => {
+      openedUrlId = id;
+      return true;
+    },
+    saveImage: async (id) => {
+      savedImageId = id;
+      return { status: "saved", filePath: "C:\\tmp\\shot.png" };
+    },
     setFavorite: async (id, fav) => {
       if (failSave) return false;
       const target = rows.find((row) => row.id === id);
@@ -198,6 +213,9 @@ const api = {
     snapshot: () => ({
       config: { ...config },
       written,
+      singleLinePastedId,
+      openedUrlId,
+      savedImageId,
       paused,
       hideCount,
       rows: rows.map((r) => ({ id: r.id, alias: r.alias, is_favorite: r.is_favorite })),

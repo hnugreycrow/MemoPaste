@@ -6,6 +6,7 @@ import type { ClipboardItem, PanelShownPayload } from "@/utils/type";
 import ClipCard from "./components/ClipCard.vue";
 import ItemPreview from "./components/ItemPreview.vue";
 import InlineSettings from "./components/InlineSettings.vue";
+import ActionMenu, { type CardActionName } from "./components/ActionMenu.vue";
 
 defineOptions({
   name: "PanelView",
@@ -28,7 +29,9 @@ const confirmingClear = ref(false);
 const notice = ref<{ type: "success" | "error"; text: string } | null>(null);
 const now = ref(new Date());
 const appIconUrl = `${import.meta.env.BASE_URL}icon.png`;
+const actionMenu = ref<{ item: ClipboardItem; x: number; y: number } | null>(null);
 
+const shellRef = ref<HTMLElement | null>(null);
 const searchInputRef = ref<HTMLInputElement | null>(null);
 const listRef = ref<HTMLElement | null>(null);
 const tabRefs = ref<Record<string, HTMLElement | null>>({});
@@ -70,6 +73,13 @@ const tabs: { key: PanelTabFilter; label: string }[] = [
 
 const hasItems = computed(() => clipboardData.value.length > 0);
 const nonFavoriteCount = computed(() => Math.max(0, typeCounts.value.all - typeCounts.value.favorite));
+const focusedItem = computed(() => clipboardData.value[focusedIndex.value] ?? null);
+const secondaryHintLabel = computed(() => {
+  const type = focusedItem.value?.type;
+  if (type === "url") return "打开";
+  if (type === "image") return "另存为";
+  return "去换行";
+});
 
 const emptyMessage = computed(() => {
   if (searchText.value.trim()) return "没有匹配的剪贴板记录";
@@ -222,6 +232,124 @@ const handlePaste = async (item: ClipboardItem) => {
   }
 };
 
+const handlePasteSingleLine = async (item: ClipboardItem) => {
+  try {
+    const result = await window.clipboard.pasteSingleLineAndHide(item.id);
+    if (result.status === "copied") {
+      showNotice("success", "已去换行复制，请按 Ctrl+V 粘贴");
+    } else if (result.status === "failed") {
+      showNotice("error", "去换行粘贴失败");
+    }
+  } catch (error) {
+    console.error("去换行粘贴失败:", error);
+    showNotice("error", "去换行粘贴失败");
+  }
+};
+
+const handleOpenUrl = async (item: ClipboardItem) => {
+  try {
+    const ok = await window.clipboard.openUrl(item.id);
+    if (!ok) {
+      showNotice("error", "无效链接，无法打开");
+    }
+  } catch (error) {
+    console.error("打开链接失败:", error);
+    showNotice("error", "打开链接失败");
+  }
+};
+
+const handleSaveImage = async (item: ClipboardItem) => {
+  try {
+    const result = await window.clipboard.saveImage(item.id);
+    if (result.status === "saved") {
+      showNotice("success", "图片已保存");
+    } else if (result.status === "failed") {
+      showNotice("error", "图片保存失败");
+    }
+  } catch (error) {
+    console.error("另存为图片失败:", error);
+    showNotice("error", "图片保存失败");
+  }
+};
+
+const runSecondaryAction = (item: ClipboardItem) => {
+  if (item.type === "url") {
+    void handleOpenUrl(item);
+  } else if (item.type === "image") {
+    void handleSaveImage(item);
+  } else {
+    void handlePasteSingleLine(item);
+  }
+};
+
+const openActionMenu = (item: ClipboardItem, event: MouseEvent) => {
+  const shellRect = shellRef.value?.getBoundingClientRect();
+  const menuW = 196;
+  const menuH = 224;
+  const triggerEl = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+
+  let x: number;
+  let y: number;
+
+  if (event.type === "click" && triggerEl) {
+    const btnRect = triggerEl.getBoundingClientRect();
+    const baseLeft = shellRect ? shellRect.left : 0;
+    const baseTop = shellRect ? shellRect.top : 0;
+    const shellH = shellRect ? shellRect.height : 520;
+    x = btnRect.right - baseLeft - menuW;
+    const belowY = btnRect.bottom - baseTop + 6;
+    y = belowY + menuH <= shellH - 8 ? belowY : btnRect.top - baseTop - menuH - 6;
+  } else if (event.clientX === 0 && event.clientY === 0 && triggerEl) {
+    const cardRect = triggerEl.getBoundingClientRect();
+    const baseLeft = shellRect ? shellRect.left : 0;
+    const baseTop = shellRect ? shellRect.top : 0;
+    x = cardRect.right - baseLeft - menuW - 8;
+    y = cardRect.bottom - baseTop + 4;
+  } else {
+    x = shellRect ? event.clientX - shellRect.left : event.clientX;
+    y = shellRect ? event.clientY - shellRect.top : event.clientY;
+  }
+
+  actionMenu.value = { item, x, y };
+};
+
+const closeActionMenu = () => {
+  actionMenu.value = null;
+};
+
+const handleActionMenuSelect = (action: CardActionName) => {
+  const target = actionMenu.value?.item;
+  actionMenu.value = null;
+  if (!target) return;
+
+  switch (action) {
+    case "singleLine":
+      void handlePasteSingleLine(target);
+      break;
+    case "openUrl":
+      void handleOpenUrl(target);
+      break;
+    case "saveImage":
+      void handleSaveImage(target);
+      break;
+    case "copy":
+      void handleCopyOnly(target);
+      break;
+    case "preview":
+      void openPreview(target);
+      break;
+    case "editAlias":
+      startEditAlias(target);
+      break;
+    case "favorite":
+      void handleFavorite(target);
+      break;
+    case "delete":
+      void handleDelete(target);
+      break;
+  }
+};
+
 const handleCopyOnly = async (item: ClipboardItem) => {
   const result = await clipboardStore.copyItem(item);
   showNotice(result.ok ? "success" : "error", result.ok ? "已复制到剪贴板" : "复制失败");
@@ -334,6 +462,7 @@ const handleListScroll = () => {
 const handleKeyDown = (e: KeyboardEvent) => {
   if (recordingShortcut.value) return;
   if (editingAliasId.value !== null) return;
+  if (actionMenu.value !== null) return;
 
   if (view.value === "settings") {
     if (e.key === "Escape") {
@@ -349,7 +478,11 @@ const handleKeyDown = (e: KeyboardEvent) => {
       backToList();
     } else if (e.key === "Enter" && !e.isComposing && previewItem.value) {
       e.preventDefault();
-      void handlePaste(previewItem.value);
+      if (e.shiftKey) {
+        runSecondaryAction(previewItem.value);
+      } else {
+        void handlePaste(previewItem.value);
+      }
     }
     return;
   }
@@ -388,7 +521,11 @@ const handleKeyDown = (e: KeyboardEvent) => {
     const item = clipboardData.value[focusedIndex.value];
     if (item) {
       e.preventDefault();
-      void handlePaste(item);
+      if (e.shiftKey) {
+        runSecondaryAction(item);
+      } else {
+        void handlePaste(item);
+      }
     }
     return;
   }
@@ -451,6 +588,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
 const handlePanelShown = async (payload: PanelShownPayload) => {
   now.value = new Date();
   resetClearConfirm();
+  actionMenu.value = null;
   editingAliasId.value = null;
   previewItem.value = null;
   recordingShortcut.value = false;
@@ -528,7 +666,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="panel-shell">
+  <div ref="shellRef" class="panel-shell">
     <div class="panel-drag-bar" title="按住拖动窗口" aria-hidden="true">
       <span class="drag-pill" />
     </div>
@@ -548,6 +686,9 @@ onUnmounted(() => {
         :loading="previewLoading"
         @back="backToList"
         @paste="handlePaste"
+        @paste-single-line="handlePasteSingleLine"
+        @open-url="handleOpenUrl"
+        @save-image="handleSaveImage"
         @copy="handleCopyOnly"
         @favorite="handleFavorite"
         @delete="handleDelete"
@@ -680,6 +821,7 @@ onUnmounted(() => {
               @start-edit-alias="startEditAlias"
               @commit-alias="commitAlias"
               @cancel-alias="cancelAlias"
+              @open-menu="openActionMenu"
             />
 
             <div v-if="isLoadingMore" class="list-footer">加载中…</div>
@@ -688,12 +830,21 @@ onUnmounted(() => {
 
         <footer class="panel-footer" aria-hidden="true">
           <span class="hint-item"><kbd>↵</kbd> 粘贴</span>
+          <span class="hint-item"><kbd>Shift</kbd>+<kbd>↵</kbd> {{ secondaryHintLabel }}</span>
           <span class="hint-item"><kbd>Space</kbd> 预览</span>
           <span class="hint-item"><kbd>F2</kbd> 备注</span>
-          <span class="hint-item"><kbd>Alt</kbd>+<kbd>1-9</kbd> 秒贴</span>
         </footer>
       </div>
     </Transition>
+
+    <ActionMenu
+      v-if="actionMenu"
+      :item="actionMenu.item"
+      :x="actionMenu.x"
+      :y="actionMenu.y"
+      @close="closeActionMenu"
+      @select="handleActionMenuSelect"
+    />
 
     <Transition name="toast">
       <div

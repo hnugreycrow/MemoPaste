@@ -22,6 +22,7 @@ const emit = defineEmits<{
   startEditAlias: [item: ClipboardItem, event: Event];
   commitAlias: [item: ClipboardItem, alias: string];
   cancelAlias: [];
+  openMenu: [item: ClipboardItem, event: MouseEvent];
 }>();
 
 const aliasDraft = ref("");
@@ -111,6 +112,12 @@ const handleCardClick = () => {
   if (props.editingAlias) return;
   emit("paste", props.item);
 };
+
+const handleContextMenu = (e: MouseEvent) => {
+  if (props.editingAlias) return;
+  emit("focus", props.index);
+  emit("openMenu", props.item, e);
+};
 </script>
 
 <template>
@@ -127,6 +134,7 @@ const handleCardClick = () => {
     role="option"
     :aria-selected="focused"
     @click="handleCardClick"
+    @contextmenu.prevent="handleContextMenu"
     @mouseenter="emit('focus', index)"
   >
     <div class="card-slot">
@@ -262,6 +270,15 @@ const handleCardClick = () => {
         @click="emit('delete', item, $event)"
       >
         <i-ep-Delete />
+      </button>
+      <button
+        type="button"
+        class="action-icon"
+        title="更多操作 (右键)"
+        aria-label="更多操作"
+        @click="emit('openMenu', item, $event)"
+      >
+        <i-ep-MoreFilled />
       </button>
     </div>
   </article>
@@ -598,11 +615,11 @@ const handleCardClick = () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 21px;
+  height: 21px;
   padding: 0;
   border: none;
-  border-radius: 6px;
+  border-radius: 5px;
   background: transparent;
   color: var(--text-secondary);
   font-size: 13px;
