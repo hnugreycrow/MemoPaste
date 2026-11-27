@@ -40,6 +40,28 @@ let rows = [
     size: "43 B",
     is_favorite: false,
   },
+  {
+    id: 4,
+    type: "image",
+    alias: null,
+    content: "图片 494×594",
+    timestamp: new Date(Date.now() - 4 * 3600_000).toISOString(),
+    size: "128 KB",
+    is_favorite: false,
+    file_path: "shot.png",
+    thumb_path: "shot_thumb.png",
+  },
+  {
+    id: 5,
+    type: "image",
+    alias: "架构白板草图",
+    content: "图片 1920×1080",
+    timestamp: new Date(Date.now() - 5 * 3600_000).toISOString(),
+    size: "420 KB",
+    is_favorite: true,
+    file_path: "board.png",
+    thumb_path: "board_thumb.png",
+  },
 ];
 let failSave = false;
 let throwSave = false;

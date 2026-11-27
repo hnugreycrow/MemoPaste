@@ -1,10 +1,21 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Electron sandbox preload and test runner use CommonJS. */
 // Run after `npx vite build`: electron tests/ui-smoke.cjs
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, protocol } = require("electron");
 const { mkdtempSync, writeFileSync } = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
 const assert = require("node:assert/strict");
+
+protocol.registerSchemesAsPrivileged([
+  { scheme: "clipimg", privileges: { standard: true, secure: true, supportFetchAPI: true } },
+]);
+
+const WHITE_MOCK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">
+  <rect width="80" height="80" fill="#ffffff"/>
+  <rect x="12" y="16" width="56" height="8" rx="3" fill="#e5e7eb"/>
+  <rect x="12" y="32" width="42" height="6" rx="3" fill="#d1d5db"/>
+  <rect x="12" y="46" width="50" height="6" rx="3" fill="#e5e7eb"/>
+</svg>`;
 
 const output = mkdtempSync(path.join(os.tmpdir(), "memopaste-ui-"));
 app.setPath("userData", path.join(output, "profile"));
@@ -16,6 +27,10 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 app
   .whenReady()
   .then(async () => {
+    protocol.handle("clipimg", () => {
+      return new Response(WHITE_MOCK_SVG, { headers: { "content-type": "image/svg+xml" } });
+    });
+
     const errors = [];
 
     for (const theme of ["light", "dark"]) {
@@ -55,11 +70,17 @@ app
         cardCount: document.querySelectorAll('.clip-card').length,
         firstAlias: document.querySelector('.card-alias')?.textContent?.trim() || '',
         slot1: document.querySelector('.slot-num')?.textContent?.trim() || '',
+        imgPrimary: document.querySelector('.clip-card[data-id="4"] .image-primary')?.textContent?.trim() || '',
+        imgSub: document.querySelector('.clip-card[data-id="4"] .image-sub')?.textContent?.trim() || '',
+        aliasedImgSub: document.querySelector('.clip-card[data-id="5"] .image-sub')?.textContent?.trim() || '',
       }))()`);
       assert.equal(layout.overflowX, false);
-      assert.equal(layout.cardCount, 3);
+      assert.equal(layout.cardCount, 5);
       assert.equal(layout.firstAlias, "公司发票抬头");
       assert.equal(layout.slot1, "1");
+      assert.equal(layout.imgPrimary, "494×594");
+      assert.equal(layout.imgSub, "PNG · 128 KB");
+      assert.equal(layout.aliasedImgSub, "PNG · 1920×1080 · 420 KB");
       writeFileSync(
         path.join(output, `${theme}-panel.png`),
         (await win.webContents.capturePage()).toPNG(),
@@ -93,7 +114,7 @@ app
       // 清空搜索
       await run(`document.querySelector('.search-clear').click()`);
       await sleep(250);
-      assert.equal(await run(`document.querySelectorAll('.clip-card').length`), 3);
+      assert.equal(await run(`document.querySelectorAll('.clip-card').length`), 5);
 
       // 4. 预览全文 + 仅复制（验证写入完整长文本）
       await run(`document.querySelector('.action-icon[aria-label="预览全文"]').click()`);

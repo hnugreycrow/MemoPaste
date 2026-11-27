@@ -265,7 +265,7 @@ const metaLabel = computed(() => {
   max-width: 100%;
   max-height: 100%;
   border-radius: 10px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--thumb-ring, var(--border-light));
   object-fit: contain;
   display: block;
 }

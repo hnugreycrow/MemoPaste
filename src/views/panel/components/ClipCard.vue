@@ -52,9 +52,22 @@ const previewText = computed(() => {
   return raw.replace(/\s+/g, " ").trim() || "空白内容";
 });
 
-const imageSizeLabel = computed(
-  () => props.item.content.replace(/^图片\s*/, "") || props.item.size || "",
-);
+const imageDim = computed(() => props.item.content.replace(/^图片\s*/, "").trim());
+
+const imageFormat = computed(() => {
+  const path = props.item.file_path || props.item.thumb_path || "";
+  const match = /\.([a-z0-9]+)$/i.exec(path);
+  return match ? match[1].toUpperCase() : "PNG";
+});
+
+const imagePrimaryText = computed(() => imageDim.value || imageFormat.value);
+
+const imageSubText = computed(() => {
+  const parts = hasAlias.value
+    ? [imageFormat.value, imageDim.value, props.item.size]
+    : [imageDim.value ? imageFormat.value : "", props.item.size];
+  return parts.filter(Boolean).join(" · ");
+});
 
 const compactTime = computed(() => formatCompactTime(props.item.timestamp, props.now));
 const fullTime = computed(() => formatTime(props.item.timestamp));
@@ -182,8 +195,8 @@ const handleCardClick = () => {
         </div>
 
         <div v-if="isImage" class="card-image-info">
-          <span class="image-label">图片</span>
-          <span v-if="imageSizeLabel" class="image-dim">{{ imageSizeLabel }}</span>
+          <span v-if="!hasAlias" class="image-primary">{{ imagePrimaryText }}</span>
+          <span v-if="imageSubText" class="image-sub">{{ imageSubText }}</span>
         </div>
 
         <p
@@ -339,16 +352,26 @@ const handleCardClick = () => {
 }
 
 .card-thumb {
+  position: relative;
   width: 40px;
   height: 40px;
   flex-shrink: 0;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: inset 0 0 0 1px var(--border-light);
   background: var(--bg-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
+
+  /* 伪元素覆盖在 img 之上，确保白底截图在浅/深色模式下均有清晰边界 */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px var(--thumb-ring, var(--border-light));
+    pointer-events: none;
+  }
 }
 
 .thumb-img {
@@ -406,22 +429,25 @@ const handleCardClick = () => {
 
 .card-image-info {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  gap: 2px;
   min-width: 0;
 }
 
-.image-label {
+.image-primary {
   font-size: 12.5px;
   font-weight: 500;
+  line-height: 1.35;
   color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.image-dim {
-  padding: 1px 6px;
-  border-radius: 5px;
-  background: var(--bg-secondary);
-  font-size: 11px;
+.image-sub {
+  font-size: 11.5px;
+  line-height: 1.35;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
   overflow: hidden;
