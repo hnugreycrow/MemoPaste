@@ -206,9 +206,17 @@ export class WindowService {
   }
 
   /** 隐藏浮窗并将前台焦点交还给呼出前的目标窗口，供自动模拟粘贴使用 */
-  public hideAndRestoreFocus(): void {
+  public hideAndRestoreFocus(): ForegroundWindowHandle | null {
+    const target = this.previousForegroundHwnd;
+    if (target) {
+      // 在浮窗仍处于前台时优先归还焦点，避免先 hide 导致 Windows 前台焦点锁拦截
+      restoreForegroundWindow(target);
+    }
     this.hidePanel();
-    restoreForegroundWindow(this.previousForegroundHwnd);
+    if (target) {
+      restoreForegroundWindow(target);
+    }
+    return target;
   }
 
   public togglePanel(): void {

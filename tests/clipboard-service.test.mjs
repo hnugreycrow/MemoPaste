@@ -30,6 +30,7 @@ function setup(kind = "text") {
   const handlers = new Map();
   const writes = [];
   const windows = [];
+  const pasteOptions = [];
   let row = { type: "text", content: "full text beyond the preview" };
   let paste = async () => {};
   const mocks = {
@@ -82,7 +83,13 @@ function setup(kind = "text") {
         return true;
       },
     },
-    "../utils/simulate-paste": { simulatePaste: () => paste() },
+    "../utils/simulate-paste": {
+      releasePressedModifiers: () => windows.push("release-modifiers"),
+      simulatePaste: (options) => {
+        pasteOptions.push(options);
+        return paste(options);
+      },
+    },
     "../utils/clipboard-privacy": { isSensitiveClipboardContent: () => sensitive },
     "./image-storage": {
       resolveImageAbsolutePath: (p) => (p === "ok.png" ? "/safe/img.png" : null),
@@ -117,7 +124,10 @@ function setup(kind = "text") {
   );
   const service = new module.exports.ClipboardService({
     hidePanel: () => windows.push("hide"),
-    hideAndRestoreFocus: () => windows.push("hide-restore"),
+    hideAndRestoreFocus: () => {
+      windows.push("hide-restore");
+      return 123456n;
+    },
     restorePanel: () => windows.push("restore"),
     setBlurHideSuppressed: (flag) => blurSuppressed.push(flag),
     getPanelWindow: () => null,
@@ -132,6 +142,7 @@ function setup(kind = "text") {
     blurSuppressed,
     writes,
     windows,
+    pasteOptions,
     handlers,
     paste: () => handlers.get("clipboard-paste-and-hide")({}, 1),
     pasteSingleLine: () => handlers.get("clipboard-paste-single-line")({}, 1),
@@ -248,15 +259,22 @@ test("paste hides with focus restore, handles missing records and failed input",
   t.after(() => context.service.dispose());
   assert.deepEqual(await context.paste(), { status: "sent" });
   assert.deepEqual(context.writes, ["full text beyond the preview"]);
+  assert.deepEqual(context.pasteOptions, [{ targetHwnd: 123456n }]);
   context.setRow(null);
   assert.deepEqual(await context.paste(), { status: "failed" });
-  assert.deepEqual(context.windows, ["hide-restore"]);
+  assert.deepEqual(context.windows, ["release-modifiers", "hide-restore"]);
   context.setRow({ type: "text", content: "retry" });
   context.setPaste(async () => {
     throw new Error("SendInput failed");
   });
   assert.deepEqual(await context.paste(), { status: "copied" });
-  assert.deepEqual(context.windows, ["hide-restore", "hide-restore", "restore"]);
+  assert.deepEqual(context.windows, [
+    "release-modifiers",
+    "hide-restore",
+    "release-modifiers",
+    "hide-restore",
+    "restore",
+  ]);
 });
 
 test("pasteSingleLine collapses newlines and rejects image items", async (t) => {

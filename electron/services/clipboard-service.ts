@@ -12,7 +12,8 @@ import {
   setClipboardItemAlias,
   getClipboardCounts,
 } from "../database/clipboard";
-import { simulatePaste } from "../utils/simulate-paste";
+import { releasePressedModifiers, simulatePaste } from "../utils/simulate-paste";
+import type { ForegroundWindowHandle } from "../utils/foreground-window";
 import { isSensitiveClipboardContent } from "../utils/clipboard-privacy";
 import { storeClipboardImage, resolveImageAbsolutePath } from "./image-storage";
 import {
@@ -29,7 +30,7 @@ const require = createRequire(import.meta.url);
 const clipboardEvent = require("clipboard-event");
 
 type PanelWindowController = Pick<WindowService, "hidePanel" | "restorePanel"> & {
-  hideAndRestoreFocus?: () => void;
+  hideAndRestoreFocus?: () => ForegroundWindowHandle | null | void;
   getPanelWindow?: () => BrowserWindow | null;
   setBlurHideSuppressed?: (suppressed: boolean) => void;
 };
@@ -199,13 +200,16 @@ export class ClipboardService {
   }
 
   private async hideAndSimulatePaste(): Promise<PasteResult> {
+    // 在自身浮窗仍处于前台时按需松开按住的修饰键（如 Alt+1~9），避免松键落入目标浏览器窗口
+    releasePressedModifiers();
+    let targetHwnd: ForegroundWindowHandle | null = null;
     if (this.windowService?.hideAndRestoreFocus) {
-      this.windowService.hideAndRestoreFocus();
+      targetHwnd = this.windowService.hideAndRestoreFocus() ?? null;
     } else {
       this.windowService?.hidePanel();
     }
     try {
-      await simulatePaste();
+      await simulatePaste({ targetHwnd });
     } catch (error) {
       // 内容已在剪贴板；按键失败时用户仍可手动粘贴
       console.error("自动粘贴按键失败:", error);
