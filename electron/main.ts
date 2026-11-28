@@ -11,6 +11,7 @@ import {
   setAppIsQuitting,
 } from "./services";
 import { isLaunchedHiddenAtLogin } from "./utils/login-item";
+import { DEFAULT_SHORTCUT } from "@shared/shortcut";
 import {
   registerClipimgSchemePrivileged,
   registerClipimgProtocolHandler,
@@ -133,9 +134,12 @@ function initializeServices() {
   clipboardService = new ClipboardService(windowService);
 
   shortcutService = new ShortcutService(windowService, configService);
-  const savedShortcut = configService.get<string>("shortcut");
-  if (savedShortcut) {
-    shortcutService.registerGlobalShortcut(savedShortcut);
+  windowService.setOnPanelHidden(() => shortcutService?.resume());
+
+  const savedShortcut = configService.get<string>("shortcut") || DEFAULT_SHORTCUT;
+  const registerResult = shortcutService.registerGlobalShortcut(savedShortcut);
+  if (!registerResult.success) {
+    console.warn(`Failed to register global shortcut "${savedShortcut}":`, registerResult.error);
   }
 
   trayService = new TrayService(
@@ -144,8 +148,12 @@ function initializeServices() {
     path.join(process.env.VITE_PUBLIC as string, "tray-icon.png"),
   );
   trayService.createTray();
+  trayService.setShortcutConflict(!shortcutService.getStatus().registered);
 
   clipboardService.setOnPausedChanged(() => trayService?.refreshMenu());
+  shortcutService.setOnStatusChanged((status) => {
+    trayService?.setShortcutConflict(!status.registered);
+  });
 }
 
 /** 版本与退出 IPC；配置/开机自启在 ConfigService */

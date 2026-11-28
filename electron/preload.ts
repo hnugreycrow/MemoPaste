@@ -75,5 +75,7 @@ contextBridge.exposeInMainWorld("app", {
 
 contextBridge.exposeInMainWorld("shortcut", {
   get: () => ipcRenderer.invoke("shortcut-get"),
+  getStatus: () => ipcRenderer.invoke("shortcut-get-status"),
   update: (newShortcut: string) => ipcRenderer.invoke("shortcut-update", newShortcut),
+  setSuspended: (suspended: boolean) => ipcRenderer.invoke("shortcut-set-suspended", suspended),
 } as ShortcutAPI);

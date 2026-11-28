@@ -33,6 +33,7 @@ export class WindowService {
   private shownAt = 0;
   private suppressBlurHide = false;
   private ipcRegistered = false;
+  private onPanelHidden: (() => void) | null = null;
 
   constructor(
     private readonly preloadPath: string,
@@ -152,6 +153,10 @@ export class WindowService {
     this.suppressBlurHide = !!suppressed;
   }
 
+  public setOnPanelHidden(listener: (() => void) | null): void {
+    this.onPanelHidden = listener;
+  }
+
   public showPanel(options?: { preserveState?: boolean; view?: "list" | "settings" }): void {
     if (!this.panelWin || this.panelWin.isDestroyed()) {
       this.createPanelWindow({ startHidden: true });
@@ -197,6 +202,7 @@ export class WindowService {
     if (this.panelWin && !this.panelWin.isDestroyed() && this.panelWin.isVisible()) {
       this.panelWin.hide();
     }
+    this.onPanelHidden?.();
   }
 
   /** 隐藏浮窗并将前台焦点交还给呼出前的目标窗口，供自动模拟粘贴使用 */
@@ -218,6 +224,7 @@ export class WindowService {
 
   public dispose(): void {
     this.previousForegroundHwnd = null;
+    this.onPanelHidden = null;
     if (this.panelWin && !this.panelWin.isDestroyed()) {
       this.panelWin.removeAllListeners("close");
       this.panelWin.removeAllListeners("blur");

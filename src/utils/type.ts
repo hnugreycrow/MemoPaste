@@ -125,7 +125,15 @@ export interface ShortcutUpdateResult {
   shortcut: string;
 }
 
+export interface ShortcutStatus {
+  shortcut: string;
+  registered: boolean;
+  error: string | null;
+}
+
 export interface ShortcutAPI {
   get: () => Promise<string | null>;
+  getStatus: () => Promise<ShortcutStatus>;
   update: (shortcut: string) => Promise<ShortcutUpdateResult>;
+  setSuspended: (suspended: boolean) => Promise<void>;
 }

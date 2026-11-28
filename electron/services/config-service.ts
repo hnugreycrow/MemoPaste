@@ -1,5 +1,6 @@
 import Store from "electron-store";
 import { app, ipcMain } from "electron";
+import { DEFAULT_SHORTCUT } from "@shared/shortcut";
 import type { AppConfig, ConfigKey } from "../../src/utils/type";
 import { applyOpenAtLogin, syncOpenAtLoginFromSystem } from "../utils/login-item";
 
@@ -32,7 +33,7 @@ export class ConfigService {
     this.store = new Store<AppConfig>({
       defaults: {
         theme: "light",
-        shortcut: "Alt+V",
+        shortcut: DEFAULT_SHORTCUT,
         openAtLogin: false,
       },
       name: "config",
