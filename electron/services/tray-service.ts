@@ -5,6 +5,7 @@ import { ClipboardService } from "./clipboard-service";
 /** 系统托盘：左键切换浮窗，右键精简为暂停/恢复、偏好设置与退出 */
 export class TrayService {
   private tray: Tray | null = null;
+  private shortcutConflict = false;
 
   constructor(
     private readonly windowService: WindowService,
@@ -25,10 +26,18 @@ export class TrayService {
     return this.tray;
   }
 
+  public setShortcutConflict(conflict: boolean): void {
+    this.shortcutConflict = !!conflict;
+    this.updateTooltip();
+  }
+
   private updateTooltip(): void {
     if (!this.tray) return;
-    const pausedSuffix = this.clipboardService.isPaused() ? "（已暂停记录）" : "";
-    this.tray.setToolTip(`MemoPaste v${app.getVersion()}${pausedSuffix}`);
+    const suffixes: string[] = [];
+    if (this.clipboardService.isPaused()) suffixes.push("已暂停记录");
+    if (this.shortcutConflict) suffixes.push("快捷键未生效");
+    const suffix = suffixes.length > 0 ? `（${suffixes.join("，")}）` : "";
+    this.tray.setToolTip(`MemoPaste v${app.getVersion()}${suffix}`);
   }
 
   public refreshMenu(): void {

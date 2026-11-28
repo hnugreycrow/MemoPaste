@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import { DEFAULT_SHORTCUT } from "@shared/shortcut";
 import { themeService, type ThemeType } from "@/utils/theme";
 import ShortcutRecorder from "./ShortcutRecorder.vue";
 
@@ -9,7 +10,7 @@ const emit = defineEmits<{
   recordingChange: [recording: boolean];
 }>();
 
-const shortcut = ref("Alt+V");
+const shortcut = ref(DEFAULT_SHORTCUT);
 const openAtLogin = ref(false);
 const appVersion = ref("–");
 const saving = ref<Record<string, boolean>>({});

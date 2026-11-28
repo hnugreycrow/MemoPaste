@@ -13,10 +13,19 @@ export type ForegroundWindowHandle = number | bigint;
 
 const PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
 
+/** 点击系统托盘呼出浮窗时，系统会先将焦点切到任务栏/托盘溢出窗，需忽略以免覆盖真实目标窗口 */
+const IGNORED_FOREGROUND_WINDOW_CLASSES = new Set([
+  "shell_traywnd",
+  "shell_secondarytraywnd",
+  "notifyiconoverflowwindow",
+  "toplevelwindowforoverflowxamlisland",
+]);
+
 type ForegroundApi = {
   getForegroundWindow: () => ForegroundWindowHandle;
   setForegroundWindow: (hwnd: ForegroundWindowHandle) => number;
   isWindow: (hwnd: ForegroundWindowHandle) => number;
+  getClassNameW: (hwnd: ForegroundWindowHandle, buf: Buffer, maxChars: number) => number;
   getWindowThreadProcessId: (hwnd: ForegroundWindowHandle, pidOut: Uint32Array) => number;
   openProcess: (access: number, inherit: number, pid: number) => ForegroundWindowHandle;
   queryFullProcessImageNameW: (
@@ -42,6 +51,9 @@ function ensureApi(): ForegroundApi | null {
       getForegroundWindow: user32.func("uintptr_t __stdcall GetForegroundWindow()"),
       setForegroundWindow: user32.func("int __stdcall SetForegroundWindow(uintptr_t hWnd)"),
       isWindow: user32.func("int __stdcall IsWindow(uintptr_t hWnd)"),
+      getClassNameW: user32.func(
+        "int __stdcall GetClassNameW(uintptr_t hWnd, _Out_ uint16_t *lpClassName, int nMaxCount)",
+      ),
       getWindowThreadProcessId: user32.func(
         "uint32_t __stdcall GetWindowThreadProcessId(uintptr_t hWnd, _Out_ uint32_t *lpdwProcessId)",
       ),
@@ -56,6 +68,28 @@ function ensureApi(): ForegroundApi | null {
     return api;
   } catch (error) {
     console.error("Failed to load Win32 foreground API:", error);
+    return null;
+  }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** 判断窗口类名是否属于任务栏/托盘等不应作为粘贴目标的系统壳窗口 */
+export function isIgnoredForegroundWindowClass(className: string | null | undefined): boolean {
+  if (!className) return false;
+  return IGNORED_FOREGROUND_WINDOW_CLASSES.has(className.trim().toLowerCase());
+}
+
+function readWindowClassName(a: ForegroundApi, hwnd: ForegroundWindowHandle): string | null {
+  try {
+    const maxChars = 128;
+    const buf = Buffer.alloc(maxChars * 2);
+    const len = a.getClassNameW(hwnd, buf, maxChars);
+    if (len <= 0) return null;
+    return buf.subarray(0, len * 2).toString("utf16le");
+  } catch {
     return null;
   }
 }
@@ -80,7 +114,7 @@ function isSameHandle(
   return BigInt(a) === BigInt(b);
 }
 
-/** 记录当前前台窗口句柄；若命中自身窗口则返回 null */
+/** 记录当前前台窗口句柄；若命中自身窗口或任务栏/托盘窗口则返回 null */
 export function captureForegroundWindow(
   selfHandle?: ForegroundWindowHandle | null,
 ): ForegroundWindowHandle | null {
@@ -90,10 +124,24 @@ export function captureForegroundWindow(
     const hwnd = a.getForegroundWindow();
     if (!hwnd || BigInt(hwnd) === 0n) return null;
     if (isSameHandle(hwnd, selfHandle)) return null;
+    const className = readWindowClassName(a, hwnd);
+    if (isIgnoredForegroundWindowClass(className)) return null;
     return hwnd;
   } catch (error) {
     console.error("GetForegroundWindow failed:", error);
     return null;
+  }
+}
+
+/** 检查指定句柄当前是否已经位于前景 */
+export function isForegroundWindow(hwnd: ForegroundWindowHandle | null): boolean {
+  if (!hwnd || BigInt(hwnd) === 0n) return false;
+  const a = ensureApi();
+  if (!a) return false;
+  try {
+    return isSameHandle(a.getForegroundWindow(), hwnd);
+  } catch {
+    return false;
   }
 }
 
@@ -111,6 +159,32 @@ export function restoreForegroundWindow(hwnd: ForegroundWindowHandle | null): bo
   } catch (error) {
     console.error("SetForegroundWindow failed:", error);
     return false;
+  }
+}
+
+/** 等待目标窗口真正切回前台（期间在必要时补发一次 SetForegroundWindow） */
+export async function waitForForegroundWindow(
+  hwnd: ForegroundWindowHandle | null,
+  options?: { timeoutMs?: number; pollMs?: number },
+): Promise<boolean> {
+  if (!hwnd || BigInt(hwnd) === 0n) return false;
+  const a = ensureApi();
+  if (!a) return false;
+
+  const timeoutMs = options?.timeoutMs ?? 200;
+  const pollMs = options?.pollMs ?? 10;
+  const deadline = Date.now() + timeoutMs;
+  let retries = 0;
+
+  while (true) {
+    if (isForegroundWindow(hwnd)) return true;
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) return false;
+    if (retries < 2 && remaining <= timeoutMs - (retries + 1) * 30) {
+      retries += 1;
+      restoreForegroundWindow(hwnd);
+    }
+    await delay(Math.min(pollMs, remaining));
   }
 }
 

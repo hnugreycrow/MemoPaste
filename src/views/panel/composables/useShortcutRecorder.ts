@@ -6,7 +6,6 @@ import {
   normalKeyFromCode,
 } from "@shared/shortcut";
 
-/** KeyboardEvent.code：仅修饰键本身（用于区分「按住 Ctrl」与「Ctrl+字母」） */
 const MODIFIER_KEY_CODES = new Set([
   "ControlLeft",
   "ControlRight",
@@ -18,64 +17,84 @@ const MODIFIER_KEY_CODES = new Set([
   "MetaRight",
 ]);
 
+const DEFAULT_RECORD_HINT = "按住 Ctrl / Alt 不放，再按普通键（Esc 取消）";
+
 export type ShortcutCommitResult = {
   success: boolean;
   shortcut?: string;
   error?: string;
 };
 
+export type ShortcutRecorderOptions = {
+  isRegistered?: Ref<boolean>;
+  onSuspendChange?: (suspended: boolean) => void | Promise<void>;
+  onFeedback?: (type: "success" | "error", text: string) => void;
+};
+
 /**
- * 全局快捷键录制逻辑：预览、即时校验、松键后提交。
- * UI（keycap / 提示条）由 ShortcutRecorder 组件负责。
+ * 全局快捷键录制逻辑：预览、校验、命中合法组合即提交。
+ * 录制期间临时暂停当前全局快捷键，避免按到原快捷键直接关闭浮窗。
  */
 export function useShortcutRecorder(
   shortcut: Ref<string>,
   commit: (next: string) => Promise<ShortcutCommitResult>,
-  onFeedback?: (type: "success" | "error", text: string) => void,
+  options: ShortcutRecorderOptions = {},
 ) {
-  /** 录制中的按键预览（规范化片段，如 CommandOrControl、A） */
   const tempKeys = ref<string[]>([]);
   const isRecording = ref(false);
-  /** 录制引导 / 错误提示文案 */
   const recordHint = ref("");
-  /** 当前预览组合是否校验失败（用于标红） */
   const recordInvalid = ref(false);
   const captureEl = ref<HTMLElement | null>(null);
+  let committing = false;
 
-  /** 展示用 keycap：录制中看预览，否则看已保存值 */
   const displayKeyParts = computed(() => {
-    const raw = isRecording.value
-      ? tempKeys.value.length > 0
-        ? tempKeys.value.join("+")
-        : ""
-      : shortcut.value;
-
+    const raw = isRecording.value ? tempKeys.value.join("+") : shortcut.value;
     return formatShortcutForDisplay(raw);
   });
 
-  /** 从事件收集修饰键；Win/Cmd 映射为 Super（Ctrl 按下时忽略 meta，避免重复） */
   const collectModifiers = (e: KeyboardEvent): string[] => {
     const mods: string[] = [];
     if (e.ctrlKey) mods.push("CommandOrControl");
     if (e.altKey) mods.push("Alt");
     if (e.shiftKey) mods.push("Shift");
-    if (e.metaKey && !e.ctrlKey) mods.push("Super");
     return mods;
   };
 
-  /** 结束录制并清空预览状态 */
+  const updateModifierPreview = (mods: string[]) => {
+    tempKeys.value = mods;
+    recordInvalid.value = false;
+    if (mods.length === 1 && mods[0] === "Shift") {
+      recordHint.value = "需同时按住 Ctrl 或 Alt，再按普通键…";
+    } else if (mods.length > 0) {
+      recordHint.value = "保持按住，再按字母、数字、空格或常用符号…";
+    } else {
+      recordHint.value = DEFAULT_RECORD_HINT;
+    }
+  };
+
   const stopRecording = () => {
+    const wasRecording = isRecording.value;
     isRecording.value = false;
+    committing = false;
     tempKeys.value = [];
     recordHint.value = "";
     recordInvalid.value = false;
+    if (wasRecording) {
+      void options.onSuspendChange?.(false);
+    }
   };
 
   const startRecording = () => {
+    if (isRecording.value) {
+      captureEl.value?.focus();
+      return;
+    }
+    committing = false;
     tempKeys.value = [];
-    recordHint.value = "按下 Ctrl / Alt / Win，再按普通键";
+    recordHint.value = DEFAULT_RECORD_HINT;
     recordInvalid.value = false;
     isRecording.value = true;
+    void options.onSuspendChange?.(true);
     captureEl.value?.focus();
   };
 
@@ -83,11 +102,13 @@ export function useShortcutRecorder(
     stopRecording();
   };
 
-  const onKeyDown = (e: KeyboardEvent) => {
+  const onKeyDown = async (e: KeyboardEvent) => {
     if (!isRecording.value) return;
 
     e.preventDefault();
     e.stopPropagation();
+
+    if (committing || e.repeat) return;
 
     if (e.key === "Escape") {
       stopRecording();
@@ -95,14 +116,16 @@ export function useShortcutRecorder(
       return;
     }
 
-    const mods = collectModifiers(e);
+    if (e.metaKey || e.code === "MetaLeft" || e.code === "MetaRight") {
+      tempKeys.value = [];
+      recordInvalid.value = true;
+      recordHint.value = "不支持 Win 键，请按住 Ctrl 或 Alt";
+      return;
+    }
 
+    const mods = collectModifiers(e);
     if (MODIFIER_KEY_CODES.has(e.code)) {
-      tempKeys.value = mods;
-      recordInvalid.value = false;
-      recordHint.value = mods.length
-        ? "再按一个字母、数字或 F 键…"
-        : "按下 Ctrl / Alt / Win，再按普通键";
+      updateModifierPreview(mods);
       return;
     }
 
@@ -110,7 +133,7 @@ export function useShortcutRecorder(
     if (!normalKey) {
       tempKeys.value = mods;
       recordInvalid.value = true;
-      recordHint.value = "不支持此键";
+      recordHint.value = "不支持此键，请使用字母、数字、空格、F1-F12 或常用符号";
       return;
     }
 
@@ -122,26 +145,8 @@ export function useShortcutRecorder(
       return;
     }
 
-    recordInvalid.value = false;
-    recordHint.value = "松开按键以确认";
-  };
-
-  const onKeyUp = async (e: KeyboardEvent) => {
-    if (!isRecording.value) return;
-    if (e.key === "Escape") return;
-    if (MODIFIER_KEY_CODES.has(e.code)) return;
-    if (tempKeys.value.length === 0 || recordInvalid.value) return;
-
-    const recorded = tempKeys.value.join("+");
-    const checkResult = validateShortcut(recorded);
-    if (!checkResult.success) {
-      recordInvalid.value = true;
-      recordHint.value = checkResult.error;
-      return;
-    }
-
-    const newShortcut = checkResult.shortcut;
-    if (newShortcut === normalizeShortcut(shortcut.value)) {
+    const newShortcut = check.shortcut;
+    if (newShortcut === normalizeShortcut(shortcut.value) && options.isRegistered?.value !== false) {
       stopRecording();
       captureEl.value?.blur();
       return;
@@ -149,6 +154,9 @@ export function useShortcutRecorder(
 
     const previous = shortcut.value;
     shortcut.value = newShortcut;
+    recordInvalid.value = false;
+    recordHint.value = "正在保存…";
+    committing = true;
 
     try {
       const result = await commit(newShortcut);
@@ -156,16 +164,26 @@ export function useShortcutRecorder(
       captureEl.value?.blur();
       if (!result?.success) {
         shortcut.value = result?.shortcut || previous;
-        onFeedback?.("error", `快捷键设置失败：${result?.error ?? "未知错误"}`);
+        options.onFeedback?.("error", `快捷键设置失败：${result?.error ?? "未知错误"}`);
       } else {
         shortcut.value = result.shortcut ?? newShortcut;
-        onFeedback?.("success", "快捷键已更新");
+        options.onFeedback?.("success", "快捷键已更新");
       }
     } catch (error) {
       shortcut.value = previous;
       stopRecording();
       captureEl.value?.blur();
-      onFeedback?.("error", `快捷键设置失败：${error}`);
+      options.onFeedback?.("error", `快捷键设置失败：${error}`);
+    }
+  };
+
+  const onKeyUp = (e: KeyboardEvent) => {
+    if (!isRecording.value) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!committing && MODIFIER_KEY_CODES.has(e.code)) {
+      updateModifierPreview(collectModifiers(e));
     }
   };
 
@@ -176,6 +194,7 @@ export function useShortcutRecorder(
     recordInvalid,
     displayKeyParts,
     startRecording,
+    stopRecording,
     onBlur,
     onKeyDown,
     onKeyUp,

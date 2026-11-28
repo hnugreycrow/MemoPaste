@@ -1,123 +1,155 @@
 import { globalShortcut, ipcMain } from "electron";
 import { WindowService } from "./window-service";
 import { ConfigService } from "./config-service";
-import { normalizeShortcut, validateShortcut } from "@shared/shortcut";
+import { DEFAULT_SHORTCUT, normalizeShortcut, validateShortcut } from "@shared/shortcut";
+import type { ShortcutStatus, ShortcutUpdateResult } from "../../src/utils/type";
 
-export type ShortcutUpdateResult = {
-  success: boolean;
-  error?: string;
-  shortcut: string;
-};
+export type { ShortcutStatus, ShortcutUpdateResult };
 
 /**
- * 快捷键服务：注册 / 更新全局快捷键（切换浮窗）
+ * 快捷键服务：注册 / 更新 / 临时暂停全局快捷键（切换浮窗）
  */
 export class ShortcutService {
-  private windowService: WindowService;
-  private configService: ConfigService;
   private currentShortcut: string | null = null;
-  private onShortcutChanged: ((shortcut: string) => void) | null = null;
+  private suspendedShortcut: string | null = null;
+  private lastRegistrationError: string | null = null;
+  private onStatusChanged: ((status: ShortcutStatus) => void) | null = null;
 
-  constructor(windowService: WindowService, configService: ConfigService) {
-    this.windowService = windowService;
-    this.configService = configService;
+  constructor(
+    private readonly windowService: WindowService,
+    private readonly configService: ConfigService,
+  ) {
     this.registerIpcHandlers();
   }
 
-  public setOnShortcutChanged(listener: ((shortcut: string) => void) | null): void {
-    this.onShortcutChanged = listener;
+  public setOnStatusChanged(listener: ((status: ShortcutStatus) => void) | null): void {
+    this.onStatusChanged = listener;
   }
 
   private registerIpcHandlers(): void {
-    ipcMain.handle("shortcut-get", () => {
-      return this.currentShortcut ?? this.configService.get<string>("shortcut") ?? null;
+    ipcMain.handle("shortcut-get", () => this.getStatus().shortcut);
+    ipcMain.handle("shortcut-get-status", (): ShortcutStatus => this.getStatus());
+
+    ipcMain.handle("shortcut-update", (_event, newShortcut: unknown): ShortcutUpdateResult => {
+      if (typeof newShortcut !== "string") {
+        return { success: false, error: "请输入有效的快捷键组合", shortcut: this.getStatus().shortcut };
+      }
+      return this.updateShortcut(newShortcut);
     });
 
-    ipcMain.handle("shortcut-update", (_event, newShortcut: string): ShortcutUpdateResult => {
-      return this.updateShortcut(newShortcut);
+    ipcMain.handle("shortcut-set-suspended", (_event, suspended: unknown): void => {
+      if (typeof suspended !== "boolean") return;
+      if (suspended) this.suspend();
+      else this.resume();
     });
   }
 
-  /**
-   * 更新用户全局快捷键：校验 → 注销旧键 → 注册新键；失败则回滚旧键，避免快捷键丢了
-   */
+  public getStatus(): ShortcutStatus {
+    const active = this.currentShortcut ?? this.suspendedShortcut;
+    const configured = this.configService.get<string>("shortcut") || DEFAULT_SHORTCUT;
+    return {
+      shortcut: active ?? configured,
+      registered: active !== null,
+      error: active !== null ? null : this.lastRegistrationError,
+    };
+  }
+
+  /** 录制期间临时注销当前全局热键，避免按到原快捷键直接关闭浮窗 */
+  public suspend(): void {
+    if (!this.currentShortcut) return;
+    const active = this.currentShortcut;
+    this.currentShortcut = null;
+    this.suspendedShortcut = active;
+    globalShortcut.unregister(active);
+  }
+
+  /** 结束录制或隐藏浮窗时恢复被暂停的全局热键 */
+  public resume(): void {
+    if (!this.suspendedShortcut) return;
+    const toRestore = this.suspendedShortcut;
+    this.suspendedShortcut = null;
+    this.registerGlobalShortcut(toRestore);
+  }
+
+  /** 更新全局快捷键：校验 → 注销旧键 → 注册新键；失败则回滚旧键 */
   public updateShortcut(rawShortcut: string): ShortcutUpdateResult {
-    const oldShortcut = this.currentShortcut ?? this.configService.get<string>("shortcut") ?? null;
+    const activeBefore = this.currentShortcut ?? this.suspendedShortcut;
+    const oldShortcut = activeBefore ?? this.configService.get<string>("shortcut") ?? DEFAULT_SHORTCUT;
 
     const validated = validateShortcut(rawShortcut);
     if (!validated.success) {
-      return {
-        success: false,
-        error: validated.error,
-        shortcut: oldShortcut ?? "",
-      };
+      return { success: false, error: validated.error, shortcut: oldShortcut };
     }
 
     const newShortcut = validated.shortcut;
-
-    if (oldShortcut && normalizeShortcut(oldShortcut) === newShortcut) {
+    if (activeBefore && normalizeShortcut(activeBefore) === newShortcut) {
+      if (this.suspendedShortcut) {
+        this.suspendedShortcut = null;
+        const restored = this.registerGlobalShortcut(newShortcut);
+        if (!restored.success) {
+          return { success: false, error: restored.error ?? "快捷键注册失败", shortcut: oldShortcut };
+        }
+      }
       return { success: true, shortcut: newShortcut };
     }
 
-    if (oldShortcut) {
-      globalShortcut.unregister(oldShortcut);
+    if (this.currentShortcut) {
+      globalShortcut.unregister(this.currentShortcut);
+      this.currentShortcut = null;
     }
+    this.suspendedShortcut = null;
 
     const result = this.registerGlobalShortcut(newShortcut);
     if (!result.success) {
-      if (oldShortcut) {
-        this.registerGlobalShortcut(oldShortcut);
+      if (activeBefore) {
+        this.registerGlobalShortcut(activeBefore);
       }
-      return {
-        success: false,
-        error: result.error ?? "快捷键注册失败，可能已被占用或格式无效",
-        shortcut: oldShortcut ?? "",
-      };
+      return { success: false, error: result.error ?? "快捷键注册失败", shortcut: oldShortcut };
     }
 
     this.configService.set("shortcut", newShortcut);
-    this.onShortcutChanged?.(newShortcut);
     return { success: true, shortcut: newShortcut };
   }
 
-  public registerGlobalShortcut(shortcut: string): {
-    success: boolean;
-    error: string | null;
-  } {
+  public registerGlobalShortcut(shortcut: string): { success: boolean; error: string | null } {
     const validated = validateShortcut(shortcut);
     if (!validated.success) {
+      this.lastRegistrationError = validated.error;
+      this.onStatusChanged?.(this.getStatus());
       return { success: false, error: validated.error };
     }
 
     const normalized = validated.shortcut;
-
     try {
       const registered = globalShortcut.register(normalized, () => {
         this.windowService.togglePanel();
       });
 
       if (!registered) {
-        return {
-          success: false,
-          error: "快捷键注册失败，可能已被占用或格式无效",
-        };
+        const error = "快捷键已被其他应用占用，请换一个组合";
+        this.lastRegistrationError = error;
+        this.onStatusChanged?.(this.getStatus());
+        return { success: false, error };
       }
 
       this.currentShortcut = normalized;
+      this.lastRegistrationError = null;
+      this.onStatusChanged?.(this.getStatus());
       return { success: true, error: null };
     } catch (error) {
       console.error("注册快捷键时发生错误:", error);
-      return { success: false, error: "注册快捷键时发生错误" };
+      const message = "注册快捷键时发生错误";
+      this.lastRegistrationError = message;
+      this.onStatusChanged?.(this.getStatus());
+      return { success: false, error: message };
     }
-  }
-
-  public getCurrentShortcut(): string | null {
-    return this.currentShortcut;
   }
 
   public dispose(): void {
     globalShortcut.unregisterAll();
     this.currentShortcut = null;
-    this.onShortcutChanged = null;
+    this.suspendedShortcut = null;
+    this.lastRegistrationError = null;
+    this.onStatusChanged = null;
   }
 }
